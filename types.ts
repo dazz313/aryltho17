@@ -30,6 +30,8 @@ export interface Customer {
   email: string;
   phone: string;
   address: string;
+  category?: 'Residential' | 'Commercial' | 'Industrial' | 'VIP';
+  tags?: string[];
 }
 
 export enum WorkOrderStatus {
@@ -69,18 +71,53 @@ export interface Invoice {
   status: 'Paid' | 'Unpaid';
 }
 
-export interface FinancialRecord {
+export enum TransactionCategory {
+  SERVICE_INCOME = 'Pendapatan Servis',
+  SALARY = 'Gaji',
+  PART_PURCHASE = 'Pembelian Sparepart',
+  OTHER_INCOME = 'Pendapatan Lain-lain',
+  OTHER_EXPENSE = 'Biaya Lain-lain',
+}
+
+export enum PaymentMethod {
+  CASH = 'Cash',
+  BANK_TRANSFER = 'Transfer Bank',
+  CREDIT_CARD = 'Kartu Kredit',
+}
+
+export interface Transaction {
   id: string;
   date: string;
   description: string;
   type: 'income' | 'expense';
   amount: number;
+  category: TransactionCategory;
+  paymentMethod: PaymentMethod;
   attachment?: {
     name: string;
     type: string;
     data: string; // Base64 encoded data URL
   };
+  invoiceId?: string; // To link with an invoice
 }
+
+export enum ContractStatus {
+  ACTIVE = 'Active',
+  EXPIRED = 'Expired',
+  CANCELLED = 'Cancelled',
+}
+
+export interface ServiceContract {
+  id: string;
+  customerId: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  status: ContractStatus;
+  terms: string;
+  renewalDate?: string;
+}
+
 
 export interface Notification {
   id: string;

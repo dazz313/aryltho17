@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, FinancialRecord, Notification, ChatMessage, CompanyProfile, TechnicianStatus } from './types';
+import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus } from './types';
 import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon } from './components/icons';
 import { generateAiSummary, getChatbotResponse } from './services/geminiService';
 import { jsPDF } from 'jspdf';
@@ -16,9 +17,9 @@ const INITIAL_USERS: User[] = [
 ];
 
 const INITIAL_CUSTOMERS: Customer[] = [
-  { id: 'cust-1', name: 'PT Sejahtera Abadi', email: 'contact@sejahtera.co.id', phone: '081234567890', address: 'Jl. Merdeka No. 1, Jakarta' },
-  { id: 'cust-2', name: 'Toko Roti Enak', email: 'order@rotienak.com', phone: '081298765432', address: 'Jl. Sudirman No. 22, Jakarta' },
-  { id: 'cust-3', name: 'Ibu Susanti', email: 'susanti@gmail.com', phone: '085611223344', address: 'Jl. Gatot Subroto No. 5, Bandung' },
+  { id: 'cust-1', name: 'PT Sejahtera Abadi', email: 'contact@sejahtera.co.id', phone: '081234567890', address: 'Jl. Merdeka No. 1, Jakarta', category: 'Commercial', tags: ['High Value', 'Regular Maintenance'] },
+  { id: 'cust-2', name: 'Toko Roti Enak', email: 'order@rotienak.com', phone: '081298765432', address: 'Jl. Sudirman No. 22, Jakarta', category: 'Commercial', tags: ['New'] },
+  { id: 'cust-3', name: 'Ibu Susanti', email: 'susanti@gmail.com', phone: '085611223344', address: 'Jl. Gatot Subroto No. 5, Bandung', category: 'Residential', tags: ['Repeat Customer'] },
 ];
 
 const INITIAL_SPARE_PARTS: SparePart[] = [
@@ -43,16 +44,39 @@ const INITIAL_INVOICES: Invoice[] = INITIAL_WORK_ORDERS
         customerId: wo.customer.id,
         amount: wo.totalCost,
         issuedDate: wo.completedAt || new Date().toISOString().split('T')[0],
-        status: 'Unpaid',
+        status: wo.id === 'wo-1' ? 'Paid' : 'Unpaid',
+        paidDate: wo.id === 'wo-1' ? wo.completedAt : undefined,
     }));
 
-const INITIAL_FINANCIAL_RECORDS: FinancialRecord[] = [
-    { id: 'exp-1', date: '2023-10-01', description: 'Gaji Teknisi', type: 'expense', amount: 5000000 },
-    { id: 'exp-2', date: '2023-10-02', description: 'Pembelian Sparepart', type: 'expense', amount: 1500000 },
+const INITIAL_TRANSACTIONS: Transaction[] = [
+    ...INITIAL_INVOICES.filter(inv => inv.status === 'Paid').map(inv => ({
+        id: `trn-${inv.id}`,
+        invoiceId: inv.workOrderId,
+        date: inv.paidDate!,
+        description: `Payment for Invoice ${inv.id}`,
+        type: 'income' as 'income',
+        amount: inv.amount,
+        category: TransactionCategory.SERVICE_INCOME,
+        paymentMethod: PaymentMethod.BANK_TRANSFER
+    })),
+    { id: 'exp-1', date: '2023-10-01', description: 'Gaji Teknisi', type: 'expense', amount: 5000000, category: TransactionCategory.SALARY, paymentMethod: PaymentMethod.BANK_TRANSFER },
+    { id: 'exp-2', date: '2023-10-02', description: 'Pembelian Sparepart', type: 'expense', amount: 1500000, category: TransactionCategory.PART_PURCHASE, paymentMethod: PaymentMethod.CASH },
+];
+
+const INITIAL_CONTRACTS: ServiceContract[] = [
+    { id: 'con-1', customerId: 'cust-1', title: 'Annual AC Maintenance Package', startDate: '2023-01-01', endDate: '2023-12-31', status: ContractStatus.ACTIVE, terms: 'Quarterly general check-up and cleaning for 10 AC units.', renewalDate: '2023-12-01' },
+    { id: 'con-2', customerId: 'cust-3', title: 'Home Appliance Service Contract', startDate: '2022-06-15', endDate: '2023-06-14', status: ContractStatus.EXPIRED, terms: 'On-call repair service for Refrigerator and Washing Machine.' },
 ];
 
 // --- UTILITY FUNCTIONS ---
 const formatIDR = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+
+const formatUserName = (name?: string | null): string => {
+    if (!name || typeof name !== 'string') {
+        return '';
+    }
+    return name.split(' (')[0];
+};
 
 const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid') => {
   switch (status) {
@@ -65,6 +89,15 @@ const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid') => {
     default: return 'bg-gray-100 text-gray-800';
   }
 };
+
+const getContractStatusColor = (status: ContractStatus) => {
+    switch(status) {
+        case ContractStatus.ACTIVE: return 'bg-green-100 text-green-800';
+        case ContractStatus.EXPIRED: return 'bg-yellow-100 text-yellow-800';
+        case ContractStatus.CANCELLED: return 'bg-red-100 text-red-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
 
 const getTechnicianStatusColor = (status?: TechnicianStatus) => {
     switch(status) {
@@ -130,11 +163,16 @@ const StatCard: React.FC<CardProps> = ({ title, value, icon }) => (
   </div>
 );
 
-const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode; }> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode; size?: 'md' | 'lg' | 'xl' }> = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
+    const sizeClasses = {
+        md: 'max-w-md',
+        lg: 'max-w-lg',
+        xl: 'max-w-xl',
+    }
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center" onClick={onClose}>
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className={`bg-white rounded-lg shadow-xl p-6 w-full ${sizeClasses[size]}`} onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-gray-800">{title}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -279,23 +317,36 @@ const AddEditCustomerModal: React.FC<{
     onSave: (customer: Customer) => void;
     customer: Customer | null;
 }> = ({ isOpen, onClose, onSave, customer }) => {
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', category: 'Residential' as Customer['category'], tags: '' });
 
     useEffect(() => {
         if (customer) {
-            setFormData({ name: customer.name, email: customer.email, phone: customer.phone, address: customer.address });
+            setFormData({ 
+                name: customer.name, 
+                email: customer.email, 
+                phone: customer.phone, 
+                address: customer.address,
+                category: customer.category || 'Residential',
+                tags: customer.tags?.join(', ') || ''
+             });
         } else {
-            setFormData({ name: '', email: '', phone: '', address: '' });
+            setFormData({ name: '', email: '', phone: '', address: '', category: 'Residential', tags: '' });
         }
     }, [customer, isOpen]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ ...customer, ...formData, id: customer?.id || `cust-${Date.now()}` });
+        onSave({ 
+            ...customer, 
+            ...formData,
+            id: customer?.id || `cust-${Date.now()}`,
+            category: formData.category,
+            tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean)
+        });
     };
 
     return (
@@ -317,6 +368,19 @@ const AddEditCustomerModal: React.FC<{
                     <label className="block text-sm font-medium text-gray-700">Address</label>
                     <input type="text" name="address" value={formData.address} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Category</label>
+                     <select name="category" value={formData.category} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                        <option>Residential</option>
+                        <option>Commercial</option>
+                        <option>Industrial</option>
+                        <option>VIP</option>
+                    </select>
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Tags (comma-separated)</label>
+                    <input type="text" name="tags" value={formData.tags} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                </div>
                 <div className="flex justify-end pt-4 space-x-2">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Customer</button>
@@ -331,18 +395,19 @@ const CreateWorkOrderModal: React.FC<{
     onClose: () => void;
     onSave: (data: { customerId: string; description: string; totalCost: number; }) => void;
     customers: Customer[];
-}> = ({ isOpen, onClose, onSave, customers }) => {
-    const [customerId, setCustomerId] = useState('');
+    preselectedCustomerId?: string;
+}> = ({ isOpen, onClose, onSave, customers, preselectedCustomerId }) => {
+    const [customerId, setCustomerId] = useState(preselectedCustomerId || '');
     const [description, setDescription] = useState('');
     const [totalCost, setTotalCost] = useState('');
 
     useEffect(() => {
         if (isOpen) {
-            setCustomerId(customers[0]?.id || '');
+            setCustomerId(preselectedCustomerId || (customers.length > 0 ? customers[0].id : ''));
             setDescription('');
             setTotalCost('');
         }
-    }, [isOpen, customers]);
+    }, [isOpen, customers, preselectedCustomerId]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -355,7 +420,7 @@ const CreateWorkOrderModal: React.FC<{
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Customer</label>
-                    <select value={customerId} onChange={e => setCustomerId(e.target.value)} required className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                    <select value={customerId} onChange={e => setCustomerId(e.target.value)} required disabled={!!preselectedCustomerId} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md disabled:bg-gray-100">
                         {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </div>
@@ -601,28 +666,56 @@ const AddEditSparePartModal: React.FC<{
     );
 };
 
-const AddEditExpenseModal: React.FC<{
+const AddEditTransactionModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onSave: (record: FinancialRecord) => void;
-    record: FinancialRecord | null;
-}> = ({ isOpen, onClose, onSave, record }) => {
-    const [formData, setFormData] = useState({ description: '', amount: '', date: new Date().toISOString().split('T')[0] });
+    onSave: (record: Transaction) => void;
+    transaction: Transaction | null;
+}> = ({ isOpen, onClose, onSave, transaction }) => {
+    const getInitialState = () => ({
+        type: 'expense' as 'income' | 'expense',
+        description: '',
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        category: TransactionCategory.OTHER_EXPENSE,
+        paymentMethod: PaymentMethod.CASH,
+    });
+
+    const [formData, setFormData] = useState(getInitialState());
     const [attachment, setAttachment] = useState<{ name: string; type: string; data: string; } | null>(null);
 
 
     useEffect(() => {
-        if (record) {
-            setFormData({ description: record.description, amount: String(record.amount), date: record.date });
-            setAttachment(record.attachment || null);
+        if (transaction) {
+            setFormData({ 
+                type: transaction.type,
+                description: transaction.description, 
+                amount: String(transaction.amount), 
+                date: transaction.date,
+                category: transaction.category,
+                paymentMethod: transaction.paymentMethod
+            });
+            setAttachment(transaction.attachment || null);
         } else {
-            setFormData({ description: '', amount: '', date: new Date().toISOString().split('T')[0] });
+            setFormData(getInitialState());
             setAttachment(null);
         }
-    }, [record, isOpen]);
+    }, [transaction, isOpen]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        
+        if (name === 'type') {
+            const newType = value as 'income' | 'expense';
+            setFormData({
+                ...formData,
+                // FIX: Use the correctly typed `newType` instead of the generic `string` `value`.
+                [name]: newType,
+                category: newType === 'income' ? TransactionCategory.OTHER_INCOME : TransactionCategory.OTHER_EXPENSE
+            });
+        } else {
+            setFormData({ ...formData, [name]: value as any });
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -643,30 +736,62 @@ const AddEditExpenseModal: React.FC<{
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave({
-            ...record,
-            id: record?.id || `exp-${Date.now()}`,
-            type: 'expense',
+            ...transaction,
+            id: transaction?.id || `trn-${Date.now()}`,
+            type: formData.type,
             description: formData.description,
             amount: Number(formData.amount),
             date: formData.date,
+            category: formData.category,
+            paymentMethod: formData.paymentMethod,
             attachment: attachment || undefined,
         });
     };
+    
+    const incomeCategories = Object.values(TransactionCategory).filter(c => c.includes('Pendapatan'));
+    const expenseCategories = Object.values(TransactionCategory).filter(c => !c.includes('Pendapatan'));
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={record ? 'Edit Expense' : 'Add New Expense'}>
+        <Modal isOpen={isOpen} onClose={onClose} title={transaction ? 'Edit Transaction' : 'Add New Transaction'}>
             <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Type</label>
+                    <select name="type" value={formData.type} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                    </select>
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Description</label>
                     <input type="text" name="description" value={formData.description} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Amount (IDR)</label>
-                    <input type="number" name="amount" value={formData.amount} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Amount (IDR)</label>
+                        <input type="number" name="amount" value={formData.amount} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Date</label>
-                    <input type="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Category</label>
+                        <select name="category" value={formData.category} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                            {(formData.type === 'income' ? incomeCategories : expenseCategories).map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                        <select name="paymentMethod" value={formData.paymentMethod} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                            {Object.values(PaymentMethod).map(method => (
+                                <option key={method} value={method}>{method}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Attachment (Nota/Receipt)</label>
@@ -685,7 +810,7 @@ const AddEditExpenseModal: React.FC<{
                 </div>
                 <div className="flex justify-end pt-4 space-x-2">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Expense</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Transaction</button>
                 </div>
             </form>
         </Modal>
@@ -703,7 +828,7 @@ const AddEditEmployeeModal: React.FC<{
     useEffect(() => {
         if (user) {
             setFormData({
-                name: user.name.split(' (')[0],
+                name: formatUserName(user.name),
                 email: user.email || '',
                 phone: user.phone || '',
                 age: user.age ? String(user.age) : '',
@@ -735,7 +860,7 @@ const AddEditEmployeeModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Edit Employee: ${user?.name.split(' (')[0]}`}>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Edit Employee: ${formatUserName(user?.name)}`}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Name</label>
@@ -784,6 +909,93 @@ const AddEditEmployeeModal: React.FC<{
             </form>
         </Modal>
     );
+};
+
+const AddEditContractModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (contract: ServiceContract) => void;
+    contract: ServiceContract | null;
+    customerId: string | null;
+}> = ({ isOpen, onClose, onSave, contract, customerId }) => {
+    const getInitialState = () => ({
+        title: '',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: '',
+        status: ContractStatus.ACTIVE,
+        terms: '',
+    });
+
+    const [formData, setFormData] = useState(getInitialState());
+
+    useEffect(() => {
+        if (contract) {
+            setFormData({
+                title: contract.title,
+                startDate: contract.startDate,
+                endDate: contract.endDate,
+                status: contract.status,
+                terms: contract.terms,
+            });
+        } else {
+            setFormData(getInitialState());
+        }
+    }, [contract, isOpen]);
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!customerId) return;
+        
+        onSave({
+            ...contract,
+            id: contract?.id || `con-${Date.now()}`,
+            customerId,
+            title: formData.title,
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            status: formData.status,
+            terms: formData.terms,
+        });
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={contract ? 'Edit Contract' : 'Add New Service Contract'} size="lg">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Contract Title</label>
+                    <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder="e.g. Annual AC Maintenance" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                        <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">End Date</label>
+                        <input type="date" name="endDate" value={formData.endDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <select name="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                        {Object.values(ContractStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Terms & Conditions</label>
+                    <textarea name="terms" value={formData.terms} onChange={handleChange} rows={4} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                </div>
+                 <div className="flex justify-end pt-4 space-x-2">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Contract</button>
+                </div>
+            </form>
+        </Modal>
+    )
 };
 
 
@@ -839,7 +1051,7 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
 
   const technicianPerformanceData = useMemo(() => {
     return technicians.map(tech => ({
-        name: tech.name.split(' (')[0] || '',
+        name: formatUserName(tech.name),
         completed: workOrders.filter(wo => wo.technicianId === tech.id && wo.status === WorkOrderStatus.COMPLETED).length
     }));
   }, [workOrders, users]);
@@ -881,7 +1093,7 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
                     <div className="h-20 overflow-y-auto pr-2 mt-1">
                         {technicians.map(tech => (
                             <div key={tech.id} className="flex items-center justify-between text-sm py-0.5">
-                                <span className="font-semibold text-gray-700">{tech.name.split(' (')[0] || ''}</span>
+                                <span className="font-semibold text-gray-700">{formatUserName(tech.name)}</span>
                                 <span className={`px-2 py-0.5 rounded-full text-xs ${getTechnicianStatusColor(tech.status)}`}>{tech.status || 'N/A'}</span>
                             </div>
                         ))}
@@ -962,10 +1174,8 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
 const Customers: React.FC<{ 
     customers: Customer[], 
     onAdd: () => void, 
-    onEdit: (c: Customer) => void,
-    onChat: (c: Customer) => void,
-    onNotify: (c: Customer) => void
-}> = ({ customers, onAdd, onEdit, onChat, onNotify }) => {
+    onEdit: (c: Customer) => void
+}> = ({ customers, onAdd, onEdit }) => {
     return (
         <div>
             <h1 className="text-3xl font-bold text-gray-800 mb-6">Customer Management</h1>
@@ -979,29 +1189,180 @@ const Customers: React.FC<{
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3">Name</th>
+                                <th scope="col" className="px-6 py-3">Category</th>
+                                <th scope="col" className="px-6 py-3">Tags</th>
                                 <th scope="col" className="px-6 py-3">Contact</th>
-                                <th scope="col" className="px-6 py-3">Address</th>
                                 <th scope="col" className="px-6 py-3">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {customers.map(customer => (
                                 <tr key={customer.id} className="bg-white border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{customer.name}</td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                        <Link to={`/customers/${customer.id}`} className="text-primary-600 hover:underline">{customer.name}</Link>
+                                    </td>
+                                     <td className="px-6 py-4">{customer.category || 'N/A'}</td>
+                                    <td className="px-6 py-4">
+                                        {customer.tags?.map(tag => (
+                                            <span key={tag} className="inline-block bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs mr-1 mb-1">{tag}</span>
+                                        ))}
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div>{customer.email}</div>
                                         <div>{customer.phone}</div>
                                     </td>
-                                    <td className="px-6 py-4">{customer.address}</td>
                                     <td className="px-6 py-4 space-x-2">
                                         <button onClick={() => onEdit(customer)} className="font-medium text-primary-600 hover:underline">Edit</button>
-                                        <button onClick={() => onChat(customer)} className="font-medium text-blue-600 hover:underline">Chat</button>
-                                        <button onClick={() => onNotify(customer)} className="font-medium text-green-600 hover:underline">Notify</button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CustomerDetail: React.FC<{
+    customers: Customer[],
+    workOrders: WorkOrder[],
+    contracts: ServiceContract[],
+    users: User[],
+    onEditCustomer: (c: Customer) => void,
+    onAddContract: (customerId: string) => void,
+    onEditContract: (c: ServiceContract) => void,
+    onCreateWorkOrder: (customerId: string) => void,
+    onChat: (c: Customer) => void,
+    onNotify: (c: Customer) => void,
+}> = ({ customers, workOrders, contracts, users, onEditCustomer, onAddContract, onEditContract, onCreateWorkOrder, onChat, onNotify }) => {
+    const { customerId } = useParams();
+    const customer = customers.find(c => c.id === customerId);
+    
+    const customerWorkOrders = useMemo(() => 
+        workOrders.filter(wo => wo.customer.id === customerId).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), 
+    [workOrders, customerId]);
+
+    const customerContracts = useMemo(() => 
+        contracts.filter(c => c.customerId === customerId).sort((a,b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()),
+    [contracts, customerId]);
+
+    if (!customer) {
+        return (
+            <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-700">Customer Not Found</h2>
+                <Link to="/customers" className="mt-4 inline-block text-primary-600 hover:underline">← Back to Customer List</Link>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <div className="mb-6">
+                 <Link to="/customers" className="text-sm font-medium text-primary-600 hover:underline flex items-center mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                    Back to all customers
+                </Link>
+                <h1 className="text-3xl font-bold text-gray-800">{customer.name}</h1>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold mb-4">Customer Details</h2>
+                        <div className="space-y-3 text-sm">
+                            <p><strong>Email:</strong> <a href={`mailto:${customer.email}`} className="text-primary-600">{customer.email}</a></p>
+                            <p><strong>Phone:</strong> <a href={`tel:${customer.phone}`} className="text-primary-600">{customer.phone}</a></p>
+                            <p><strong>Address:</strong> {customer.address}</p>
+                            <p><strong>Category:</strong> <span className="font-semibold">{customer.category || 'N/A'}</span></p>
+                            <div>
+                                <strong>Tags:</strong>
+                                <div className="mt-1">
+                                    {customer.tags?.map(tag => (
+                                        <span key={tag} className="inline-block bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs mr-1 mb-1">{tag}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-6 border-t pt-4 flex space-x-2">
+                            <button onClick={() => onEditCustomer(customer)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">Edit Customer</button>
+                            <button onClick={() => onChat(customer)} className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 text-sm">Chat</button>
+                            <button onClick={() => onNotify(customer)} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 text-sm">Notify</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="lg:col-span-2 space-y-6">
+                     <div className="bg-white p-6 rounded-lg shadow-md">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Service Contracts</h2>
+                            <button onClick={() => onAddContract(customer.id)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">Add Contract</button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-2">Title</th>
+                                        <th className="px-4 py-2">Period</th>
+                                        <th className="px-4 py-2">Status</th>
+                                        <th className="px-4 py-2">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {customerContracts.map(contract => (
+                                        <tr key={contract.id} className="border-b hover:bg-gray-50">
+                                            <td className="px-4 py-2 font-medium">{contract.title}</td>
+                                            <td className="px-4 py-2">{contract.startDate} to {contract.endDate}</td>
+                                            <td className="px-4 py-2">
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getContractStatusColor(contract.status)}`}>{contract.status}</span>
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <button onClick={() => onEditContract(contract)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {customerContracts.length === 0 && (
+                                        <tr><td colSpan={4} className="text-center py-4 text-gray-500">No contracts found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold">Service History</h2>
+                            <button onClick={() => onCreateWorkOrder(customer.id)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">Create Work Order</button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-2">Date</th>
+                                        <th className="px-4 py-2">Description</th>
+                                        <th className="px-4 py-2">Technician</th>
+                                        <th className="px-4 py-2">Status</th>
+                                        <th className="px-4 py-2">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {customerWorkOrders.map(wo => (
+                                        <tr key={wo.id} className="border-b hover:bg-gray-50">
+                                            <td className="px-4 py-2">{wo.createdAt}</td>
+                                            <td className="px-4 py-2 max-w-xs truncate">{wo.description}</td>
+                                            <td className="px-4 py-2">{formatUserName(users.find(u => u.id === wo.technicianId)?.name) || 'N/A'}</td>
+                                            <td className="px-4 py-2">
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(wo.status)}`}>{wo.status}</span>
+                                            </td>
+                                            <td className="px-4 py-2 font-semibold">{formatIDR(wo.totalCost)}</td>
+                                        </tr>
+                                    ))}
+                                    {customerWorkOrders.length === 0 && (
+                                        <tr><td colSpan={5} className="text-center py-4 text-gray-500">No service history found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1104,7 +1465,7 @@ const WorkOrders: React.FC<{
                                         {order.status}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4">{(users.find(u => u.id === order.technicianId)?.name || '').split(' (')[0] || 'Unassigned'}</td>
+                                <td className="px-6 py-4">{formatUserName(users.find(u => u.id === order.technicianId)?.name) || 'Unassigned'}</td>
                                 <td className="px-6 py-4 font-semibold">{formatIDR(order.totalCost)}</td>
                                 <td className="px-6 py-4 space-x-2 whitespace-nowrap">
                                     {isTechnician ? (
@@ -1205,7 +1566,7 @@ const SpareParts: React.FC<{ spareParts: SparePart[], onAdd: () => void, onEdit:
 const Finance: React.FC<{
     invoices: Invoice[],
     customers: Customer[],
-    cashFlow: FinancialRecord[],
+    transactions: Transaction[],
     totalIncome: number,
     totalExpense: number,
     labaRugi: number,
@@ -1215,13 +1576,13 @@ const Finance: React.FC<{
     onAddInvoice: () => void,
     onEditInvoice: (invoice: Invoice) => void,
     onPrintInvoice: (invoice: Invoice) => void,
-    onAddExpense: () => void,
-    onEditExpense: (record: FinancialRecord) => void,
+    onAddTransaction: () => void,
+    onEditTransaction: (record: Transaction) => void,
     onGenerateReport: () => void
 }> = ({ 
     invoices, 
     customers, 
-    cashFlow,
+    transactions,
     totalIncome,
     totalExpense,
     labaRugi,
@@ -1231,8 +1592,8 @@ const Finance: React.FC<{
     onAddInvoice, 
     onEditInvoice, 
     onPrintInvoice, 
-    onAddExpense, 
-    onEditExpense,
+    onAddTransaction, 
+    onEditTransaction,
     onGenerateReport
 }) => {
     return (
@@ -1292,45 +1653,46 @@ const Finance: React.FC<{
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Cash Flow (Arus Kas)</h2>
-                        <button onClick={onAddExpense} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm">Add Expense</button>
+                        <h2 className="text-xl font-semibold">All Transactions</h2>
+                        <button onClick={onAddTransaction} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm">Add Transaction</button>
                     </div>
-                     <table className="w-full text-sm text-left text-gray-500">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3">Date</th>
-                                <th className="px-6 py-3">Description</th>
-                                <th className="px-6 py-3">Attachment</th>
-                                <th className="px-6 py-3">Amount</th>
-                                <th className="px-6 py-3">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {cashFlow.map(record => (
-                                <tr key={record.id} className="border-b">
-                                    <td className="px-6 py-4">{record.date}</td>
-                                    <td className="px-6 py-4">{record.description}</td>
-                                    <td className="px-6 py-4">
-                                        {record.attachment ? (
-                                            <a href={record.attachment.data} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
-                                                View
-                                            </a>
-                                        ) : (
-                                            '-'
-                                        )}
-                                    </td>
-                                    <td className={`px-6 py-4 font-semibold ${record.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                                        {formatIDR(record.amount)}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {record.type === 'expense' && (
-                                            <button onClick={() => onEditExpense(record)} className="font-medium text-primary-600 hover:underline">Edit</button>
-                                        )}
-                                    </td>
+                     <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left text-gray-500">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3">Date</th>
+                                    <th className="px-6 py-3">Description</th>
+                                    <th className="px-6 py-3">Category</th>
+                                    <th className="px-6 py-3">Payment Method</th>
+                                    <th className="px-6 py-3">Amount</th>
+                                    <th className="px-6 py-3">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                     </table>
+                            </thead>
+                            <tbody>
+                                {transactions.map(record => (
+                                    <tr key={record.id} className="border-b">
+                                        <td className="px-6 py-4">{record.date}</td>
+                                        <td className="px-6 py-4">{record.description}</td>
+                                        <td className="px-6 py-4">{record.category}</td>
+                                        <td className="px-6 py-4">{record.paymentMethod}</td>
+                                        <td className={`px-6 py-4 font-semibold ${record.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {formatIDR(record.amount)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {record.attachment && (
+                                                <a href={record.attachment.data} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline mr-2">
+                                                    View
+                                                </a>
+                                            )}
+                                            {!record.invoiceId && (
+                                                <button onClick={() => onEditTransaction(record)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md">
                      <h2 className="text-xl font-semibold mb-4">Balance Sheet (Neraca)</h2>
@@ -1388,7 +1750,7 @@ const EmployeesPage: React.FC<{
 
     const filteredUsers = useMemo(() => {
         return users.filter(user =>
-            user.name.toLowerCase().includes(searchTerm.toLowerCase())
+            (user.name || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [users, searchTerm]);
 
@@ -1437,7 +1799,7 @@ const EmployeesPage: React.FC<{
                                 const kpis = user.role === UserRole.TECHNICIAN ? getTechnicianKpis(user.id) : null;
                                 return (
                                 <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{user.name.split(' (')[0]}</td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">{formatUserName(user.name)}</td>
                                     <td className="px-6 py-4 capitalize">{user.role}</td>
                                     <td className="px-6 py-4">
                                         {user.role === UserRole.TECHNICIAN ? (
@@ -1550,7 +1912,7 @@ const Settings: React.FC<{
             autoTable(doc, {
                 startY: (doc as any).lastAutoTable.finalY + 15,
                 head: [['ID', 'Customer', 'Status', 'Technician', 'Total Cost']],
-                body: workOrders.map(w => [w.id, w.customer.name, w.status, (users.find(u => u.id === w.technicianId)?.name || '').split(' (')[0] || 'N/A', formatIDR(w.totalCost)]),
+                body: workOrders.map(w => [w.id, w.customer.name, w.status, formatUserName(users.find(u => u.id === w.technicianId)?.name) || 'N/A', formatIDR(w.totalCost)]),
                  didDrawPage: (data: any) => {
                      doc.setFontSize(16);
                      doc.text('Work Orders', data.settings.margin.left, (doc as any).lastAutoTable.finalY + 10);
@@ -1737,7 +2099,8 @@ const App: React.FC = () => {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(INITIAL_WORK_ORDERS);
   const [spareParts, setSpareParts] = useState<SparePart[]>(INITIAL_SPARE_PARTS);
   const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
-  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>(INITIAL_FINANCIAL_RECORDS);
+  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [contracts, setContracts] = useState<ServiceContract[]>(INITIAL_CONTRACTS);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
     name: 'ServisPro Inc.',
@@ -1753,28 +2116,17 @@ const App: React.FC = () => {
   const technicians = useMemo(() => users.filter(u => u.role === UserRole.TECHNICIAN), [users]);
 
   // --- Financial Calculations ---
-  const cashFlow = useMemo(() => {
-    const incomeRecords: FinancialRecord[] = invoices
-        .filter(i => i.status === 'Paid')
-        .map(inv => ({
-            id: inv.id,
-            date: inv.paidDate || inv.issuedDate,
-            description: `Payment for Invoice ${inv.id.substring(0, 12)}...`,
-            type: 'income' as 'income',
-            amount: inv.amount
-        }));
-
-    const expenseRecords: FinancialRecord[] = financialRecords.filter(r => r.type === 'expense');
-
-    return [...incomeRecords, ...expenseRecords].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [invoices, financialRecords]);
-
-  const totalIncome = cashFlow.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
-  const totalExpense = cashFlow.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
+  const sortedTransactions = useMemo(() => 
+    transactions.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [transactions]
+  );
+  
+  const totalIncome = transactions.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+  const totalExpense = transactions.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
   const labaRugi = totalIncome - totalExpense;
-  const assets = totalIncome;
-  const liabilities = totalExpense;
-  const equity = labaRugi;
+  const assets = totalIncome; // Simplified for this example
+  const liabilities = totalExpense; // Simplified for this example
+  const equity = labaRugi; // Simplified for this example
 
 
   const handleLogin = (user: User) => {
@@ -1876,7 +2228,7 @@ const App: React.FC = () => {
       setWorkOrders(prev => prev.map(wo => {
           if (wo.id === workOrderId) {
               const partsCost = newParts.reduce((sum, part) => sum + part.price, 0);
-              const baseCost = originalWorkOrder.totalCost - originalParts.reduce((sum, part) => sum + part.price, 0);
+              const baseCost = wo.totalCost - wo.spareParts.reduce((sum, part) => sum + part.price, 0);
               return { ...wo, spareParts: newParts, totalCost: baseCost + partsCost };
           }
           return wo;
@@ -1930,12 +2282,34 @@ const App: React.FC = () => {
   };
 
   const handleSaveInvoice = (invoice: Invoice) => {
-    const exists = invoices.some(i => i.id === invoice.id);
+    const originalInvoice = invoices.find(i => i.id === invoice.id);
+    const wasPaid = originalInvoice?.status === 'Paid';
+    const isNowPaid = invoice.status === 'Paid';
+
+    const exists = !!originalInvoice;
     if (exists) {
-        setInvoices(invoices.map(i => i.id === invoice.id ? invoice : i));
+        setInvoices(invoices.map(i => (i.id === invoice.id ? invoice : i)));
     } else {
         setInvoices([invoice, ...invoices]);
     }
+
+    if (isNowPaid && !wasPaid) {
+        const newTransaction: Transaction = {
+            id: `trn-${invoice.id}`,
+            invoiceId: invoice.workOrderId,
+            date: invoice.paidDate || new Date().toISOString().split('T')[0],
+            description: `Payment for Invoice ${invoice.id}`,
+            type: 'income',
+            amount: invoice.amount,
+            category: TransactionCategory.SERVICE_INCOME,
+            paymentMethod: PaymentMethod.BANK_TRANSFER,
+        };
+        setTransactions(prev => [...prev, newTransaction]);
+    }
+    else if (!isNowPaid && wasPaid) {
+        setTransactions(prev => prev.filter(t => t.invoiceId !== invoice.workOrderId));
+    }
+
     setModalState({ type: null, data: null });
   };
 
@@ -1984,12 +2358,22 @@ const App: React.FC = () => {
     doc.save(`Invoice-${invoice.id}.pdf`);
   };
 
-  const handleSaveExpense = (record: FinancialRecord) => {
-    const exists = financialRecords.some(r => r.id === record.id);
+  const handleSaveTransaction = (transaction: Transaction) => {
+    const exists = transactions.some(r => r.id === transaction.id);
     if (exists) {
-        setFinancialRecords(financialRecords.map(r => r.id === record.id ? record : r));
+        setTransactions(transactions.map(r => r.id === transaction.id ? transaction : r));
     } else {
-        setFinancialRecords([record, ...financialRecords]);
+        setTransactions([transaction, ...transactions]);
+    }
+    setModalState({ type: null, data: null });
+  };
+
+   const handleSaveContract = (contract: ServiceContract) => {
+    const exists = contracts.some(c => c.id === contract.id);
+    if(exists) {
+        setContracts(contracts.map(c => c.id === contract.id ? contract : c));
+    } else {
+        setContracts([contract, ...contracts]);
     }
     setModalState({ type: null, data: null });
   };
@@ -2054,7 +2438,7 @@ const App: React.FC = () => {
     autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 15,
         head: [['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah']],
-        body: cashFlow.map(record => [
+        body: sortedTransactions.map(record => [
             record.date,
             record.description,
             record.type,
@@ -2120,7 +2504,7 @@ const App: React.FC = () => {
             </div>
             <nav className="flex-1 p-4 space-y-2">
                 {accessibleNavItems.map(item => (
-                     <Link key={item.path} to={item.path} className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${location.pathname === item.path ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+                     <Link key={item.path} to={item.path} className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'}`}>
                         <item.icon className="h-5 w-5" />
                         <span className="font-medium">{item.label}</span>
                         {item.label === 'Notifications' && unreadCount > 0 && (
@@ -2156,13 +2540,14 @@ const App: React.FC = () => {
         <main className="flex-1 p-8 overflow-y-auto">
              <Routes>
                 <Route path="/" element={currentUser.role === UserRole.TECHNICIAN ? <Navigate to="/work-orders" /> : <Dashboard workOrders={workOrders} customers={customers} users={users} />} />
-                <Route path="/customers" element={<Customers customers={customers} onAdd={() => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: null })} onEdit={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
+                <Route path="/customers" element={<Customers customers={customers} onAdd={() => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: null })} onEdit={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} />} />
+                <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} onAddContract={(customerId) => setModalState({ type: 'ADD_EDIT_CONTRACT', data: { customerId }})} onEditContract={(c) => setModalState({ type: 'ADD_EDIT_CONTRACT', data: { contract: c, customerId: c.customerId }})} onCreateWorkOrder={(customerId) => setModalState({ type: 'CREATE_WORK_ORDER', data: { customerId }})} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
                 <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} companyProfile={companyProfile} onAddPart={(wo) => setModalState({ type: 'ADD_SPARE_PART', data: wo})} onCreate={() => setModalState({ type: 'CREATE_WORK_ORDER', data: null })} onAssign={(wo) => setModalState({ type: 'ASSIGN_TECHNICIAN', data: wo })} onClaim={handleClaimJob} onComplete={handleCompleteWorkOrder} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
                 <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} onAdd={() => setModalState({ type: 'ADD_EDIT_SPARE_PART', data: null })} onEdit={(sp) => setModalState({ type: 'ADD_EDIT_SPARE_PART', data: sp })} />} />
                 <Route path="/finance" element={<Finance 
                     invoices={invoices} 
                     customers={customers} 
-                    cashFlow={cashFlow}
+                    transactions={sortedTransactions}
                     totalIncome={totalIncome}
                     totalExpense={totalExpense}
                     labaRugi={labaRugi}
@@ -2172,8 +2557,8 @@ const App: React.FC = () => {
                     onAddInvoice={() => setModalState({ type: 'ADD_EDIT_INVOICE', data: null })} 
                     onEditInvoice={(inv) => setModalState({ type: 'ADD_EDIT_INVOICE', data: inv })}
                     onPrintInvoice={handlePrintInvoice}
-                    onAddExpense={() => setModalState({ type: 'ADD_EDIT_EXPENSE', data: null })}
-                    onEditExpense={(rec) => setModalState({ type: 'ADD_EDIT_EXPENSE', data: rec })}
+                    onAddTransaction={() => setModalState({ type: 'ADD_EDIT_TRANSACTION', data: null })}
+                    onEditTransaction={(rec) => setModalState({ type: 'ADD_EDIT_TRANSACTION', data: rec })}
                     onGenerateReport={handleGenerateFinancialReport}
                 />} />
                 <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'EDIT_EMPLOYEE', data: user })} onStatusChange={handleTechnicianStatusChange} />} />
@@ -2203,6 +2588,7 @@ const App: React.FC = () => {
         onClose={() => setModalState({ type: null, data: null })}
         onSave={handleCreateWorkOrder}
         customers={customers}
+        preselectedCustomerId={modalState.data?.customerId}
       />
 
       {modalState.type === 'ASSIGN_TECHNICIAN' && (
@@ -2238,11 +2624,19 @@ const App: React.FC = () => {
         part={modalState.data}
       />
 
-      <AddEditExpenseModal
-        isOpen={modalState.type === 'ADD_EDIT_EXPENSE'}
+      <AddEditTransactionModal
+        isOpen={modalState.type === 'ADD_EDIT_TRANSACTION'}
         onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleSaveExpense}
-        record={modalState.data}
+        onSave={handleSaveTransaction}
+        transaction={modalState.data}
+      />
+      
+       <AddEditContractModal
+        isOpen={modalState.type === 'ADD_EDIT_CONTRACT'}
+        onClose={() => setModalState({ type: null, data: null })}
+        onSave={handleSaveContract}
+        contract={modalState.data?.contract}
+        customerId={modalState.data?.customerId}
       />
 
       <AddEditEmployeeModal 
