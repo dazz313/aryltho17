@@ -608,17 +608,36 @@ const AddEditExpenseModal: React.FC<{
     record: FinancialRecord | null;
 }> = ({ isOpen, onClose, onSave, record }) => {
     const [formData, setFormData] = useState({ description: '', amount: '', date: new Date().toISOString().split('T')[0] });
+    const [attachment, setAttachment] = useState<{ name: string; type: string; data: string; } | null>(null);
+
 
     useEffect(() => {
         if (record) {
             setFormData({ description: record.description, amount: String(record.amount), date: record.date });
+            setAttachment(record.attachment || null);
         } else {
             setFormData({ description: '', amount: '', date: new Date().toISOString().split('T')[0] });
+            setAttachment(null);
         }
     }, [record, isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setAttachment({
+                    name: file.name,
+                    type: file.type,
+                    data: reader.result as string,
+                });
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -629,7 +648,8 @@ const AddEditExpenseModal: React.FC<{
             type: 'expense',
             description: formData.description,
             amount: Number(formData.amount),
-            date: formData.date
+            date: formData.date,
+            attachment: attachment || undefined,
         });
     };
 
@@ -647,6 +667,21 @@ const AddEditExpenseModal: React.FC<{
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Date</label>
                     <input type="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Attachment (Nota/Receipt)</label>
+                    <input type="file" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" />
+                    {attachment && (
+                        <div className="mt-2 flex items-center justify-between bg-gray-100 p-2 rounded-md">
+                            <div className="flex items-center space-x-2 truncate">
+                                {attachment.type.startsWith('image/') && <img src={attachment.data} alt="preview" className="h-10 w-10 object-cover rounded" />}
+                                <span className="text-sm text-gray-700 truncate">{attachment.name}</span>
+                            </div>
+                            <button type="button" onClick={() => setAttachment(null)} className="text-red-500 hover:text-red-700">
+                                <XIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <div className="flex justify-end pt-4 space-x-2">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
@@ -804,7 +839,7 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
 
   const technicianPerformanceData = useMemo(() => {
     return technicians.map(tech => ({
-        name: tech.name.split(' (')[0],
+        name: tech.name.split(' (')[0] || '',
         completed: workOrders.filter(wo => wo.technicianId === tech.id && wo.status === WorkOrderStatus.COMPLETED).length
     }));
   }, [workOrders, users]);
@@ -846,7 +881,7 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
                     <div className="h-20 overflow-y-auto pr-2 mt-1">
                         {technicians.map(tech => (
                             <div key={tech.id} className="flex items-center justify-between text-sm py-0.5">
-                                <span className="font-semibold text-gray-700">{tech.name.split(' (')[0]}</span>
+                                <span className="font-semibold text-gray-700">{tech.name.split(' (')[0] || ''}</span>
                                 <span className={`px-2 py-0.5 rounded-full text-xs ${getTechnicianStatusColor(tech.status)}`}>{tech.status || 'N/A'}</span>
                             </div>
                         ))}
@@ -1069,7 +1104,7 @@ const WorkOrders: React.FC<{
                                         {order.status}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4">{users.find(u => u.id === order.technicianId)?.name.split(' (')[0] || 'Unassigned'}</td>
+                                <td className="px-6 py-4">{(users.find(u => u.id === order.technicianId)?.name || '').split(' (')[0] || 'Unassigned'}</td>
                                 <td className="px-6 py-4 font-semibold">{formatIDR(order.totalCost)}</td>
                                 <td className="px-6 py-4 space-x-2 whitespace-nowrap">
                                     {isTechnician ? (
@@ -1169,43 +1204,45 @@ const SpareParts: React.FC<{ spareParts: SparePart[], onAdd: () => void, onEdit:
 
 const Finance: React.FC<{
     invoices: Invoice[],
-    financialRecords: FinancialRecord[],
     customers: Customer[],
+    cashFlow: FinancialRecord[],
+    totalIncome: number,
+    totalExpense: number,
+    labaRugi: number,
+    assets: number,
+    liabilities: number,
+    equity: number,
     onAddInvoice: () => void,
     onEditInvoice: (invoice: Invoice) => void,
     onPrintInvoice: (invoice: Invoice) => void,
     onAddExpense: () => void,
-    onEditExpense: (record: FinancialRecord) => void
-}> = ({ invoices, financialRecords, customers, onAddInvoice, onEditInvoice, onPrintInvoice, onAddExpense, onEditExpense }) => {
-    
-    const cashFlow = useMemo(() => {
-        const incomeRecords: FinancialRecord[] = invoices
-            .filter(i => i.status === 'Paid')
-            .map(inv => ({
-                id: inv.id,
-                date: inv.paidDate || inv.issuedDate,
-                description: `Payment for Invoice ${inv.id.substring(0, 12)}...`,
-                type: 'income' as 'income',
-                amount: inv.amount
-            }));
-
-        const expenseRecords: FinancialRecord[] = financialRecords.filter(r => r.type === 'expense');
-
-        return [...incomeRecords, ...expenseRecords].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [invoices, financialRecords]);
-    
-    const totalIncome = cashFlow.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
-    const totalExpense = cashFlow.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
-    const labaRugi = totalIncome - totalExpense;
-    
-    const assets = totalIncome;
-    const liabilities = totalExpense;
-    const equity = labaRugi;
-
-
+    onEditExpense: (record: FinancialRecord) => void,
+    onGenerateReport: () => void
+}> = ({ 
+    invoices, 
+    customers, 
+    cashFlow,
+    totalIncome,
+    totalExpense,
+    labaRugi,
+    assets,
+    liabilities,
+    equity,
+    onAddInvoice, 
+    onEditInvoice, 
+    onPrintInvoice, 
+    onAddExpense, 
+    onEditExpense,
+    onGenerateReport
+}) => {
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Finance</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold text-gray-800">Finance</h1>
+                <button onClick={onGenerateReport} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                    Generate Financial Report
+                </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                  <StatCard title="Total Income" value={formatIDR(totalIncome)} icon={<FinanceIcon className="h-6 w-6 text-green-600" />} />
                  <StatCard title="Total Expense" value={formatIDR(totalExpense)} icon={<FinanceIcon className="h-6 w-6 text-red-600" />} />
@@ -1263,6 +1300,7 @@ const Finance: React.FC<{
                             <tr>
                                 <th className="px-6 py-3">Date</th>
                                 <th className="px-6 py-3">Description</th>
+                                <th className="px-6 py-3">Attachment</th>
                                 <th className="px-6 py-3">Amount</th>
                                 <th className="px-6 py-3">Actions</th>
                             </tr>
@@ -1272,6 +1310,15 @@ const Finance: React.FC<{
                                 <tr key={record.id} className="border-b">
                                     <td className="px-6 py-4">{record.date}</td>
                                     <td className="px-6 py-4">{record.description}</td>
+                                    <td className="px-6 py-4">
+                                        {record.attachment ? (
+                                            <a href={record.attachment.data} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
+                                                View
+                                            </a>
+                                        ) : (
+                                            '-'
+                                        )}
+                                    </td>
                                     <td className={`px-6 py-4 font-semibold ${record.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                                         {formatIDR(record.amount)}
                                     </td>
@@ -1503,7 +1550,7 @@ const Settings: React.FC<{
             autoTable(doc, {
                 startY: (doc as any).lastAutoTable.finalY + 15,
                 head: [['ID', 'Customer', 'Status', 'Technician', 'Total Cost']],
-                body: workOrders.map(w => [w.id, w.customer.name, w.status, users.find(u => u.id === w.technicianId)?.name.split(' (')[0] || 'N/A', formatIDR(w.totalCost)]),
+                body: workOrders.map(w => [w.id, w.customer.name, w.status, (users.find(u => u.id === w.technicianId)?.name || '').split(' (')[0] || 'N/A', formatIDR(w.totalCost)]),
                  didDrawPage: (data: any) => {
                      doc.setFontSize(16);
                      doc.text('Work Orders', data.settings.margin.left, (doc as any).lastAutoTable.finalY + 10);
@@ -1704,6 +1751,31 @@ const App: React.FC = () => {
   const [modalState, setModalState] = useState<{ type: string | null; data: any }>({ type: null, data: null });
 
   const technicians = useMemo(() => users.filter(u => u.role === UserRole.TECHNICIAN), [users]);
+
+  // --- Financial Calculations ---
+  const cashFlow = useMemo(() => {
+    const incomeRecords: FinancialRecord[] = invoices
+        .filter(i => i.status === 'Paid')
+        .map(inv => ({
+            id: inv.id,
+            date: inv.paidDate || inv.issuedDate,
+            description: `Payment for Invoice ${inv.id.substring(0, 12)}...`,
+            type: 'income' as 'income',
+            amount: inv.amount
+        }));
+
+    const expenseRecords: FinancialRecord[] = financialRecords.filter(r => r.type === 'expense');
+
+    return [...incomeRecords, ...expenseRecords].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [invoices, financialRecords]);
+
+  const totalIncome = cashFlow.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+  const totalExpense = cashFlow.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
+  const labaRugi = totalIncome - totalExpense;
+  const assets = totalIncome;
+  const liabilities = totalExpense;
+  const equity = labaRugi;
+
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
@@ -1956,6 +2028,66 @@ const App: React.FC = () => {
     const encodedBody = encodeURIComponent(body);
     window.location.href = `mailto:${customer.email}?subject=${encodedSubject}&body=${encodedBody}`;
   };
+  
+  const handleGenerateFinancialReport = () => {
+    const doc = new jsPDF();
+    generatePdfHeader(doc, companyProfile);
+
+    doc.setFontSize(20);
+    doc.text("Laporan Keuangan", 105, 65, { align: 'center' });
+    doc.setFontSize(12);
+    doc.text(`Periode: Sampai dengan ${new Date().toLocaleDateString('id-ID')}`, 105, 72, { align: 'center' });
+
+    autoTable(doc, {
+        startY: 85,
+        head: [['Laporan Laba Rugi', '']],
+        body: [
+            ['Total Pendapatan (Income)', formatIDR(totalIncome)],
+            ['Total Pengeluaran (Expense)', formatIDR(totalExpense)],
+        ],
+        foot: [['Laba / Rugi Bersih (Profit / Loss)', formatIDR(labaRugi)]],
+        theme: 'grid',
+        headStyles: { fillColor: [22, 160, 133] },
+        footStyles: { fillColor: labaRugi >= 0 ? [46, 204, 113] : [231, 76, 60], textColor: [255,255,255] }
+    });
+
+    autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 15,
+        head: [['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah']],
+        body: cashFlow.map(record => [
+            record.date,
+            record.description,
+            record.type,
+            formatIDR(record.amount)
+        ]),
+        didDrawPage: (data: any) => {
+            doc.setFontSize(16);
+            doc.text('Rincian Arus Kas (Cash Flow)', data.settings.margin.left, (doc as any).lastAutoTable.finalY + 10);
+        },
+        headStyles: { fillColor: [41, 128, 185] },
+        theme: 'striped'
+    });
+    
+    const finalYAfterCashFlow = (doc as any).lastAutoTable.finalY;
+    if (finalYAfterCashFlow > 200) { // Add new page if not enough space
+        doc.addPage();
+    }
+    
+    autoTable(doc, {
+        startY: finalYAfterCashFlow > 200 ? 20 : finalYAfterCashFlow + 15,
+        head: [['Neraca (Balance Sheet)', '']],
+        body: [
+            ['Aset (Assets)', formatIDR(assets)],
+            ['Liabilitas (Liabilities)', formatIDR(liabilities)],
+            ['Ekuitas (Equity)', formatIDR(equity)],
+        ],
+        foot: [['Total Liabilitas + Ekuitas', formatIDR(liabilities + equity)]],
+        theme: 'grid',
+        headStyles: { fillColor: [142, 68, 173] }
+    });
+
+    doc.save(`Laporan-Keuangan-${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   if (!currentUser) {
     if (authScreen === 'signup') {
@@ -2029,13 +2161,20 @@ const App: React.FC = () => {
                 <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} onAdd={() => setModalState({ type: 'ADD_EDIT_SPARE_PART', data: null })} onEdit={(sp) => setModalState({ type: 'ADD_EDIT_SPARE_PART', data: sp })} />} />
                 <Route path="/finance" element={<Finance 
                     invoices={invoices} 
-                    financialRecords={financialRecords} 
                     customers={customers} 
+                    cashFlow={cashFlow}
+                    totalIncome={totalIncome}
+                    totalExpense={totalExpense}
+                    labaRugi={labaRugi}
+                    assets={assets}
+                    liabilities={liabilities}
+                    equity={equity}
                     onAddInvoice={() => setModalState({ type: 'ADD_EDIT_INVOICE', data: null })} 
                     onEditInvoice={(inv) => setModalState({ type: 'ADD_EDIT_INVOICE', data: inv })}
                     onPrintInvoice={handlePrintInvoice}
                     onAddExpense={() => setModalState({ type: 'ADD_EDIT_EXPENSE', data: null })}
                     onEditExpense={(rec) => setModalState({ type: 'ADD_EDIT_EXPENSE', data: rec })}
+                    onGenerateReport={handleGenerateFinancialReport}
                 />} />
                 <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'EDIT_EMPLOYEE', data: user })} onStatusChange={handleTechnicianStatusChange} />} />
                 <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} />} />

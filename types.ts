@@ -75,6 +75,11 @@ export interface FinancialRecord {
   description: string;
   type: 'income' | 'expense';
   amount: number;
+  attachment?: {
+    name: string;
+    type: string;
+    data: string; // Base64 encoded data URL
+  };
 }
 
 export interface Notification {
