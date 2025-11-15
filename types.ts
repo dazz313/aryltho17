@@ -4,6 +4,13 @@ export enum UserRole {
   TECHNICIAN = 'technisi'
 }
 
+export enum TechnicianStatus {
+    AVAILABLE = 'Available',
+    ON_JOB = 'On Job',
+    ON_BREAK = 'On Break',
+    OFFLINE = 'Offline'
+}
+
 export interface User {
   id: string;
   name: string;
@@ -11,6 +18,10 @@ export interface User {
   email?: string;
   phone?: string;
   password?: string;
+  age?: number;
+  gender?: 'Male' | 'Female' | 'Other';
+  skills?: string[];
+  status?: TechnicianStatus;
 }
 
 export interface Customer {

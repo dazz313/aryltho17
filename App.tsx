@@ -1,18 +1,18 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, FinancialRecord, Notification, ChatMessage, CompanyProfile } from './types';
-import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon } from './components/icons';
+import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, FinancialRecord, Notification, ChatMessage, CompanyProfile, TechnicianStatus } from './types';
+import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon } from './components/icons';
 import { generateAiSummary, getChatbotResponse } from './services/geminiService';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // --- INITIAL MOCK DATA ---
 const INITIAL_USERS: User[] = [
-  { id: 'user-1', name: 'Alice (Administrator)', role: UserRole.ADMINISTRATOR, password: 'password123' },
-  { id: 'user-2', name: 'Bob (Admin)', role: UserRole.ADMIN, password: 'password123' },
-  { id: 'user-3', name: 'Budi Santoso (Technician)', role: UserRole.TECHNICIAN, email: 'budi.s@example.com', password: 'password123' },
-  { id: 'user-4', name: 'Charlie (Technician)', role: UserRole.TECHNICIAN, phone: '081234567891', password: 'password123' },
+  { id: 'user-1', name: 'Alice (Administrator)', role: UserRole.ADMINISTRATOR, password: 'password123', age: 35, gender: 'Female', skills: ['Management', 'Finance', 'System Administration'] },
+  { id: 'user-2', name: 'Bob (Admin)', role: UserRole.ADMIN, password: 'password123', age: 28, gender: 'Male', skills: ['Data Entry', 'Customer Support'] },
+  { id: 'user-3', name: 'Budi Santoso (Technician)', role: UserRole.TECHNICIAN, email: 'budi.s@example.com', password: 'password123', age: 32, gender: 'Male', skills: ['AC Repair', 'Refrigeration'], status: TechnicianStatus.ON_JOB },
+  { id: 'user-4', name: 'Charlie (Technician)', role: UserRole.TECHNICIAN, phone: '081234567891', password: 'password123', age: 25, gender: 'Male', skills: ['Electrical Wiring', 'Plumbing'], status: TechnicianStatus.ON_JOB },
 ];
 
 const INITIAL_CUSTOMERS: Customer[] = [
@@ -65,6 +65,16 @@ const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid') => {
     default: return 'bg-gray-100 text-gray-800';
   }
 };
+
+const getTechnicianStatusColor = (status?: TechnicianStatus) => {
+    switch(status) {
+        case TechnicianStatus.AVAILABLE: return 'bg-green-100 text-green-800';
+        case TechnicianStatus.ON_JOB: return 'bg-blue-100 text-blue-800';
+        case TechnicianStatus.ON_BREAK: return 'bg-yellow-100 text-yellow-800';
+        case TechnicianStatus.OFFLINE: return 'bg-gray-100 text-gray-600';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+}
 
 const timeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -168,6 +178,9 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState<UserRole>(UserRole.TECHNICIAN);
+    const [age, setAge] = useState('');
+    const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
+    const [skills, setSkills] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -182,6 +195,10 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
             email: email || undefined,
             phone: phone || undefined,
             password: password,
+            age: age ? parseInt(age, 10) : undefined,
+            gender: gender,
+            skills: skills.split(',').map(s => s.trim()).filter(Boolean),
+            status: role === UserRole.TECHNICIAN ? TechnicianStatus.AVAILABLE : undefined
         };
         onSignUp(newUser);
     };
@@ -211,6 +228,24 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
                     <div>
                         <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number</label>
                         <input type="tel" id="phone" value={phone} onChange={e => setPhone(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"/>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="age" className="block text-sm font-medium text-gray-700">Age</label>
+                            <input type="number" id="age" value={age} onChange={e => setAge(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"/>
+                        </div>
+                        <div>
+                            <label htmlFor="gender" className="block text-sm font-medium text-gray-700">Gender</label>
+                            <select id="gender" value={gender} onChange={e => setGender(e.target.value as any)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                                <option>Male</option>
+                                <option>Female</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="skills" className="block text-sm font-medium text-gray-700">Skills (comma-separated)</label>
+                        <input type="text" id="skills" value={skills} onChange={e => setSkills(e.target.value)} placeholder="e.g. AC Repair, Plumbing" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"/>
                     </div>
                      <div>
                         <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
@@ -622,6 +657,100 @@ const AddEditExpenseModal: React.FC<{
     );
 };
 
+const AddEditEmployeeModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (user: User) => void;
+    user: User | null;
+}> = ({ isOpen, onClose, onSave, user }) => {
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', age: '', gender: 'Male' as 'Male' | 'Female' | 'Other', skills: '', role: UserRole.TECHNICIAN });
+
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                name: user.name.split(' (')[0],
+                email: user.email || '',
+                phone: user.phone || '',
+                age: user.age ? String(user.age) : '',
+                gender: user.gender || 'Male',
+                skills: user.skills?.join(', ') || '',
+                role: user.role,
+            });
+        }
+    }, [user, isOpen]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user) return;
+        
+        onSave({
+            ...user,
+            name: `${formData.name} (${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)})`,
+            email: formData.email || undefined,
+            phone: formData.phone || undefined,
+            age: Number(formData.age) || undefined,
+            gender: formData.gender,
+            skills: formData.skills.split(',').map(s => s.trim()).filter(Boolean),
+            role: formData.role as UserRole,
+        });
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Edit Employee: ${user?.name.split(' (')[0]}`}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Phone</label>
+                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Age</label>
+                        <input type="number" name="age" value={formData.age} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Gender</label>
+                        <select name="gender" value={formData.gender} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                            <option>Male</option>
+                            <option>Female</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Skills (comma-separated)</label>
+                    <input type="text" name="skills" value={formData.skills} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                    <select name="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                        <option value={UserRole.TECHNICIAN}>Technician</option>
+                        <option value={UserRole.ADMIN}>Admin</option>
+                        <option value={UserRole.ADMINISTRATOR}>Administrator</option>
+                    </select>
+                </div>
+                <div className="flex justify-end pt-4 space-x-2">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Changes</button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
 
 // --- PAGE COMPONENTS ---
 
@@ -701,17 +830,6 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
     setSummary(result);
     setIsLoading(false);
   };
-  
-  const technicianStatus = useMemo(() => {
-    return technicians.map(tech => {
-      const isOnDuty = workOrders.some(wo => wo.technicianId === tech.id && wo.status === WorkOrderStatus.IN_PROGRESS);
-      return {
-        name: tech.name.split(' (')[0],
-        status: isOnDuty ? 'On Duty' : 'Not Available'
-      };
-    });
-  }, [technicians, workOrders]);
-
 
   return (
     <div>
@@ -726,10 +844,10 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
                 <div>
                     <p className="text-sm text-gray-500">Technician Status</p>
                     <div className="h-20 overflow-y-auto pr-2 mt-1">
-                        {technicianStatus.map(tech => (
-                            <div key={tech.name} className="flex items-center justify-between text-sm">
-                                <span className="font-semibold text-gray-700">{tech.name}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${tech.status === 'On Duty' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{tech.status}</span>
+                        {technicians.map(tech => (
+                            <div key={tech.id} className="flex items-center justify-between text-sm py-0.5">
+                                <span className="font-semibold text-gray-700">{tech.name.split(' (')[0]}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs ${getTechnicianStatusColor(tech.status)}`}>{tech.status || 'N/A'}</span>
                             </div>
                         ))}
                     </div>
@@ -1067,7 +1185,7 @@ const Finance: React.FC<{
                 id: inv.id,
                 date: inv.paidDate || inv.issuedDate,
                 description: `Payment for Invoice ${inv.id.substring(0, 12)}...`,
-                type: 'income',
+                type: 'income' as 'income',
                 amount: inv.amount
             }));
 
@@ -1212,6 +1330,111 @@ const Finance: React.FC<{
         </div>
     );
 };
+
+const EmployeesPage: React.FC<{
+    users: User[];
+    workOrders: WorkOrder[];
+    onEdit: (user: User) => void;
+    onStatusChange: (userId: string, status: TechnicianStatus) => void;
+}> = ({ users, workOrders, onEdit, onStatusChange }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredUsers = useMemo(() => {
+        return users.filter(user =>
+            user.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [users, searchTerm]);
+
+    const getTechnicianKpis = (technicianId: string) => {
+        const completedWos = workOrders.filter(wo => wo.technicianId === technicianId && wo.status === WorkOrderStatus.COMPLETED);
+        const inProgressWos = workOrders.filter(wo => wo.technicianId === technicianId && wo.status === WorkOrderStatus.IN_PROGRESS);
+        const revenueGenerated = completedWos.reduce((acc, wo) => acc + wo.totalCost, 0);
+
+        return {
+            completed: completedWos.length,
+            inProgress: inProgressWos.length,
+            revenue: revenueGenerated
+        };
+    };
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">Employee Management</h1>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                 <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">All Employees</h2>
+                    <div className="w-full max-w-xs">
+                        <input
+                            type="text"
+                            placeholder="Search by name..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                        />
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th scope="col" className="px-6 py-3">Name</th>
+                                <th scope="col" className="px-6 py-3">Role</th>
+                                <th scope="col" className="px-6 py-3">Status</th>
+                                <th scope="col" className="px-6 py-3">Performance</th>
+                                <th scope="col" className="px-6 py-3">Contact</th>
+                                <th scope="col" className="px-6 py-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredUsers.map(user => {
+                                const kpis = user.role === UserRole.TECHNICIAN ? getTechnicianKpis(user.id) : null;
+                                return (
+                                <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-medium text-gray-900">{user.name.split(' (')[0]}</td>
+                                    <td className="px-6 py-4 capitalize">{user.role}</td>
+                                    <td className="px-6 py-4">
+                                        {user.role === UserRole.TECHNICIAN ? (
+                                            <select
+                                                value={user.status}
+                                                onChange={(e) => onStatusChange(user.id, e.target.value as TechnicianStatus)}
+                                                className={`w-full p-1 text-xs border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${getTechnicianStatusColor(user.status)}`}
+                                            >
+                                                {Object.values(TechnicianStatus).map(status => (
+                                                    <option key={status} value={status}>{status}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <span className="text-gray-400">-</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {kpis ? (
+                                            <div className="text-xs">
+                                                <div>Completed: <strong>{kpis.completed}</strong></div>
+                                                <div>In Progress: <strong>{kpis.inProgress}</strong></div>
+                                                <div>Revenue: <strong>{formatIDR(kpis.revenue)}</strong></div>
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-400">-</span>
+                                        )}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div>{user.email || '-'}</div>
+                                        <div>{user.phone || '-'}</div>
+                                    </td>
+                                    <td className="px-6 py-4 space-x-2">
+                                        <button onClick={() => onEdit(user)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                    </td>
+                                </tr>
+                            )})}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const Settings: React.FC<{
     customers: Customer[], 
@@ -1506,6 +1729,11 @@ const App: React.FC = () => {
     }
     setModalState({ type: null, data: null });
   };
+
+  const handleSaveEmployee = (user: User) => {
+    setUsers(prev => prev.map(u => u.id === user.id ? user : u));
+    setModalState({ type: null, data: null });
+};
   
   const handleCreateWorkOrder = (data: { customerId: string; description: string; totalCost: number; }) => {
     const customer = customers.find(c => c.id === data.customerId);
@@ -1546,6 +1774,7 @@ const App: React.FC = () => {
         ? { ...wo, technicianId, status: WorkOrderStatus.IN_PROGRESS } 
         : wo
     ));
+    setUsers(prev => prev.map(u => u.id === technicianId ? { ...u, status: TechnicianStatus.ON_JOB } : u));
     setNotifications(prev => prev.filter(n => n.workOrderId !== workOrderId));
   };
 
@@ -1608,6 +1837,13 @@ const App: React.FC = () => {
             } 
           : wo
       ));
+      
+      const technicianId = workOrderToComplete.technicianId;
+      const hasOtherJobs = workOrders.some(wo => wo.technicianId === technicianId && wo.status === WorkOrderStatus.IN_PROGRESS && wo.id !== workOrderId);
+      if (technicianId && !hasOtherJobs) {
+        setUsers(prev => prev.map(u => u.id === technicianId ? { ...u, status: TechnicianStatus.AVAILABLE } : u));
+      }
+
     }
   };
   
@@ -1685,6 +1921,10 @@ const App: React.FC = () => {
     }
     setModalState({ type: null, data: null });
   };
+  
+  const handleTechnicianStatusChange = (userId: string, status: TechnicianStatus) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+  };
 
   const handleWhatsAppChat = (customer: Customer, workOrder?: WorkOrder) => {
     if (!customer.phone) {
@@ -1731,6 +1971,7 @@ const App: React.FC = () => {
     { path: '/notifications', label: 'Notifications', icon: BellIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN] },
     { path: '/spare-parts', label: 'Spare Parts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN] },
     { path: '/finance', label: 'Finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR] },
+    { path: '/employees', label: 'Employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR] },
     { path: '/settings', label: 'Settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR] },
   ];
 
@@ -1796,6 +2037,7 @@ const App: React.FC = () => {
                     onAddExpense={() => setModalState({ type: 'ADD_EDIT_EXPENSE', data: null })}
                     onEditExpense={(rec) => setModalState({ type: 'ADD_EDIT_EXPENSE', data: rec })}
                 />} />
+                <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'EDIT_EMPLOYEE', data: user })} onStatusChange={handleTechnicianStatusChange} />} />
                 <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} />} />
                 <Route path="/settings" element={<Settings customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile}/>} />
                 <Route path="*" element={<Navigate to="/" />} />
@@ -1862,6 +2104,13 @@ const App: React.FC = () => {
         onClose={() => setModalState({ type: null, data: null })}
         onSave={handleSaveExpense}
         record={modalState.data}
+      />
+
+      <AddEditEmployeeModal 
+          isOpen={modalState.type === 'EDIT_EMPLOYEE'}
+          onClose={() => setModalState({ type: null, data: null })}
+          onSave={handleSaveEmployee}
+          user={modalState.data}
       />
       
       {currentUser && <Chatbot currentUser={currentUser} appData={appDataForChatbot} />}
