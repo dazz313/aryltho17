@@ -68,13 +68,14 @@ const translations = {
     },
     login: {
       title: 'ServisPro CRM',
-      subtitle: 'Please select a role to sign in',
+      subtitle: 'Sign in to your account',
       noAccount: 'Don\'t have an account?',
       signUp: 'Sign Up',
       haveAccount: 'Already have an account?',
       logIn: 'Log In',
       createAccount: 'Create Account',
-      joinTeam: 'Join the ServisPro team'
+      joinTeam: 'Join the ServisPro team',
+      invalidCredentials: 'Invalid credentials. Please check your email/phone and password.'
     }
   },
   id: {
@@ -129,62 +130,38 @@ const translations = {
         customerDetail: { back: 'Kembali ke semua pelanggan', details: 'Detail Pelanggan', contracts: 'Kontrak Servis', history: 'Riwayat Servis', noContracts: 'Tidak ada kontrak.', noHistory: 'Tidak ada riwayat servis.' },
         workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua Perintah Kerja', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan' },
         spareParts: { title: 'Manajemen Suku Cadang', inventory: 'Inventaris Suku Cadang', suppliers: 'Pemasok', partName: 'Nama Part', stock: 'Stok', location: 'Lokasi' },
-        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', allTransactions: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan' },
+        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan' },
         employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak' },
         technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini' },
         settings: { title: 'Pengaturan & Data', companyProfile: 'Profil Perusahaan (KOP Surat)', dataBackup: 'Cadangkan & Pulihkan Data', exportData: 'Ekspor Data', exportDesc: 'Unduh salinan data aplikasi Anda.', restoreData: 'Pulihkan Data', restoreDesc: 'Unggah file cadangan JSON untuk memulihkan data.', language: 'Language / Bahasa' }
     },
     login: {
       title: 'ServisPro CRM',
-      subtitle: 'Silakan pilih peran untuk masuk',
+      subtitle: 'Masuk ke akun Anda',
       noAccount: 'Belum punya akun?',
       signUp: 'Daftar',
       haveAccount: 'Sudah punya akun?',
       logIn: 'Masuk',
       createAccount: 'Buat Akun',
-      joinTeam: 'Bergabung dengan tim ServisPro'
+      joinTeam: 'Bergabung dengan tim ServisPro',
+      invalidCredentials: 'Kredensial salah. Silakan periksa email/telepon dan kata sandi Anda.'
     }
   }
 };
 
 
 // --- INITIAL MOCK DATA ---
-const INITIAL_USERS: User[] = [
-  { id: 'user-1', name: 'Alice (Administrator)', role: UserRole.ADMINISTRATOR, password: 'password123', age: 35, gender: 'Female', skills: ['Management', 'Finance', 'System Administration'] },
-  { id: 'user-2', name: 'Bob (Admin)', role: UserRole.ADMIN, password: 'password123', age: 28, gender: 'Male', skills: ['Data Entry', 'Customer Support'] },
-  { id: 'user-3', name: 'Budi Santoso (Technician)', role: UserRole.TECHNICIAN, email: 'budi.s@example.com', password: 'password123', age: 32, gender: 'Male', skills: ['AC Repair', 'Refrigeration', 'Compressor Specialist'], status: TechnicianStatus.ON_JOB, employeeId: 'TEK-001', joinDate: '2021-03-15', placeOfBirth: 'Jakarta', dateOfBirth: '1991-08-20', address: 'Jl. Mawar No. 10, Jakarta' },
-  { id: 'user-4', name: 'Charlie (Technician)', role: UserRole.TECHNICIAN, phone: '081234567891', password: 'password123', age: 25, gender: 'Male', skills: ['Electrical Wiring', 'Plumbing', 'Water Heater'], status: TechnicianStatus.ON_JOB, employeeId: 'TEK-002', joinDate: '2022-07-01', placeOfBirth: 'Bandung', dateOfBirth: '1998-05-12', address: 'Jl. Anggrek No. 5, Bandung' },
-];
+const INITIAL_USERS: User[] = [];
 
-const INITIAL_CUSTOMERS: Customer[] = [
-  { id: 'cust-1', name: 'PT Sejahtera Abadi', email: 'contact@sejahtera.co.id', phone: '081234567890', address: 'Jl. Merdeka No. 1, Jakarta', category: 'Commercial', tags: ['High Value', 'Regular Maintenance'], coordinates: { lat: -6.1751, lng: 106.8272 } },
-  { id: 'cust-2', name: 'Toko Roti Enak', email: 'order@rotienak.com', phone: '081298765432', address: 'Jl. Sudirman No. 22, Jakarta', category: 'Commercial', tags: ['New'], coordinates: { lat: -6.2088, lng: 106.8456 } },
-  { id: 'cust-3', name: 'Ibu Susanti', email: 'susanti@gmail.com', phone: '085611223344', address: 'Jl. Gatot Subroto No. 5, Bandung', category: 'Residential', tags: ['Repeat Customer'], coordinates: { lat: -6.9175, lng: 107.6191 } },
-];
+const INITIAL_CUSTOMERS: Customer[] = [];
 
-const INITIAL_SUPPLIERS: Supplier[] = [
-    { id: 'sup-1', name: 'PT Suku Cadang Jaya', contactPerson: 'Andi', phone: '021-555-1234', email: 'andi@scj.com' },
-    { id: 'sup-2', name: 'CV Mitra Teknik', contactPerson: 'Citra', phone: '022-777-5678', email: 'citra@mitrateknik.id' },
-];
+const INITIAL_SUPPLIERS: Supplier[] = [];
 
-const INITIAL_SPARE_PARTS: SparePart[] = [
-  { id: 'sp-1', itemCode: 'CMP-XYZ-001', name: 'Compressor XYZ', purchasePrice: 600000, sellingPrice: 750000, stock: 10, unit: 'pcs', location: 'Rak A1', supplierId: 'sup-1' },
-  { id: 'sp-2', itemCode: 'FRN-R32-001', name: 'Freon R32', purchasePrice: 100000, sellingPrice: 150000, stock: 25, unit: 'kg', location: 'Rak B2', supplierId: 'sup-2' },
-  { id: 'sp-3', itemCode: 'CAP-25-UF', name: 'Capacitor 25uF', sellingPrice: 85000, stock: 5, unit: 'pcs', location: 'Rak A2' },
-  { id: 'sp-4', itemCode: 'MTR-FAN-001', name: 'Fan Motor', purchasePrice: 280000, sellingPrice: 350000, stock: 0, unit: 'pcs', location: 'Rak C1', supplierId: 'sup-1' },
-];
+const INITIAL_SPARE_PARTS: SparePart[] = [];
 
-const INITIAL_CLIENTS: Client[] = [
-  { id: 'client-1', name: 'Authorized Service Center A' },
-  { id: 'client-2', name: 'Corporate Partner B' },
-];
+const INITIAL_CLIENTS: Client[] = [];
 
-const INITIAL_WORK_ORDERS: WorkOrder[] = [
-    { id: 'WO23100001', customer: INITIAL_CUSTOMERS[0], description: 'AC not cooling in meeting room', status: WorkOrderStatus.COMPLETED, technicianId: 'user-3', createdAt: '2023-10-01', completedAt: '2023-10-02', spareParts: [INITIAL_SPARE_PARTS[0]], totalCost: 850000, coordinates: INITIAL_CUSTOMERS[0].coordinates, clientId: 'client-1' },
-    { id: 'WO23100002', customer: INITIAL_CUSTOMERS[1], description: 'Refrigerator making strange noises', status: WorkOrderStatus.IN_PROGRESS, technicianId: 'user-4', createdAt: '2023-10-03', spareParts: [], totalCost: 100000, coordinates: INITIAL_CUSTOMERS[1].coordinates },
-    { id: 'WO23100003', customer: INITIAL_CUSTOMERS[2], description: 'Annual AC maintenance', status: WorkOrderStatus.PENDING, technicianId: null, createdAt: '2023-10-05', spareParts: [], totalCost: 250000, coordinates: INITIAL_CUSTOMERS[2].coordinates },
-    { id: 'WO23100004', customer: INITIAL_CUSTOMERS[0], description: 'Fix leaking indoor AC unit', status: WorkOrderStatus.IN_PROGRESS, technicianId: 'user-3', createdAt: '2023-10-06', spareParts: [], totalCost: 150000, coordinates: INITIAL_CUSTOMERS[0].coordinates, clientId: 'client-2' },
-];
+const INITIAL_WORK_ORDERS: WorkOrder[] = [];
 
 const INITIAL_INVOICES: Invoice[] = INITIAL_WORK_ORDERS
     .filter(wo => wo.status === WorkOrderStatus.COMPLETED || wo.status === WorkOrderStatus.IN_PROGRESS)
@@ -198,25 +175,9 @@ const INITIAL_INVOICES: Invoice[] = INITIAL_WORK_ORDERS
         paidDate: undefined,
     }));
 
-const INITIAL_TRANSACTIONS: Transaction[] = [
-    ...INITIAL_INVOICES.filter(inv => inv.status === 'Paid').map(inv => ({
-        id: `trn-${inv.id}`,
-        invoiceId: inv.workOrderId,
-        date: inv.paidDate!,
-        description: `Payment for Invoice ${inv.id}`,
-        type: 'income' as 'income',
-        amount: inv.amount,
-        category: TransactionCategory.SERVICE_INCOME,
-        paymentMethod: PaymentMethod.BANK_TRANSFER
-    })),
-    { id: 'exp-1', date: '2023-10-01', description: 'Gaji Teknisi', type: 'expense', amount: 5000000, category: TransactionCategory.SALARY, paymentMethod: PaymentMethod.BANK_TRANSFER, approved: true },
-    { id: 'exp-2', date: '2023-10-02', description: 'Pembelian Sparepart', type: 'expense', amount: 1500000, category: TransactionCategory.PART_PURCHASE, paymentMethod: PaymentMethod.CASH, approved: true },
-];
+const INITIAL_TRANSACTIONS: Transaction[] = [];
 
-const INITIAL_CONTRACTS: ServiceContract[] = [
-    { id: 'con-1', customerId: 'cust-1', title: 'Annual AC Maintenance Package', startDate: '2023-01-01', endDate: '2023-12-31', status: ContractStatus.ACTIVE, terms: 'Quarterly general check-up and cleaning for 10 AC units.', renewalDate: '2023-12-01' },
-    { id: 'con-2', customerId: 'cust-3', title: 'Home Appliance Service Contract', startDate: '2022-06-15', endDate: '2023-06-14', status: ContractStatus.EXPIRED, terms: 'On-call repair service for Refrigerator and Washing Machine.' },
-];
+const INITIAL_CONTRACTS: ServiceContract[] = [];
 
 // --- UTILITY FUNCTIONS ---
 const formatIDR = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -346,20 +307,63 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
 
 // --- AUTHENTICATION SCREENS ---
 const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: () => void, users: User[]; t: Function }> = ({ onLogin, onSwitchToSignUp, users, t }) => {
+  const [identifier, setIdentifier] = useState(''); // Can be email or phone
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const user = users.find(u => 
+        (u.email?.toLowerCase() === identifier.toLowerCase() || u.phone === identifier) && u.password === password
+    );
+
+    if (user) {
+        onLogin(user);
+    } else {
+        setError(t('login.invalidCredentials'));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
-        <h1 className="text-3xl font-bold text-primary-700 mb-2">{t('login.title')}</h1>
-        <p className="text-gray-600 mb-8">{t('login.subtitle')}</p>
-        <div className="space-y-4">
-          {users.map(user => (
-            <button key={user.id} onClick={() => onLogin(user)} className="w-full text-left p-4 bg-gray-50 hover:bg-primary-100 border border-gray-200 rounded-lg transition-colors">
-              <p className="font-semibold text-gray-800">{user.name}</p>
-              <p className="text-sm text-primary-600 capitalize">{user.role}</p>
+      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <h1 className="text-3xl font-bold text-primary-700 mb-2 text-center">{t('login.logIn')}</h1>
+        <p className="text-gray-600 mb-8 text-center">{t('login.subtitle')}</p>
+        <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">Email or Phone</label>
+                <input
+                    type="text"
+                    id="identifier"
+                    value={identifier}
+                    onChange={e => setIdentifier(e.target.value)}
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="you@example.com or 0812..."
+                />
+            </div>
+            <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                />
+            </div>
+            {error && <p className="text-sm text-red-600 text-center pt-2">{error}</p>}
+            <button
+                type="submit"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 !mt-6"
+            >
+                {t('login.logIn')}
             </button>
-          ))}
-        </div>
-        <div className="mt-6 text-sm">
+        </form>
+        <div className="mt-6 text-sm text-center">
           <span className="text-gray-600">{t('login.noAccount')} </span>
           <button onClick={onSwitchToSignUp} className="font-semibold text-primary-600 hover:underline">{t('login.signUp')}</button>
         </div>
@@ -3953,26 +3957,12 @@ const App: React.FC = () => {
             {modalState.type === 'mark_as_paid' && <MarkAsPaidModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleMarkAsPaid} workOrder={modalState.data} t={t} />}
             {modalState.type === 'request_reimbursement' && <ReimbursementModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleRequestReimbursement} workOrder={modalState.data} t={t} />}
             {modalState.type === 'view_attachment' && <AttachmentViewerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} attachment={modalState.data} t={t} />}
-
-            <Chatbot 
-                currentUser={currentUser} 
-                appData={{ 
-                    customers, 
-                    workOrders, 
-                    spareParts, 
-                    invoices, 
-                    transactions,
-                    users,
-                    clients,
-                    suppliers,
-                    contracts,
-                    technicians: users.filter(u => u.role === UserRole.TECHNICIAN)
-                }} 
-            />
-
+            
+            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users }} />
         </div>
     </HashRouter>
   );
-};
+}
 
+// FIX: Add default export for the App component to fix import error in index.tsx.
 export default App;
