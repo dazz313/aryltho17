@@ -38,6 +38,12 @@ export interface Customer {
   address: string;
   category?: 'Residential' | 'Commercial' | 'Industrial' | 'VIP';
   tags?: string[];
+  coordinates?: { lat: number; lng: number; };
+}
+
+export interface Client {
+  id: string;
+  name: string;
 }
 
 export enum WorkOrderStatus {
@@ -45,6 +51,14 @@ export enum WorkOrderStatus {
   IN_PROGRESS = 'In Progress',
   COMPLETED = 'Selesai',
   CANCELLED = 'Cancelled'
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
 }
 
 export interface SparePart {
@@ -56,6 +70,7 @@ export interface SparePart {
   stock: number;
   unit: string;
   location: string;
+  supplierId?: string;
 }
 
 export interface WorkOrder {
@@ -68,6 +83,8 @@ export interface WorkOrder {
   completedAt?: string;
   spareParts: SparePart[];
   totalCost: number;
+  coordinates?: { lat: number; lng: number; };
+  clientId?: string;
 }
 
 export interface Invoice {
@@ -86,6 +103,7 @@ export enum TransactionCategory {
   PART_PURCHASE = 'Pembelian Sparepart',
   OTHER_INCOME = 'Pendapatan Lain-lain',
   OTHER_EXPENSE = 'Biaya Lain-lain',
+  REIMBURSEMENT = 'Reimbursement',
 }
 
 export enum PaymentMethod {
@@ -108,6 +126,9 @@ export interface Transaction {
     data: string; // Base64 encoded data URL
   };
   invoiceId?: string; // To link with an invoice
+  approved?: boolean;
+  requestedByUserId?: string;
+  workOrderId?: string;
 }
 
 export enum ContractStatus {
