@@ -38,15 +38,15 @@ const INITIAL_WORK_ORDERS: WorkOrder[] = [
 ];
 
 const INITIAL_INVOICES: Invoice[] = INITIAL_WORK_ORDERS
-    .filter(wo => wo.status === WorkOrderStatus.COMPLETED)
+    .filter(wo => wo.status === WorkOrderStatus.COMPLETED || wo.status === WorkOrderStatus.IN_PROGRESS)
     .map(wo => ({
         id: `INV-${wo.id}`,
         workOrderId: wo.id,
         customerId: wo.customer.id,
         amount: wo.totalCost,
         issuedDate: wo.completedAt || new Date().toISOString().split('T')[0],
-        status: wo.id === 'wo-1' ? 'Paid' : 'Unpaid',
-        paidDate: wo.id === 'wo-1' ? wo.completedAt : undefined,
+        status: 'Unpaid',
+        paidDate: undefined,
     }));
 
 const INITIAL_TRANSACTIONS: Transaction[] = [
@@ -1054,6 +1054,44 @@ const AddEditContractModal: React.FC<{
     )
 };
 
+const MarkAsPaidModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (workOrderId: string, paymentMethod: PaymentMethod) => void;
+    workOrder: WorkOrder | null;
+}> = ({ isOpen, onClose, onConfirm, workOrder }) => {
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+
+    if (!isOpen || !workOrder) return null;
+
+    const handleConfirm = () => {
+        onConfirm(workOrder.id, paymentMethod);
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`Confirm Payment for WO-${workOrder.id.substring(0,4)}`}>
+            <div className="space-y-4">
+                <p>Please confirm that you have received payment for this work order from <strong>{workOrder.customer.name}</strong>.</p>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                    <select
+                        value={paymentMethod}
+                        onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                    >
+                        <option value={PaymentMethod.CASH}>Cash</option>
+                        <option value={PaymentMethod.BANK_TRANSFER}>Bank Transfer</option>
+                    </select>
+                </div>
+                <div className="flex justify-end pt-4 space-x-2">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button onClick={handleConfirm} className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">Confirm Payment</button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 
 // --- PAGE COMPONENTS ---
 
@@ -1442,6 +1480,7 @@ const CustomerDetail: React.FC<{
 const WorkOrders: React.FC<{
     user: User;
     workOrders: WorkOrder[];
+    invoices: Invoice[];
     users: User[];
     companyProfile: CompanyProfile;
     onAddPart: (wo: WorkOrder) => void;
@@ -1449,9 +1488,10 @@ const WorkOrders: React.FC<{
     onAssign: (wo: WorkOrder) => void;
     onClaim: (woId: string, techId: string) => void;
     onComplete: (woId: string) => void;
+    onMarkAsPaid: (wo: WorkOrder) => void;
     onChat: (c: Customer, wo: WorkOrder) => void;
     onNotify: (c: Customer, wo: WorkOrder) => void;
-}> = ({ user, workOrders, users, companyProfile, onAddPart, onCreate, onAssign, onClaim, onComplete, onChat, onNotify }) => {
+}> = ({ user, workOrders, invoices, users, companyProfile, onAddPart, onCreate, onAssign, onClaim, onComplete, onMarkAsPaid, onChat, onNotify }) => {
     const isTechnician = user.role === UserRole.TECHNICIAN;
 
     const generateSpkPdf = (order: WorkOrder) => {
@@ -1525,7 +1565,11 @@ const WorkOrders: React.FC<{
                         </tr>
                     </thead>
                     <tbody>
-                        {orders.map(order => (
+                        {orders.map(order => {
+                            const correspondingInvoice = invoices.find(inv => inv.workOrderId === order.id);
+                            const isPaid = correspondingInvoice?.status === 'Paid';
+
+                            return (
                             <tr key={order.id} className="bg-white border-b hover:bg-gray-50">
                                 <td className="px-6 py-4 font-mono text-xs">{order.id}</td>
                                 <td className="px-6 py-4">{order.customer.name}</td>
@@ -1548,6 +1592,13 @@ const WorkOrders: React.FC<{
                                                       <button onClick={() => onComplete(order.id)} className="font-medium text-indigo-600 hover:underline">Complete</button>
                                                     </>
                                                 )}
+                                                {order.status === WorkOrderStatus.COMPLETED && (
+                                                    isPaid ? (
+                                                        <span className="text-sm font-semibold text-green-700 bg-green-100 px-2 py-1 rounded-full">Paid</span>
+                                                    ) : (
+                                                        <button onClick={() => onMarkAsPaid(order)} className="font-medium text-green-600 hover:underline">Confirm Payment</button>
+                                                    )
+                                                )}
                                                 <button onClick={() => generateSpkPdf(order)} className="font-medium text-red-600 hover:underline">Print SPK</button>
                                                 <button onClick={() => onChat(order.customer, order)} className="font-medium text-blue-600 hover:underline">Chat</button>
                                                 <button onClick={() => onNotify(order.customer, order)} className="font-medium text-purple-600 hover:underline">Notify</button>
@@ -1568,7 +1619,7 @@ const WorkOrders: React.FC<{
                                     )}
                                 </td>
                             </tr>
-                        ))}
+                        )})}
                     </tbody>
                 </table>
             </div>
@@ -2451,17 +2502,19 @@ const App: React.FC = () => {
     if (workOrderToComplete) {
       const completionDate = new Date().toISOString().split('T')[0];
       
-      const newInvoice: Invoice = {
-        id: `INV-${workOrderToComplete.id}`,
-        workOrderId: workOrderToComplete.id,
-        customerId: workOrderToComplete.customer.id,
-        amount: workOrderToComplete.totalCost,
-        issuedDate: completionDate,
-        status: 'Unpaid',
-      };
+      const existingInvoice = invoices.find(inv => inv.workOrderId === workOrderId);
+      if (!existingInvoice) {
+          const newInvoice: Invoice = {
+            id: `INV-${workOrderToComplete.id}`,
+            workOrderId: workOrderToComplete.id,
+            customerId: workOrderToComplete.customer.id,
+            amount: workOrderToComplete.totalCost,
+            issuedDate: completionDate,
+            status: 'Unpaid',
+          };
+          setInvoices(prev => [...prev, newInvoice]);
+      }
       
-      setInvoices(prev => [...prev, newInvoice]);
-
       setWorkOrders(prev => prev.map(wo => 
         wo.id === workOrderId 
           ? { 
@@ -2481,6 +2534,46 @@ const App: React.FC = () => {
     }
   };
   
+  const handleMarkAsPaid = (workOrderId: string, paymentMethod: PaymentMethod) => {
+    const invoiceToUpdate = invoices.find(inv => inv.workOrderId === workOrderId);
+    if (!invoiceToUpdate) {
+        alert("Error: Invoice not found for this work order.");
+        return;
+    }
+
+    const updatedInvoice = { 
+        ...invoiceToUpdate, 
+        status: 'Paid' as 'Paid', 
+        paidDate: new Date().toISOString().split('T')[0] 
+    };
+    setInvoices(prev => prev.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv));
+
+    const customerName = workOrders.find(wo => wo.id === workOrderId)?.customer.name || 'N/A';
+    const newTransaction: Transaction = {
+        id: `trn-${updatedInvoice.id}`,
+        invoiceId: updatedInvoice.workOrderId,
+        date: updatedInvoice.paidDate!,
+        description: `Payment for WO from ${customerName}`,
+        type: 'income',
+        amount: updatedInvoice.amount,
+        category: TransactionCategory.SERVICE_INCOME,
+        paymentMethod: paymentMethod,
+    };
+    setTransactions(prev => [newTransaction, ...prev]);
+    
+    const newNotification: Notification = {
+        id: `notif-${Date.now()}`,
+        message: `${formatUserName(currentUser?.name)} confirmed payment of ${formatIDR(updatedInvoice.amount)} for WO-${workOrderId.substring(0,4)} via ${paymentMethod}.`,
+        timestamp: new Date().toISOString(),
+        read: false,
+        link: '/finance',
+        workOrderId: workOrderId
+    };
+    setNotifications(prev => [newNotification, ...prev]);
+
+    setModalState({ type: null, data: null });
+  };
+
   const handleSaveSparePart = (part: SparePart) => {
     const exists = spareParts.some(p => p.id === part.id);
     if (exists) {
@@ -2760,7 +2853,7 @@ const App: React.FC = () => {
                 <Route path="/" element={currentUser.role === UserRole.TECHNICIAN ? <Navigate to="/work-orders" /> : <Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} />} />
                 <Route path="/customers" element={<Customers customers={customers} onAdd={() => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: null })} onEdit={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} />} />
                 <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} onAddContract={(customerId) => setModalState({ type: 'ADD_EDIT_CONTRACT', data: { customerId }})} onEditContract={(c) => setModalState({ type: 'ADD_EDIT_CONTRACT', data: { contract: c, customerId: c.customerId }})} onCreateWorkOrder={(customerId) => setModalState({ type: 'CREATE_WORK_ORDER', data: { customerId }})} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
-                <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} companyProfile={companyProfile} onAddPart={(wo) => setModalState({ type: 'ADD_SPARE_PART', data: wo})} onCreate={() => setModalState({ type: 'CREATE_WORK_ORDER', data: null })} onAssign={(wo) => setModalState({ type: 'ASSIGN_TECHNICIAN', data: wo })} onClaim={handleClaimJob} onComplete={handleCompleteWorkOrder} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
+                <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} invoices={invoices} users={users} companyProfile={companyProfile} onAddPart={(wo) => setModalState({ type: 'ADD_SPARE_PART', data: wo})} onCreate={() => setModalState({ type: 'CREATE_WORK_ORDER', data: null })} onAssign={(wo) => setModalState({ type: 'ASSIGN_TECHNICIAN', data: wo })} onClaim={handleClaimJob} onComplete={handleCompleteWorkOrder} onMarkAsPaid={(wo) => setModalState({ type: 'MARK_AS_PAID', data: wo })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
                 <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} onAdd={() => setModalState({ type: 'ADD_EDIT_SPARE_PART', data: null })} onEdit={(sp) => setModalState({ type: 'ADD_EDIT_SPARE_PART', data: sp })} />} />
                 <Route path="/finance" element={<Finance 
                     invoices={invoices} 
@@ -2863,6 +2956,13 @@ const App: React.FC = () => {
           onClose={() => setModalState({ type: null, data: null })}
           onSave={handleSaveEmployee}
           user={modalState.data}
+      />
+
+      <MarkAsPaidModal
+        isOpen={modalState.type === 'MARK_AS_PAID'}
+        onClose={() => setModalState({ type: null, data: null })}
+        onConfirm={handleMarkAsPaid}
+        workOrder={modalState.data}
       />
       
       {currentUser && <Chatbot currentUser={currentUser} appData={appDataForChatbot} />}
