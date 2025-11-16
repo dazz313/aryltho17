@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
-import { ChatMessage } from './types';
+// FIX: Corrected import path for ChatMessage from root types file.
+import { ChatMessage } from '../types';
 
 export const generateAiSummary = async (data: any): Promise<string> => {
   if (!process.env.API_KEY) {
@@ -71,7 +72,12 @@ export const getChatbotResponse = async (
       }, null, 2)}
     `;
     
-    const contents = history.map(msg => `${msg.sender}: ${msg.text}`).join('\n');
+    // FIX: Switched from a single string to a structured array of Content objects for chat history.
+    // This is the correct way to pass conversational context to the Gemini API.
+    const contents = history.map(msg => ({
+      role: msg.sender === 'ai' ? 'model' : 'user',
+      parts: [{ text: msg.text }]
+    }));
     
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

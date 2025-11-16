@@ -1,9 +1,10 @@
 
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus } from './types';
-import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon } from './components/icons';
+import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon } from './components/icons';
 import { generateAiSummary, getChatbotResponse } from './services/geminiService';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -165,17 +166,31 @@ const generatePdfHeader = (doc: jsPDF, profile: CompanyProfile) => {
 interface CardProps {
   title: string;
   value: string;
-  icon: React.ReactNode;
+  // FIX: Changed icon prop type to be more specific for React.cloneElement to fix a TypeScript error.
+  icon: React.ReactElement<{ className?: string }>;
+  color: 'blue' | 'yellow' | 'green' | 'indigo';
 }
-const StatCard: React.FC<CardProps> = ({ title, value, icon }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4">
-    <div className="bg-primary-100 p-3 rounded-full">{icon}</div>
-    <div>
-      <p className="text-sm text-gray-500">{title}</p>
-      <p className="text-2xl font-bold text-gray-800">{value}</p>
-    </div>
-  </div>
-);
+const StatCard: React.FC<CardProps> = ({ title, value, icon, color }) => {
+    const colorClasses = {
+        blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
+        yellow: { bg: 'bg-yellow-100', text: 'text-yellow-600' },
+        green: { bg: 'bg-green-100', text: 'text-green-600' },
+        indigo: { bg: 'bg-indigo-100', text: 'text-indigo-600' },
+    };
+    const selectedColor = colorClasses[color] || colorClasses.blue;
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4 transition-transform transform hover:-translate-y-1 hover:shadow-lg">
+            <div className={`${selectedColor.bg} p-3 rounded-full`}>
+                {React.cloneElement(icon, { className: `h-6 w-6 ${selectedColor.text}` })}
+            </div>
+            <div>
+                <p className="text-sm text-gray-500">{title}</p>
+                <p className="text-2xl font-bold text-gray-800">{value}</p>
+            </div>
+        </div>
+    );
+};
 
 const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode; size?: 'md' | 'lg' | 'xl' }> = ({ isOpen, onClose, title, children, size = 'md' }) => {
     if (!isOpen) return null;
@@ -1076,7 +1091,7 @@ const NotificationsPage: React.FC<{ notifications: Notification[], onMarkAllRead
     );
 };
 
-const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users: User[]}> = ({ workOrders, customers, users }) => {
+const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users: User[], currentUser: User}> = ({ workOrders, customers, users, currentUser }) => {
   const [summary, setSummary] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -1105,7 +1120,7 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
     { name: 'Oct', revenue: workOrders.filter(wo => wo.status === WorkOrderStatus.COMPLETED).reduce((sum, wo) => sum + wo.totalCost, 0) },
   ], [workOrders]);
   
-  const COLORS = ['#FFBB28', '#00C49F', '#0088FE', '#FF8042'];
+  const PIE_COLORS = ['#38bdf8', '#fbbf24', '#34d399', '#f472b6']; // sky, amber, emerald, rose
 
   const handleGenerateSummary = async () => {
     setIsLoading(true);
@@ -1121,51 +1136,57 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h1>
+      <h1 className="text-3xl font-bold text-gray-800">Welcome back, {formatUserName(currentUser.name)}!</h1>
+      <p className="text-gray-500 mb-6">Here's a summary of your business activities today.</p>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatCard title="Total Customers" value={customers.length.toString()} icon={<CustomerIcon className="h-6 w-6 text-primary-600" />} />
-        <StatCard title="Pending Work Orders" value={workOrders.filter(wo => wo.status === WorkOrderStatus.PENDING).length.toString()} icon={<WorkOrderIcon className="h-6 w-6 text-primary-600" />} />
+        <StatCard title="Total Customers" value={customers.length.toString()} icon={<CustomerIcon />} color="blue" />
+        <StatCard title="Pending Work Orders" value={workOrders.filter(wo => wo.status === WorkOrderStatus.PENDING).length.toString()} icon={<WorkOrderIcon />} color="yellow" />
         
-        <div className="bg-white p-6 rounded-lg shadow-md">
-            <div className="flex items-center space-x-4">
-                <div className="bg-primary-100 p-3 rounded-full"><TechnicianIcon className="h-6 w-6 text-primary-600" /></div>
-                <div>
-                    <p className="text-sm text-gray-500">Technician Status</p>
-                    <div className="h-20 overflow-y-auto pr-2 mt-1">
-                        {technicians.map(tech => (
-                            <div key={tech.id} className="flex items-center justify-between text-sm py-0.5">
-                                <span className="font-semibold text-gray-700">{formatUserName(tech.name)}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${getTechnicianStatusColor(tech.status)}`}>{tech.status || 'N/A'}</span>
-                            </div>
-                        ))}
-                    </div>
+        <div className="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4 transition-transform transform hover:-translate-y-1 hover:shadow-lg">
+            <div className="bg-indigo-100 p-3 rounded-full"><TechnicianIcon className="h-6 w-6 text-indigo-600" /></div>
+            <div>
+                <p className="text-sm text-gray-500">Technician Status</p>
+                <div className="h-20 overflow-y-auto pr-2 mt-1">
+                    {technicians.map(tech => (
+                        <div key={tech.id} className="flex items-center justify-between text-sm py-0.5">
+                            <span className="font-semibold text-gray-700">{formatUserName(tech.name)}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${getTechnicianStatusColor(tech.status)}`}>{tech.status || 'N/A'}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
 
-        <StatCard title="Monthly Revenue" value={formatIDR(monthlyRevenueData[3].revenue)} icon={<FinanceIcon className="h-6 w-6 text-primary-600" />} />
+        <StatCard title="Monthly Revenue" value={formatIDR(monthlyRevenueData[3].revenue)} icon={<FinanceIcon />} color="green" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-        <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md">
+        <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
            <h2 className="text-lg font-semibold text-gray-700 mb-4">Monthly Revenue</h2>
            <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyRevenueData}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis tickFormatter={(tick) => formatIDR(tick as number)}/>
               <Tooltip formatter={(value) => formatIDR(value as number)} />
               <Legend />
-              <Bar dataKey="revenue" fill="#3b82f6" />
+              <Bar dataKey="revenue" fill="url(#colorRevenue)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
           <h2 className="text-lg font-semibold text-gray-700 mb-4">Work Order Status</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie data={woStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label>
-                {woStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                {woStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
               </Pie>
               <Tooltip />
               <Legend />
@@ -1175,37 +1196,45 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
       </div>
       
        <div className="grid grid-cols-1 gap-6 mb-6">
-         <div className="bg-white p-6 rounded-lg shadow-md">
+         <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
            <h2 className="text-lg font-semibold text-gray-700 mb-4">Completed Work Orders by Technician</h2>
            <ResponsiveContainer width="100%" height={300}>
             <BarChart data={technicianPerformanceData}>
+               <defs>
+                  <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4ade80" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#4ade80" stopOpacity={0.2}/>
+                  </linearGradient>
+                </defs>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis allowDecimals={false}/>
               <Tooltip />
               <Legend />
-              <Bar dataKey="completed" name="Completed WOs" fill="#82ca9d" />
+              <Bar dataKey="completed" name="Completed WOs" fill="url(#colorCompleted)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
       
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-           <h2 className="text-lg font-semibold text-gray-700">AI-Powered Business Summary</h2>
-           <button onClick={handleGenerateSummary} disabled={isLoading} className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition disabled:bg-primary-300">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <div className="flex justify-between items-center p-6 bg-gradient-to-r from-primary-600 to-indigo-600 text-white">
+           <h2 className="text-lg font-semibold">AI-Powered Business Summary</h2>
+           <button onClick={handleGenerateSummary} disabled={isLoading} className="flex items-center space-x-2 bg-white text-primary-600 px-4 py-2 rounded-lg hover:bg-primary-50 transition disabled:bg-gray-300 disabled:text-gray-500 font-semibold">
              {isLoading ? <SpinnerIcon className="h-5 w-5"/> : <AiIcon className="h-5 w-5"/>}
              <span>{isLoading ? 'Generating...' : 'Generate Summary'}</span>
            </button>
         </div>
-        <div className="prose max-w-none bg-gray-50 p-4 rounded-md min-h-[150px]">
-          {isLoading ? (
-            <div className="flex justify-center items-center h-full">
-              <p className="text-gray-500">Generating insights...</p>
+        <div className="p-6">
+            <div className="prose max-w-none bg-gray-50 p-4 rounded-md min-h-[150px]">
+            {isLoading ? (
+                <div className="flex justify-center items-center h-full">
+                <p className="text-gray-500">Generating insights...</p>
+                </div>
+            ) : (
+                summary ? <div dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br />') }} /> : <p className="text-gray-500">Click "Generate Summary" to get AI-powered insights for your business.</p>
+            )}
             </div>
-          ) : (
-            summary ? <div dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br />') }} /> : <p className="text-gray-500">Click "Generate Summary" to get AI-powered insights for your business.</p>
-          )}
         </div>
       </div>
     </div>
@@ -1652,9 +1681,9 @@ const Finance: React.FC<{
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                 <StatCard title="Total Income" value={formatIDR(totalIncome)} icon={<FinanceIcon className="h-6 w-6 text-green-600" />} />
-                 <StatCard title="Total Expense" value={formatIDR(totalExpense)} icon={<FinanceIcon className="h-6 w-6 text-red-600" />} />
-                 <StatCard title="Profit / Loss" value={formatIDR(labaRugi)} icon={<FinanceIcon className={`h-6 w-6 ${labaRugi >= 0 ? 'text-blue-600' : 'text-red-600'}`} />} />
+                 <StatCard title="Total Income" value={formatIDR(totalIncome)} icon={<FinanceIcon className="h-6 w-6 text-green-600" />} color="green" />
+                 <StatCard title="Total Expense" value={formatIDR(totalExpense)} icon={<FinanceIcon className="h-6 w-6 text-red-600" />} color="yellow" />
+                 <StatCard title="Profit / Loss" value={formatIDR(labaRugi)} icon={<FinanceIcon className={`h-6 w-6 ${labaRugi >= 0 ? 'text-blue-600' : 'text-red-600'}`} />} color="blue" />
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
@@ -2265,6 +2294,7 @@ const Chatbot: React.FC<{
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authScreen, setAuthScreen] = useState<'login' | 'signup'>('login');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   // App-wide state
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
@@ -2654,14 +2684,14 @@ const App: React.FC = () => {
   }
   
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN] },
-    { path: '/customers', label: 'Customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN] },
-    { path: '/work-orders', label: 'Work Orders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN] },
-    { path: '/notifications', label: 'Notifications', icon: BellIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN] },
-    { path: '/spare-parts', label: 'Spare Parts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN] },
-    { path: '/finance', label: 'Finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR] },
-    { path: '/employees', label: 'Employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR] },
-    { path: '/settings', label: 'Settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR] },
+    { path: '/', label: 'Dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-blue-500' },
+    { path: '/customers', label: 'Customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-green-500' },
+    { path: '/work-orders', label: 'Work Orders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-orange-500' },
+    { path: '/notifications', label: 'Notifications', icon: BellIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-red-500' },
+    { path: '/spare-parts', label: 'Spare Parts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-indigo-500' },
+    { path: '/finance', label: 'Finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-purple-500' },
+    { path: '/employees', label: 'Employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-teal-500' },
+    { path: '/settings', label: 'Settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-gray-500' },
   ];
 
   const accessibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));
@@ -2671,16 +2701,20 @@ const App: React.FC = () => {
     const unreadCount = notifications.filter(n => !n.read).length;
     
     return (
-        <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-            <div className="h-16 flex items-center justify-center border-b border-gray-200">
-                <h1 className="text-2xl font-bold text-primary-600">ServisPro</h1>
+        <div className={`flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
+            <div className={`h-16 flex items-center border-b border-gray-200 ${isSidebarCollapsed ? 'justify-center' : 'justify-center'}`}>
+                {isSidebarCollapsed ? (
+                    <DashboardIcon className="h-10 w-10 text-primary-600" />
+                ) : (
+                    <h1 className="text-2xl font-bold text-primary-600">ServisPro</h1>
+                )}
             </div>
             <nav className="flex-1 p-4 space-y-2">
                 {accessibleNavItems.map(item => (
-                     <Link key={item.path} to={item.path} className={`flex items-center space-x-3 px-4 py-2 rounded-lg ${location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'}`}>
-                        <item.icon className="h-5 w-5" />
-                        <span className="font-medium">{item.label}</span>
-                        {item.label === 'Notifications' && unreadCount > 0 && (
+                     <Link key={item.path} to={item.path} title={isSidebarCollapsed ? item.label : ''} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${(location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path) ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+                        <item.icon className={`${isSidebarCollapsed ? `h-9 w-9 ${item.color}` : 'h-5 w-5'}`} />
+                        {!isSidebarCollapsed && <span className="font-medium">{item.label}</span>}
+                        {item.label === 'Notifications' && !isSidebarCollapsed && unreadCount > 0 && (
                             <span className="ml-auto bg-red-500 text-white text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center">
                                 {unreadCount}
                             </span>
@@ -2689,9 +2723,13 @@ const App: React.FC = () => {
                 ))}
             </nav>
             <div className="p-4 border-t border-gray-200">
-                 <button onClick={handleLogout} className="flex items-center w-full space-x-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100">
+                 <button onClick={handleLogout} className={`flex items-center w-full space-x-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? 'Logout' : ''}>
                     <LogoutIcon className="h-5 w-5" />
-                    <span className="font-medium">Logout</span>
+                    {!isSidebarCollapsed && <span className="font-medium">Logout</span>}
+                </button>
+                 <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className={`flex items-center w-full space-x-3 px-4 py-2 mt-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? 'Expand' : 'Collapse'}>
+                    {isSidebarCollapsed ? <ChevronsRightIcon className="h-5 w-5" /> : <ChevronsLeftIcon className="h-5 w-5" />}
+                    {!isSidebarCollapsed && <span className="font-medium">Collapse</span>}
                 </button>
             </div>
         </div>
@@ -2712,7 +2750,7 @@ const App: React.FC = () => {
         <Sidebar />
         <main className="flex-1 p-8 overflow-y-auto">
              <Routes>
-                <Route path="/" element={currentUser.role === UserRole.TECHNICIAN ? <Navigate to="/work-orders" /> : <Dashboard workOrders={workOrders} customers={customers} users={users} />} />
+                <Route path="/" element={currentUser.role === UserRole.TECHNICIAN ? <Navigate to="/work-orders" /> : <Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} />} />
                 <Route path="/customers" element={<Customers customers={customers} onAdd={() => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: null })} onEdit={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} />} />
                 <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} onAddContract={(customerId) => setModalState({ type: 'ADD_EDIT_CONTRACT', data: { customerId }})} onEditContract={(c) => setModalState({ type: 'ADD_EDIT_CONTRACT', data: { contract: c, customerId: c.customerId }})} onCreateWorkOrder={(customerId) => setModalState({ type: 'CREATE_WORK_ORDER', data: { customerId }})} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
                 <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} companyProfile={companyProfile} onAddPart={(wo) => setModalState({ type: 'ADD_SPARE_PART', data: wo})} onCreate={() => setModalState({ type: 'CREATE_WORK_ORDER', data: null })} onAssign={(wo) => setModalState({ type: 'ASSIGN_TECHNICIAN', data: wo })} onClaim={handleClaimJob} onComplete={handleCompleteWorkOrder} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
