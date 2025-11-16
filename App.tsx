@@ -39,10 +39,10 @@ const INITIAL_CLIENTS: Client[] = [
 ];
 
 const INITIAL_WORK_ORDERS: WorkOrder[] = [
-    { id: 'wo-1', customer: INITIAL_CUSTOMERS[0], description: 'AC not cooling in meeting room', status: WorkOrderStatus.COMPLETED, technicianId: 'user-3', createdAt: '2023-10-01', completedAt: '2023-10-02', spareParts: [INITIAL_SPARE_PARTS[0]], totalCost: 850000, coordinates: INITIAL_CUSTOMERS[0].coordinates, clientId: 'client-1' },
-    { id: 'wo-2', customer: INITIAL_CUSTOMERS[1], description: 'Refrigerator making strange noises', status: WorkOrderStatus.IN_PROGRESS, technicianId: 'user-4', createdAt: '2023-10-03', spareParts: [], totalCost: 100000, coordinates: INITIAL_CUSTOMERS[1].coordinates },
-    { id: 'wo-3', customer: INITIAL_CUSTOMERS[2], description: 'Annual AC maintenance', status: WorkOrderStatus.PENDING, technicianId: null, createdAt: '2023-10-05', spareParts: [], totalCost: 250000, coordinates: INITIAL_CUSTOMERS[2].coordinates },
-    { id: 'wo-4', customer: INITIAL_CUSTOMERS[0], description: 'Fix leaking indoor AC unit', status: WorkOrderStatus.IN_PROGRESS, technicianId: 'user-3', createdAt: '2023-10-06', spareParts: [], totalCost: 150000, coordinates: INITIAL_CUSTOMERS[0].coordinates, clientId: 'client-2' },
+    { id: 'WO23100001', customer: INITIAL_CUSTOMERS[0], description: 'AC not cooling in meeting room', status: WorkOrderStatus.COMPLETED, technicianId: 'user-3', createdAt: '2023-10-01', completedAt: '2023-10-02', spareParts: [INITIAL_SPARE_PARTS[0]], totalCost: 850000, coordinates: INITIAL_CUSTOMERS[0].coordinates, clientId: 'client-1' },
+    { id: 'WO23100002', customer: INITIAL_CUSTOMERS[1], description: 'Refrigerator making strange noises', status: WorkOrderStatus.IN_PROGRESS, technicianId: 'user-4', createdAt: '2023-10-03', spareParts: [], totalCost: 100000, coordinates: INITIAL_CUSTOMERS[1].coordinates },
+    { id: 'WO23100003', customer: INITIAL_CUSTOMERS[2], description: 'Annual AC maintenance', status: WorkOrderStatus.PENDING, technicianId: null, createdAt: '2023-10-05', spareParts: [], totalCost: 250000, coordinates: INITIAL_CUSTOMERS[2].coordinates },
+    { id: 'WO23100004', customer: INITIAL_CUSTOMERS[0], description: 'Fix leaking indoor AC unit', status: WorkOrderStatus.IN_PROGRESS, technicianId: 'user-3', createdAt: '2023-10-06', spareParts: [], totalCost: 150000, coordinates: INITIAL_CUSTOMERS[0].coordinates, clientId: 'client-2' },
 ];
 
 const INITIAL_INVOICES: Invoice[] = INITIAL_WORK_ORDERS
@@ -544,7 +544,7 @@ const AssignTechnicianModal: React.FC<{
     }
 
     return (
-        <Modal isOpen={true} onClose={onClose} title={`Assign Technician to WO-${workOrder.id.substring(0,4)}`}>
+        <Modal isOpen={true} onClose={onClose} title={`Assign Technician to ${workOrder.id}`}>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Select Technician</label>
                 <select value={selectedTech} onChange={e => setSelectedTech(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
@@ -584,7 +584,7 @@ const AddSparePartModal: React.FC<{
     }
 
     return (
-        <Modal isOpen={true} onClose={onClose} title={`Add Parts to WO-${workOrder.id.substring(0,4)}`}>
+        <Modal isOpen={true} onClose={onClose} title={`Add Parts to ${workOrder.id}`}>
            <div className="space-y-2 max-h-60 overflow-y-auto">
                 {availableParts.map(part => (
                     <div key={part.id} className={`flex items-center justify-between p-2 border rounded-md ${part.stock === 0 ? 'bg-gray-100 opacity-60' : ''}`}>
@@ -616,31 +616,61 @@ const AddEditInvoiceModal: React.FC<{
     invoice: Invoice | null;
     workOrders: WorkOrder[];
 }> = ({ isOpen, onClose, onSave, invoice, workOrders }) => {
-    const [formData, setFormData] = useState({ workOrderId: '', amount: '', issuedDate: new Date().toISOString().split('T')[0], status: 'Unpaid' as 'Paid' | 'Unpaid' });
+    const getInitialState = () => ({
+        workOrderId: '',
+        subtotal: 0,
+        discount: '',
+        tax: '',
+        amount: '0',
+        issuedDate: new Date().toISOString().split('T')[0],
+        status: 'Unpaid' as 'Paid' | 'Unpaid',
+        notes: '',
+    });
 
+    const [formData, setFormData] = useState(getInitialState());
     const completedWorkOrders = useMemo(() => workOrders.filter(wo => wo.status === WorkOrderStatus.COMPLETED), [workOrders]);
 
     useEffect(() => {
         if (invoice) {
+            const workOrder = workOrders.find(wo => wo.id === invoice.workOrderId);
+            const subtotal = workOrder?.totalCost || 0;
             setFormData({
                 workOrderId: invoice.workOrderId,
+                subtotal: subtotal,
+                discount: String(invoice.discount || ''),
+                tax: String(invoice.tax || ''),
                 amount: String(invoice.amount),
                 issuedDate: invoice.issuedDate,
                 status: invoice.status,
+                notes: invoice.notes || '',
             });
         } else {
-            setFormData({ workOrderId: '', amount: '', issuedDate: new Date().toISOString().split('T')[0], status: 'Unpaid' });
+            setFormData(getInitialState());
         }
-    }, [invoice, isOpen]);
+    }, [invoice, isOpen, workOrders]);
+
+    useEffect(() => {
+        const sub = formData.subtotal || 0;
+        const disc = Number(formData.discount) || 0;
+        const taxVal = Number(formData.tax) || 0;
+        const total = sub - disc + taxVal;
+        setFormData(prev => ({ ...prev, amount: String(total) }));
+    }, [formData.subtotal, formData.discount, formData.tax]);
 
     const handleWorkOrderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const woId = e.target.value;
         const selectedWO = completedWorkOrders.find(wo => wo.id === woId);
-        setFormData({
-            ...formData,
+        const subtotal = selectedWO ? selectedWO.totalCost : 0;
+        setFormData(prev => ({
+            ...prev,
             workOrderId: woId,
-            amount: selectedWO ? String(selectedWO.totalCost) : ''
-        });
+            subtotal: subtotal,
+            amount: String(subtotal)
+        }));
+    };
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setFormData(prev => ({...prev, [e.target.name]: e.target.value}));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -657,11 +687,14 @@ const AddEditInvoiceModal: React.FC<{
             issuedDate: formData.issuedDate,
             status: formData.status,
             paidDate: formData.status === 'Paid' ? new Date().toISOString().split('T')[0] : undefined,
+            discount: Number(formData.discount) || undefined,
+            tax: Number(formData.tax) || undefined,
+            notes: formData.notes || undefined,
         });
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={invoice ? 'Edit Invoice' : 'Add New Invoice'}>
+        <Modal isOpen={isOpen} onClose={onClose} title={invoice ? 'Edit Invoice' : 'Add New Invoice'} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Completed Work Order</label>
@@ -670,21 +703,47 @@ const AddEditInvoiceModal: React.FC<{
                         {completedWorkOrders.map(wo => <option key={wo.id} value={wo.id}>{wo.id} - {wo.customer.name}</option>)}
                     </select>
                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Amount</label>
-                    <input type="number" name="amount" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Subtotal</label>
+                        <input type="text" value={formatIDR(formData.subtotal)} disabled className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Issued Date</label>
+                        <input type="date" name="issuedDate" value={formData.issuedDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Issued Date</label>
-                    <input type="date" name="issuedDate" value={formData.issuedDate} onChange={e => setFormData({...formData, issuedDate: e.target.value})} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Discount (IDR)</label>
+                        <input type="number" name="discount" value={formData.discount} onChange={handleChange} placeholder="e.g. 50000" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Tax (IDR)</label>
+                        <input type="number" name="tax" value={formData.tax} onChange={handleChange} placeholder="e.g. 10000" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
                 </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Total Amount</label>
+                    <input type="text" name="amount" value={formatIDR(Number(formData.amount))} disabled required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 font-bold" />
+                </div>
+                
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Notes / Terms & Conditions</label>
+                    <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} placeholder="e.g. Pembayaran via transfer Bank ABC 123456789 a.n. ServisPro" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                </div>
+
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Status</label>
-                    <select name="status" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as 'Paid' | 'Unpaid'})} required className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
+                    <select name="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
                         <option value="Unpaid">Unpaid</option>
                         <option value="Paid">Paid</option>
                     </select>
                 </div>
+
                 <div className="flex justify-end pt-4 space-x-2">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Invoice</button>
@@ -700,7 +759,8 @@ const AddEditSparePartModal: React.FC<{
     onSave: (part: SparePart) => void;
     part: SparePart | null;
     suppliers: Supplier[];
-}> = ({ isOpen, onClose, onSave, part, suppliers }) => {
+    allSpareParts: SparePart[];
+}> = ({ isOpen, onClose, onSave, part, suppliers, allSpareParts }) => {
     const [formData, setFormData] = useState({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '', unit: '', location: '', supplierId: '' });
 
     useEffect(() => {
@@ -719,6 +779,41 @@ const AddEditSparePartModal: React.FC<{
             setFormData({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '0', unit: '', location: '', supplierId: '' });
         }
     }, [part, isOpen]);
+    
+    useEffect(() => {
+        if (!part && formData.name.length >= 3) {
+            const generateUniqueItemCode = (partName: string): string => {
+                const now = new Date();
+                const year = now.getFullYear().toString().slice(-2);
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const datePart = `${year}${month}`;
+                
+                const acronymPart = partName.replace(/[^a-zA-Z\s]/g, '').split(' ').map(word => word[0]).join('').slice(0, 3).toUpperCase();
+                if (acronymPart.length < 1) return '';
+
+                const prefix = `${datePart}-${acronymPart}`;
+                
+                const relevantParts = allSpareParts.filter(p => p.itemCode.startsWith(prefix));
+                
+                let maxSeq = 0;
+                relevantParts.forEach(p => {
+                    const seqStr = p.itemCode.split('-')[2];
+                    if (seqStr) {
+                        const seq = parseInt(seqStr, 10);
+                        if (!isNaN(seq) && seq > maxSeq) {
+                            maxSeq = seq;
+                        }
+                    }
+                });
+                
+                const newSeqStr = (maxSeq + 1).toString().padStart(3, '0');
+                return `${prefix}-${newSeqStr}`;
+            };
+            
+            const newItemCode = generateUniqueItemCode(formData.name);
+            setFormData(prev => ({ ...prev, itemCode: newItemCode }));
+        }
+    }, [formData.name, part, allSpareParts]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -745,7 +840,7 @@ const AddEditSparePartModal: React.FC<{
             <form onSubmit={handleSubmit} className="space-y-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Kode Item</label>
-                    <input type="text" name="itemCode" value={formData.itemCode} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    <input type="text" name="itemCode" value={formData.itemCode} onChange={handleChange} required disabled={!part} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Part Name</label>
@@ -1229,7 +1324,7 @@ const MarkAsPaidModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Confirm Payment for WO-${workOrder.id.substring(0,4)}`}>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Confirm Payment for ${workOrder.id}`}>
             <div className="space-y-4">
                 <p>Please confirm that you have received payment for this work order from <strong>{workOrder.customer.name}</strong>.</p>
                 <div>
@@ -1313,7 +1408,7 @@ const ReimbursementModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Request Reimbursement for WO-${workOrder.id.substring(0,4)}`}>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Request Reimbursement for ${workOrder.id}`}>
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Amount (IDR)</label>
@@ -2045,11 +2140,12 @@ const WorkOrders: React.FC<{
             theme: 'grid'
         });
 
-        if(order.spareParts.length > 0) {
+        const currentSpareParts = order.spareParts || [];
+        if(currentSpareParts.length > 0) {
             autoTable(doc, {
                 startY: (doc as any).lastAutoTable.finalY + 10,
                 head: [['No', 'Spare Part', 'Harga']],
-                body: order.spareParts.map((part, i) => [i + 1, part.name, formatIDR(part.sellingPrice)]),
+                body: currentSpareParts.map((part, i) => [i + 1, part.name, formatIDR(part.sellingPrice)]),
                 theme: 'grid'
             });
         }
@@ -3103,8 +3199,33 @@ const App: React.FC = () => {
   const handleCreateWorkOrder = (data: { customerId: string; description: string; totalCost: number; clientId?: string }) => {
     const customer = customers.find(c => c.id === data.customerId);
     if (!customer) return;
+
+    const generateWorkOrderId = (existingWorkOrders: WorkOrder[]): string => {
+        const now = new Date();
+        const year = now.getFullYear().toString().slice(-2);
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const prefix = `WO${year}${month}`;
+        
+        const currentMonthWorkOrders = existingWorkOrders.filter(wo => wo.id.startsWith(prefix));
+        
+        let maxSeq = 0;
+        currentMonthWorkOrders.forEach(wo => {
+            const seqStr = wo.id.substring(6);
+            if (seqStr) {
+                const seq = parseInt(seqStr, 10);
+                if (!isNaN(seq) && seq > maxSeq) {
+                    maxSeq = seq;
+                }
+            }
+        });
+        
+        const newSeqStr = (maxSeq + 1).toString().padStart(4, '0');
+        return `${prefix}${newSeqStr}`;
+    };
+    const newWorkOrderId = generateWorkOrderId(workOrders);
+
     const newWorkOrder: WorkOrder = {
-        id: `wo-${Date.now()}`,
+        id: newWorkOrderId,
         customer,
         description: data.description,
         totalCost: data.totalCost,
@@ -3149,7 +3270,7 @@ const App: React.FC = () => {
       const originalWorkOrder = workOrders.find(wo => wo.id === workOrderId);
       if (!originalWorkOrder) return;
 
-      const originalParts = originalWorkOrder.spareParts;
+      const originalParts = originalWorkOrder.spareParts || [];
       const addedParts = newParts.filter(p => !originalParts.some(op => op.id === p.id));
       const removedParts = originalParts.filter(op => !newParts.some(p => p.id === op.id));
 
@@ -3171,7 +3292,7 @@ const App: React.FC = () => {
       setWorkOrders(prev => prev.map(wo => {
           if (wo.id === workOrderId) {
               const partsCost = newParts.reduce((sum, part) => sum + part.sellingPrice, 0);
-              const baseCost = wo.totalCost - wo.spareParts.reduce((sum, part) => sum + part.sellingPrice, 0);
+              const baseCost = wo.totalCost - (wo.spareParts || []).reduce((sum, part) => sum + part.sellingPrice, 0);
               return { ...wo, spareParts: newParts, totalCost: baseCost + partsCost };
           }
           return wo;
@@ -3246,7 +3367,7 @@ const App: React.FC = () => {
     
     const newNotification: Notification = {
         id: `notif-${Date.now()}`,
-        message: `${formatUserName(currentUser?.name)} confirmed payment of ${formatIDR(updatedInvoice.amount)} for WO-${workOrderId.substring(0,4)} via ${paymentMethod}.`,
+        message: `${formatUserName(currentUser?.name)} confirmed payment of ${formatIDR(updatedInvoice.amount)} for ${workOrderId} via ${paymentMethod}.`,
         timestamp: new Date().toISOString(),
         read: false,
         link: '/finance',
@@ -3327,14 +3448,15 @@ const App: React.FC = () => {
     doc.text("Bill To:", 14, 72);
     doc.text(customer.name, 14, 79);
     doc.text(customer.address, 14, 86);
-
-    const partsDescription = workOrder.spareParts.map(p => `${p.name} (${formatIDR(p.sellingPrice)})`).join('\n');
+    
+    const currentSpareParts = workOrder.spareParts || [];
+    const serviceFee = workOrder.totalCost - currentSpareParts.reduce((sum, p) => sum + p.sellingPrice, 0);
     const tableBody = [
-        ['Jasa Perbaikan', workOrder.description, formatIDR(workOrder.totalCost - workOrder.spareParts.reduce((sum, p) => sum + p.sellingPrice, 0))]
+        ['Jasa Perbaikan', workOrder.description, formatIDR(serviceFee)]
     ];
-    workOrder.spareParts.forEach(p => {
+    currentSpareParts.forEach(p => {
         tableBody.push(['Spare Part', p.name, formatIDR(p.sellingPrice)])
-    })
+    });
 
 
     autoTable(doc, {
@@ -3342,14 +3464,55 @@ const App: React.FC = () => {
         head: [['Item', 'Description', 'Amount']],
         body: tableBody,
         theme: 'striped',
-        foot: [['', 'Total', formatIDR(invoice.amount)]],
-        showFoot: 'lastPage'
     });
     
-    const finalY = (doc as any).lastAutoTable.finalY;
+    let finalY = (doc as any).lastAutoTable.finalY;
+    let summaryY = finalY + 10;
+    
+    const subtotal = workOrder.totalCost;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Subtotal:', 150, summaryY, { align: 'right' });
+    doc.text(formatIDR(subtotal), 196, summaryY, { align: 'right' });
+    summaryY += 7;
+
+    if (invoice.discount) {
+        doc.text('Discount:', 150, summaryY, { align: 'right' });
+        doc.text(`- ${formatIDR(invoice.discount)}`, 196, summaryY, { align: 'right' });
+        summaryY += 7;
+    }
+
+    if (invoice.tax) {
+        doc.text('Tax:', 150, summaryY, { align: 'right' });
+        doc.text(`+ ${formatIDR(invoice.tax)}`, 196, summaryY, { align: 'right' });
+        summaryY += 7;
+    }
+    
+    doc.setLineWidth(0.2);
+    doc.line(145, summaryY - 2, 196, summaryY - 2);
+
     doc.setFontSize(12);
-    doc.text(`Status: ${invoice.status}`, 14, finalY + 20);
-    doc.text("Thank you for your business!", 105, finalY + 40, { align: 'center'});
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total:', 150, summaryY + 2, { align: 'right' });
+    doc.text(formatIDR(invoice.amount), 196, summaryY + 2, { align: 'right' });
+    summaryY += 15;
+    
+    if (invoice.notes) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'italic');
+        const splitNotes = doc.splitTextToSize(invoice.notes, 182);
+        if (splitNotes && splitNotes.length > 0) {
+            doc.text('Notes:', 14, summaryY);
+            doc.text(splitNotes, 14, summaryY + 5);
+            summaryY += (splitNotes.length * 5) + 5;
+        }
+    }
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Status: ${invoice.status}`, 14, summaryY);
+    doc.text("Thank you for your business!", 105, summaryY + 20, { align: 'center'});
 
     doc.save(`Invoice-${invoice.id}.pdf`);
   };
@@ -3416,7 +3579,7 @@ const App: React.FC = () => {
     const newTransaction: Transaction = {
       id: `reimburse-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
-      description: `Reimbursement for WO-${workOrderId.substring(0,4)}: ${description}`,
+      description: `Reimbursement for ${workOrderId}: ${description}`,
       type: 'expense',
       amount,
       category: TransactionCategory.REIMBURSEMENT,
@@ -3561,179 +3724,64 @@ const App: React.FC = () => {
                 </button>
                  <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className={`flex items-center w-full space-x-3 px-4 py-2 mt-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? 'Expand' : 'Collapse'}>
                     {isSidebarCollapsed ? <ChevronsRightIcon className="h-5 w-5" /> : <ChevronsLeftIcon className="h-5 w-5" />}
-                    {!isSidebarCollapsed && <span className="font-medium">Collapse</span>}
+                    {!isSidebarCollapsed && <span className="font-medium">Collapse Menu</span>}
                 </button>
             </div>
         </div>
     );
-  };
+  }
   
-  const appDataForChatbot = {
-    customers,
-    workOrders,
-    spareParts,
-    invoices,
-    technicians,
-  };
-
-
-  const MainLayout: React.FC = () => (
-     <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <main className="flex-1 p-8 overflow-y-auto">
-             <Routes>
-                <Route path="/" element={currentUser.role === UserRole.TECHNICIAN ? <Navigate to="/work-orders" /> : <Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} />} />
-                <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: null })} onEditCustomer={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} onAddClient={() => setModalState({ type: 'ADD_EDIT_CLIENT', data: null })} onEditClient={(c) => setModalState({ type: 'ADD_EDIT_CLIENT', data: c })} />} />
-                <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={(c) => setModalState({ type: 'ADD_EDIT_CUSTOMER', data: c })} onAddContract={(customerId) => setModalState({ type: 'ADD_EDIT_CONTRACT', data: { customerId }})} onEditContract={(c) => setModalState({ type: 'ADD_EDIT_CONTRACT', data: { contract: c, customerId: c.customerId }})} onCreateWorkOrder={(customerId) => setModalState({ type: 'CREATE_WORK_ORDER', data: { customerId }})} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
-                <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} invoices={invoices} users={users} transactions={transactions} companyProfile={companyProfile} clients={clients} onAddPart={(wo) => setModalState({ type: 'ADD_SPARE_PART', data: wo})} onCreate={() => setModalState({ type: 'CREATE_WORK_ORDER', data: null })} onAssign={(wo) => setModalState({ type: 'ASSIGN_TECHNICIAN', data: wo })} onClaim={handleClaimJob} onComplete={handleCompleteWorkOrder} onMarkAsPaid={(wo) => setModalState({ type: 'MARK_AS_PAID', data: wo })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'REQUEST_REIMBURSEMENT', data: wo })} />} />
-                <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'ADD_EDIT_SPARE_PART', data: null })} onEditPart={(sp) => setModalState({ type: 'ADD_EDIT_SPARE_PART', data: sp })} onAddSupplier={() => setModalState({ type: 'ADD_EDIT_SUPPLIER', data: null })} onEditSupplier={(s) => setModalState({ type: 'ADD_EDIT_SUPPLIER', data: s })} />} />
-                <Route path="/finance" element={<Finance 
-                    invoices={invoices} 
-                    customers={customers} 
-                    transactions={sortedTransactions}
-                    totalIncome={totalIncome}
-                    totalExpense={totalExpense}
-                    labaRugi={labaRugi}
-                    assets={assets}
-                    liabilities={liabilities}
-                    equity={equity}
-                    onAddInvoice={() => setModalState({ type: 'ADD_EDIT_INVOICE', data: null })} 
-                    onEditInvoice={(inv) => setModalState({ type: 'ADD_EDIT_INVOICE', data: inv })}
-                    onPrintInvoice={handlePrintInvoice}
-                    onAddTransaction={() => setModalState({ type: 'ADD_EDIT_TRANSACTION', data: null })}
-                    onEditTransaction={(rec) => setModalState({ type: 'ADD_EDIT_TRANSACTION', data: rec })}
-                    onGenerateReport={handleGenerateFinancialReport}
-                    currentUser={currentUser}
-                    onApproveReimbursement={handleApproveReimbursement}
-                    onViewAttachment={(attachment) => setModalState({ type: 'VIEW_ATTACHMENT', data: attachment })}
-                />} />
-                <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'EDIT_EMPLOYEE', data: user })} onStatusChange={handleTechnicianStatusChange} />} />
-                <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} />} />
-                <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} />} />
-                <Route path="/reimbursements" element={currentUser.role === UserRole.ADMINISTRATOR ? <ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(attachment) => setModalState({ type: 'VIEW_ATTACHMENT', data: attachment })} /> : <Navigate to="/" />} />
-                <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(attachment) => setModalState({ type: 'VIEW_ATTACHMENT', data: attachment })} />} />
-                <Route path="/settings" element={<Settings customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile}/>} />
-                <Route path="*" element={<Navigate to="/" />} />
-             </Routes>
-        </main>
-    </div>
-  );
-
   return (
-    <>
-      <HashRouter>
-          <MainLayout/>
-      </HashRouter>
-      
-      <AddEditCustomerModal
-        isOpen={modalState.type === 'ADD_EDIT_CUSTOMER'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleSaveCustomer}
-        customer={modalState.data}
-      />
-      
-      <AddEditClientModal
-        isOpen={modalState.type === 'ADD_EDIT_CLIENT'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleSaveClient}
-        client={modalState.data}
-      />
-
-      <CreateWorkOrderModal
-        isOpen={modalState.type === 'CREATE_WORK_ORDER'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleCreateWorkOrder}
-        customers={customers}
-        clients={clients}
-        preselectedCustomerId={modalState.data?.customerId}
-      />
-
-      {modalState.type === 'ASSIGN_TECHNICIAN' && (
-          <AssignTechnicianModal 
-              workOrder={modalState.data}
-              technicians={technicians}
-              onClose={() => setModalState({ type: null, data: null })}
-              onSave={handleAssignTechnician}
-          />
-      )}
-      
-      {modalState.type === 'ADD_SPARE_PART' && (
-          <AddSparePartModal 
-              workOrder={modalState.data}
-              onClose={() => setModalState({ type: null, data: null })}
-              onSave={handleUpdateWorkOrderParts}
-              availableParts={spareParts}
-          />
-      )}
-
-      <AddEditInvoiceModal
-        isOpen={modalState.type === 'ADD_EDIT_INVOICE'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleSaveInvoice}
-        invoice={modalState.data}
-        workOrders={workOrders}
-      />
-
-      <AddEditSparePartModal
-        isOpen={modalState.type === 'ADD_EDIT_SPARE_PART'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleSaveSparePart}
-        part={modalState.data}
-        suppliers={suppliers}
-      />
-      
-      <AddEditSupplierModal
-        isOpen={modalState.type === 'ADD_EDIT_SUPPLIER'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleSaveSupplier}
-        supplier={modalState.data}
-      />
-
-      <AddEditTransactionModal
-        isOpen={modalState.type === 'ADD_EDIT_TRANSACTION'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleSaveTransaction}
-        transaction={modalState.data}
-      />
-      
-       <AddEditContractModal
-        isOpen={modalState.type === 'ADD_EDIT_CONTRACT'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onSave={handleSaveContract}
-        contract={modalState.data?.contract}
-        customerId={modalState.data?.customerId}
-      />
-
-      <AddEditEmployeeModal 
-          isOpen={modalState.type === 'EDIT_EMPLOYEE'}
-          onClose={() => setModalState({ type: null, data: null })}
-          onSave={handleSaveEmployee}
-          user={modalState.data}
-      />
-
-      <MarkAsPaidModal
-        isOpen={modalState.type === 'MARK_AS_PAID'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onConfirm={handleMarkAsPaid}
-        workOrder={modalState.data}
-      />
-      
-      <ReimbursementModal
-        isOpen={modalState.type === 'REQUEST_REIMBURSEMENT'}
-        onClose={() => setModalState({ type: null, data: null })}
-        onConfirm={handleRequestReimbursement}
-        workOrder={modalState.data}
-      />
-      
-      <AttachmentViewerModal
-        isOpen={modalState.type === 'VIEW_ATTACHMENT'}
-        onClose={() => setModalState({ type: null, data: null })}
-        attachment={modalState.data}
-      />
-
-      {currentUser && <Chatbot currentUser={currentUser} appData={appDataForChatbot} />}
-    </>
+    <HashRouter>
+        <div className="flex h-screen bg-gray-50">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto p-8">
+                <Routes>
+                    <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} />} />
+                    <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} />} />
+                    <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddContract={(customerId) => setModalState({ type: 'add_contract', data: { customerId } })} onEditContract={(c) => setModalState({type: 'edit_contract', data: c})} onCreateWorkOrder={(customerId) => setModalState({ type: 'create_work_order_from_detail', data: { customerId } })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
+                    <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} invoices={invoices} users={users} transactions={transactions} companyProfile={companyProfile} clients={clients} onCreate={() => setModalState({ type: 'create_work_order', data: null })} onAssign={(wo) => setModalState({ type: 'assign_technician', data: wo })} onClaim={handleClaimJob} onAddPart={(wo) => setModalState({ type: 'add_part_to_wo', data: wo })} onComplete={handleCompleteWorkOrder} onMarkAsPaid={(wo) => setModalState({ type: 'mark_as_paid', data: wo })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} />} />
+                    <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} />} />
+                    <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} />} />
+                    <Route path="/reimbursements" element={<ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} />} />
+                    <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} />} />
+                    <Route path="/finance" element={<Finance invoices={invoices} customers={customers} transactions={sortedTransactions} totalIncome={totalIncome} totalExpense={totalExpense} labaRugi={labaRugi} assets={assets} liabilities={liabilities} equity={equity} onAddInvoice={() => setModalState({ type: 'add_invoice', data: null })} onEditInvoice={(i) => setModalState({ type: 'edit_invoice', data: i })} onPrintInvoice={handlePrintInvoice} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} onEditTransaction={(r) => setModalState({ type: 'edit_transaction', data: r })} onGenerateReport={handleGenerateFinancialReport} currentUser={currentUser} onApproveReimbursement={handleApproveReimbursement} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} />} />
+                    <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} onStatusChange={handleTechnicianStatusChange} />} />
+                    <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} />} />
+                    <Route path="/settings" element={<Settings customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </main>
+            
+            {/* --- MODALS --- */}
+            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} />}
+            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} />}
+            {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} />}
+            {modalState.type === 'edit_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={modalState.data} />}
+            {modalState.type === 'create_work_order' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} />}
+            {modalState.type === 'create_work_order_from_detail' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} preselectedCustomerId={modalState.data.customerId} />}
+            {modalState.type === 'assign_technician' && <AssignTechnicianModal workOrder={modalState.data} technicians={technicians} onClose={() => setModalState({ type: null, data: null })} onSave={handleAssignTechnician} />}
+            {modalState.type === 'add_part_to_wo' && <AddSparePartModal workOrder={modalState.data} onClose={() => setModalState({ type: null, data: null })} onSave={handleUpdateWorkOrderParts} availableParts={spareParts} />}
+            {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} />}
+            {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} />}
+            {modalState.type === 'add_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={null} />}
+            {modalState.type === 'edit_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={modalState.data} />}
+            {modalState.type === 'add_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={null} workOrders={workOrders} />}
+            {modalState.type === 'edit_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={modalState.data} workOrders={workOrders} />}
+            {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} />}
+            {modalState.type === 'edit_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={modalState.data} />}
+            {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={modalState.data} />}
+            {modalState.type === 'add_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveContract} contract={null} customerId={modalState.data.customerId} />}
+            {modalState.type === 'edit_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveContract} contract={modalState.data} customerId={modalState.data.customerId} />}
+            {modalState.type === 'mark_as_paid' && <MarkAsPaidModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleMarkAsPaid} workOrder={modalState.data} />}
+            {modalState.type === 'request_reimbursement' && <ReimbursementModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleRequestReimbursement} workOrder={modalState.data} />}
+            {modalState.type === 'view_attachment' && <AttachmentViewerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} attachment={modalState.data} />}
+            
+            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, technicians }} />
+        </div>
+    </HashRouter>
   );
 };
 
+// FIX: Export the App component to be available for import in index.tsx.
 export default App;

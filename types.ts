@@ -95,6 +95,9 @@ export interface Invoice {
   issuedDate: string;
   paidDate?: string;
   status: 'Paid' | 'Unpaid';
+  discount?: number;
+  tax?: number;
+  notes?: string;
 }
 
 export enum TransactionCategory {
