@@ -7,6 +7,147 @@ import { generateAiSummary, getChatbotResponse } from './services/geminiService'
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// --- I18N Translations ---
+const translations = {
+  en: {
+    sidebar: {
+      dashboard: 'Dashboard', customers: 'Customers', workOrders: 'Work Orders', notifications: 'Notifications',
+      myReimbursements: 'My Reimbursements', reimbursement: 'Reimbursement', spareParts: 'Spare Parts',
+      finance: 'Finance', employees: 'Employees', settings: 'Settings', logout: 'Logout',
+      collapseMenu: 'Collapse Menu', expandMenu: 'Expand Menu'
+    },
+    dashboard: {
+      welcome: 'Welcome back, {name}!', summary: 'Here\'s a summary of your business activities today.',
+      totalCustomers: 'Total Customers', pendingWorkOrders: 'Pending Work Orders', technicianStatus: 'Technician Status',
+      monthlyRevenue: 'Monthly Revenue', workOrderStatus: 'Work Order Status', completedByTechnician: 'Completed Work Orders by Technician',
+      aiSummaryTitle: 'AI-Powered Business Summary', generateSummary: 'Generate Summary', generating: 'Generating...',
+      aiPrompt: 'Click "Generate Summary" to get AI-powered insights for your business.', generatingInsights: 'Generating insights...'
+    },
+    common: {
+      actions: 'Actions', edit: 'Edit', cancel: 'Cancel', save: 'Save', add: 'Add', create: 'Create', print: 'Print',
+      name: 'Name', email: 'Email', phone: 'Phone', address: 'Address', description: 'Description', status: 'Status',
+      total: 'Total', date: 'Date', category: 'Category', amount: 'Amount', paymentMethod: 'Payment Method',
+      attachment: 'Attachment', notes: 'Notes', search: 'Search', back: 'Back', close: 'Close', download: 'Download',
+      approve: 'Approve', view: 'View', submit: 'Submit', optional: 'Optional', required: 'Required',
+    },
+    status: {
+      [WorkOrderStatus.PENDING]: 'Pending', [WorkOrderStatus.IN_PROGRESS]: 'In Progress', [WorkOrderStatus.COMPLETED]: 'Completed',
+      [WorkOrderStatus.CANCELLED]: 'Cancelled', 'Paid': 'Paid', 'Unpaid': 'Unpaid',
+      [TechnicianStatus.AVAILABLE]: 'Available', [TechnicianStatus.ON_JOB]: 'On Job', [TechnicianStatus.ON_BREAK]: 'On Break',
+      [TechnicianStatus.OFFLINE]: 'Offline', [ContractStatus.ACTIVE]: 'Active', [ContractStatus.EXPIRED]: 'Expired',
+      'Pending Approval': 'Pending Approval', 'Approved': 'Approved',
+    },
+    modals: {
+        addCustomerTitle: 'Add New Customer', editCustomerTitle: 'Edit Customer',
+        addClientTitle: 'Add New Client', editClientTitle: 'Edit Client',
+        createWorkOrderTitle: 'Create New Work Order',
+        assignTechnicianTitle: 'Assign Technician to {id}',
+        addPartsTitle: 'Add Parts to {id}',
+        addInvoiceTitle: 'Add New Invoice', editInvoiceTitle: 'Edit Invoice',
+        addSparePartTitle: 'Add New Spare Part', editSparePartTitle: 'Edit Spare Part',
+        addSupplierTitle: 'Add New Supplier', editSupplierTitle: 'Edit Supplier',
+        addTransactionTitle: 'Add New Transaction', editTransactionTitle: 'Edit Transaction',
+        editEmployeeTitle: 'Edit Employee: {name}',
+        addContractTitle: 'Add New Service Contract', editContractTitle: 'Edit Service Contract',
+        confirmPaymentTitle: 'Confirm Payment for {id}',
+        requestReimbursementTitle: 'Request Reimbursement for {id}',
+        attachmentViewerTitle: 'Attachment: {name}',
+    },
+    pages: {
+        notifications: { title: 'Notifications', markAllRead: 'Mark all as read', empty: 'You have no notifications.' },
+        reimbursement: { title: 'Reimbursement Requests', requestedBy: 'Requested By', empty: 'No reimbursement requests found.' },
+        myReimbursements: { title: 'My Reimbursement History', workOrderId: 'Work Order ID', empty: 'You have not requested any reimbursements.'},
+        customers: { title: 'Customers & Clients', customerList: 'Customer List', clientList: 'Client List', clientsTab: 'Clients', customersTab: 'Customers' },
+        customerDetail: { back: 'Back to all customers', details: 'Customer Details', contracts: 'Service Contracts', history: 'Service History', noContracts: 'No contracts found.', noHistory: 'No service history found.' },
+        workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Work Orders', myAssigned: 'My Assigned Work Orders', available: 'Available Work Orders', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job' },
+        spareParts: { title: 'Spare Part Management', inventory: 'Spare Part Inventory', suppliers: 'Suppliers', partName: 'Part Name', stock: 'Stock', location: 'Location' },
+        finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)' },
+        employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact' },
+        technicianProfile: { title: 'Technician Profile', back: 'Back to all employees', personalInfo: 'Personal Information', recentActivity: 'Recent Activity' },
+        settings: { title: 'Settings & Data', companyProfile: 'Company Profile (KOP Surat)', dataBackup: 'Data Backup & Restore', exportData: 'Export Data', exportDesc: 'Download a copy of your application data.', restoreData: 'Restore Data', restoreDesc: 'Upload a JSON backup file to restore data.', language: 'Language / Bahasa' }
+    },
+    login: {
+      title: 'ServisPro CRM',
+      subtitle: 'Please select a role to sign in',
+      noAccount: 'Don\'t have an account?',
+      signUp: 'Sign Up',
+      haveAccount: 'Already have an account?',
+      logIn: 'Log In',
+      createAccount: 'Create Account',
+      joinTeam: 'Join the ServisPro team'
+    }
+  },
+  id: {
+    sidebar: {
+      dashboard: 'Dasbor', customers: 'Pelanggan', workOrders: 'Perintah Kerja', notifications: 'Notifikasi',
+      myReimbursements: 'Reimbursement Saya', reimbursement: 'Reimbursement', spareParts: 'Suku Cadang',
+      finance: 'Keuangan', employees: 'Karyawan', settings: 'Pengaturan', logout: 'Keluar',
+      collapseMenu: 'Ciutkan Menu', expandMenu: 'Perluas Menu'
+    },
+    dashboard: {
+      welcome: 'Selamat datang, {name}!', summary: 'Berikut ringkasan aktivitas bisnis Anda hari ini.',
+      totalCustomers: 'Total Pelanggan', pendingWorkOrders: 'SPK Tertunda', technicianStatus: 'Status Teknisi',
+      monthlyRevenue: 'Pendapatan Bulanan', workOrderStatus: 'Status Perintah Kerja', completedByTechnician: 'SPK Selesai per Teknisi',
+      aiSummaryTitle: 'Ringkasan Bisnis Berbasis AI', generateSummary: 'Buat Ringkasan', generating: 'Membuat...',
+      aiPrompt: 'Klik "Buat Ringkasan" untuk mendapat wawasan bisnis berbasis AI.', generatingInsights: 'Membuat wawasan...'
+    },
+    common: {
+      actions: 'Aksi', edit: 'Ubah', cancel: 'Batal', save: 'Simpan', add: 'Tambah', create: 'Buat', print: 'Cetak',
+      name: 'Nama', email: 'Email', phone: 'Telepon', address: 'Alamat', description: 'Deskripsi', status: 'Status',
+      total: 'Total', date: 'Tanggal', category: 'Kategori', amount: 'Jumlah', paymentMethod: 'Metode Pembayaran',
+      attachment: 'Lampiran', notes: 'Catatan', search: 'Cari', back: 'Kembali', close: 'Tutup', download: 'Unduh',
+      approve: 'Setujui', view: 'Lihat', submit: 'Kirim', optional: 'Opsional', required: 'Wajib',
+    },
+    status: {
+      [WorkOrderStatus.PENDING]: 'Tertunda', [WorkOrderStatus.IN_PROGRESS]: 'Sedang Dikerjakan', [WorkOrderStatus.COMPLETED]: 'Selesai',
+      [WorkOrderStatus.CANCELLED]: 'Dibatalkan', 'Paid': 'Lunas', 'Unpaid': 'Belum Lunas',
+      [TechnicianStatus.AVAILABLE]: 'Tersedia', [TechnicianStatus.ON_JOB]: 'Bertugas', [TechnicianStatus.ON_BREAK]: 'Istirahat',
+      [TechnicianStatus.OFFLINE]: 'Offline', [ContractStatus.ACTIVE]: 'Aktif', [ContractStatus.EXPIRED]: 'Kadaluarsa',
+      'Pending Approval': 'Menunggu Persetujuan', 'Approved': 'Disetujui',
+    },
+    modals: {
+        addCustomerTitle: 'Tambah Pelanggan Baru', editCustomerTitle: 'Ubah Pelanggan',
+        addClientTitle: 'Tambah Klien Baru', editClientTitle: 'Ubah Klien',
+        createWorkOrderTitle: 'Buat Perintah Kerja Baru',
+        assignTechnicianTitle: 'Tugaskan Teknisi ke {id}',
+        addPartsTitle: 'Tambah Suku Cadang ke {id}',
+        addInvoiceTitle: 'Tambah Faktur Baru', editInvoiceTitle: 'Ubah Faktur',
+        addSparePartTitle: 'Tambah Suku Cadang Baru', editSparePartTitle: 'Ubah Suku Cadang',
+        addSupplierTitle: 'Tambah Pemasok Baru', editSupplierTitle: 'Ubah Pemasok',
+        addTransactionTitle: 'Tambah Transaksi Baru', editTransactionTitle: 'Ubah Transaksi',
+        editEmployeeTitle: 'Ubah Karyawan: {name}',
+        addContractTitle: 'Tambah Kontrak Servis Baru', editContractTitle: 'Ubah Kontrak Servis',
+        confirmPaymentTitle: 'Konfirmasi Pembayaran untuk {id}',
+        requestReimbursementTitle: 'Ajukan Reimbursement untuk {id}',
+        attachmentViewerTitle: 'Lampiran: {name}',
+    },
+    pages: {
+        notifications: { title: 'Notifikasi', markAllRead: 'Tandai semua dibaca', empty: 'Anda tidak memiliki notifikasi.' },
+        reimbursement: { title: 'Permintaan Reimbursement', requestedBy: 'Diajukan Oleh', empty: 'Tidak ada permintaan reimbursement.' },
+        myReimbursements: { title: 'Riwayat Reimbursement Saya', workOrderId: 'ID Perintah Kerja', empty: 'Anda belum mengajukan reimbursement.' },
+        customers: { title: 'Pelanggan & Klien', customerList: 'Daftar Pelanggan', clientList: 'Daftar Klien', clientsTab: 'Klien', customersTab: 'Pelanggan' },
+        customerDetail: { back: 'Kembali ke semua pelanggan', details: 'Detail Pelanggan', contracts: 'Kontrak Servis', history: 'Riwayat Servis', noContracts: 'Tidak ada kontrak.', noHistory: 'Tidak ada riwayat servis.' },
+        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua Perintah Kerja', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan' },
+        spareParts: { title: 'Manajemen Suku Cadang', inventory: 'Inventaris Suku Cadang', suppliers: 'Pemasok', partName: 'Nama Part', stock: 'Stok', location: 'Lokasi' },
+        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', allTransactions: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan' },
+        employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak' },
+        technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini' },
+        settings: { title: 'Pengaturan & Data', companyProfile: 'Profil Perusahaan (KOP Surat)', dataBackup: 'Cadangkan & Pulihkan Data', exportData: 'Ekspor Data', exportDesc: 'Unduh salinan data aplikasi Anda.', restoreData: 'Pulihkan Data', restoreDesc: 'Unggah file cadangan JSON untuk memulihkan data.', language: 'Language / Bahasa' }
+    },
+    login: {
+      title: 'ServisPro CRM',
+      subtitle: 'Silakan pilih peran untuk masuk',
+      noAccount: 'Belum punya akun?',
+      signUp: 'Daftar',
+      haveAccount: 'Sudah punya akun?',
+      logIn: 'Masuk',
+      createAccount: 'Buat Akun',
+      joinTeam: 'Bergabung dengan tim ServisPro'
+    }
+  }
+};
+
+
 // --- INITIAL MOCK DATA ---
 const INITIAL_USERS: User[] = [
   { id: 'user-1', name: 'Alice (Administrator)', role: UserRole.ADMINISTRATOR, password: 'password123', age: 35, gender: 'Female', skills: ['Management', 'Finance', 'System Administration'] },
@@ -87,36 +228,16 @@ const formatUserName = (name?: string | null): string => {
     return name.split(' (')[0];
 };
 
-const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid') => {
+const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid' | 'Pending Approval' | 'Approved' | ContractStatus | TechnicianStatus) => {
   switch (status) {
-    case WorkOrderStatus.PENDING: return 'bg-yellow-100 text-yellow-800';
-    case WorkOrderStatus.IN_PROGRESS: return 'bg-blue-100 text-blue-800';
-    case WorkOrderStatus.COMPLETED: return 'bg-green-100 text-green-800';
-    case WorkOrderStatus.CANCELLED: return 'bg-red-100 text-red-800';
-    case 'Paid': return 'bg-green-100 text-green-800';
-    case 'Unpaid': return 'bg-yellow-100 text-yellow-800';
+    case WorkOrderStatus.PENDING: case 'Unpaid': case 'Pending Approval': case ContractStatus.EXPIRED: case TechnicianStatus.ON_BREAK: return 'bg-yellow-100 text-yellow-800';
+    case WorkOrderStatus.IN_PROGRESS: case TechnicianStatus.ON_JOB: return 'bg-blue-100 text-blue-800';
+    case WorkOrderStatus.COMPLETED: case 'Paid': case 'Approved': case ContractStatus.ACTIVE: case TechnicianStatus.AVAILABLE: return 'bg-green-100 text-green-800';
+    case WorkOrderStatus.CANCELLED: case ContractStatus.CANCELLED: return 'bg-red-100 text-red-800';
+    case TechnicianStatus.OFFLINE: return 'bg-gray-100 text-gray-600';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
-
-const getContractStatusColor = (status: ContractStatus) => {
-    switch(status) {
-        case ContractStatus.ACTIVE: return 'bg-green-100 text-green-800';
-        case ContractStatus.EXPIRED: return 'bg-yellow-100 text-yellow-800';
-        case ContractStatus.CANCELLED: return 'bg-red-100 text-red-800';
-        default: return 'bg-gray-100 text-gray-800';
-    }
-}
-
-const getTechnicianStatusColor = (status?: TechnicianStatus) => {
-    switch(status) {
-        case TechnicianStatus.AVAILABLE: return 'bg-green-100 text-green-800';
-        case TechnicianStatus.ON_JOB: return 'bg-blue-100 text-blue-800';
-        case TechnicianStatus.ON_BREAK: return 'bg-yellow-100 text-yellow-800';
-        case TechnicianStatus.OFFLINE: return 'bg-gray-100 text-gray-600';
-        default: return 'bg-gray-100 text-gray-800';
-    }
-}
 
 const timeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -174,9 +295,8 @@ const generatePdfHeader = (doc: jsPDF, profile: CompanyProfile) => {
 interface CardProps {
   title: string;
   value: string;
-  // FIX: Changed icon prop type to be more specific for React.cloneElement to fix a TypeScript error.
   icon: React.ReactElement<{ className?: string }>;
-  color: 'blue' | 'yellow' | 'green' | 'indigo';
+  color: 'blue' | 'yellow' | 'green' | 'indigo' | 'red';
 }
 const StatCard: React.FC<CardProps> = ({ title, value, icon, color }) => {
     const colorClasses = {
@@ -184,6 +304,7 @@ const StatCard: React.FC<CardProps> = ({ title, value, icon, color }) => {
         yellow: { bg: 'bg-yellow-100', text: 'text-yellow-600' },
         green: { bg: 'bg-green-100', text: 'text-green-600' },
         indigo: { bg: 'bg-indigo-100', text: 'text-indigo-600' },
+        red: { bg: 'bg-red-100', text: 'text-red-600' },
     };
     const selectedColor = colorClasses[color] || colorClasses.blue;
 
@@ -224,12 +345,12 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
 
 
 // --- AUTHENTICATION SCREENS ---
-const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: () => void, users: User[] }> = ({ onLogin, onSwitchToSignUp, users }) => {
+const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: () => void, users: User[]; t: Function }> = ({ onLogin, onSwitchToSignUp, users, t }) => {
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
-        <h1 className="text-3xl font-bold text-primary-700 mb-2">ServisPro CRM</h1>
-        <p className="text-gray-600 mb-8">Please select a role to sign in</p>
+        <h1 className="text-3xl font-bold text-primary-700 mb-2">{t('login.title')}</h1>
+        <p className="text-gray-600 mb-8">{t('login.subtitle')}</p>
         <div className="space-y-4">
           {users.map(user => (
             <button key={user.id} onClick={() => onLogin(user)} className="w-full text-left p-4 bg-gray-50 hover:bg-primary-100 border border-gray-200 rounded-lg transition-colors">
@@ -239,15 +360,15 @@ const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: (
           ))}
         </div>
         <div className="mt-6 text-sm">
-          <span className="text-gray-600">Don't have an account? </span>
-          <button onClick={onSwitchToSignUp} className="font-semibold text-primary-600 hover:underline">Sign Up</button>
+          <span className="text-gray-600">{t('login.noAccount')} </span>
+          <button onClick={onSwitchToSignUp} className="font-semibold text-primary-600 hover:underline">{t('login.signUp')}</button>
         </div>
       </div>
     </div>
   );
 };
 
-const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: () => void }> = ({ onSignUp, onSwitchToLogin }) => {
+const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: () => void; t: Function }> = ({ onSignUp, onSwitchToLogin, t }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
@@ -281,8 +402,8 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center">
             <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-                <h1 className="text-3xl font-bold text-primary-700 mb-2 text-center">Create Account</h1>
-                <p className="text-gray-600 mb-8 text-center">Join the ServisPro team</p>
+                <h1 className="text-3xl font-bold text-primary-700 mb-2 text-center">{t('login.createAccount')}</h1>
+                <p className="text-gray-600 mb-8 text-center">{t('login.joinTeam')}</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
@@ -335,12 +456,12 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
                         </select>
                     </div>
                     <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                        Sign Up
+                        {t('login.signUp')}
                     </button>
                 </form>
                  <div className="mt-6 text-sm text-center">
-                    <span className="text-gray-600">Already have an account? </span>
-                    <button onClick={onSwitchToLogin} className="font-semibold text-primary-600 hover:underline">Log In</button>
+                    <span className="text-gray-600">{t('login.haveAccount')} </span>
+                    <button onClick={onSwitchToLogin} className="font-semibold text-primary-600 hover:underline">{t('login.logIn')}</button>
                 </div>
             </div>
         </div>
@@ -353,7 +474,8 @@ const AddEditCustomerModal: React.FC<{
     onClose: () => void;
     onSave: (customer: Customer) => void;
     customer: Customer | null;
-}> = ({ isOpen, onClose, onSave, customer }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, customer, t }) => {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', category: 'Residential' as Customer['category'], tags: '' });
 
     useEffect(() => {
@@ -387,26 +509,26 @@ const AddEditCustomerModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={customer ? 'Edit Customer' : 'Add New Customer'}>
+        <Modal isOpen={isOpen} onClose={onClose} title={customer ? t('modals.editCustomerTitle') : t('modals.addCustomerTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.name')}</label>
                     <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.email')}</label>
                     <input type="email" name="email" value={formData.email} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.phone')}</label>
                     <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Address</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.address')}</label>
                     <input type="text" name="address" value={formData.address} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Category</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.category')}</label>
                      <select name="category" value={formData.category} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
                         <option>Residential</option>
                         <option>Commercial</option>
@@ -419,8 +541,8 @@ const AddEditCustomerModal: React.FC<{
                     <input type="text" name="tags" value={formData.tags} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Customer</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Customer</button>
                 </div>
             </form>
         </Modal>
@@ -432,7 +554,8 @@ const AddEditClientModal: React.FC<{
     onClose: () => void;
     onSave: (client: Client) => void;
     client: Client | null;
-}> = ({ isOpen, onClose, onSave, client }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, client, t }) => {
     const [name, setName] = useState('');
 
     useEffect(() => {
@@ -453,15 +576,15 @@ const AddEditClientModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={client ? 'Edit Client' : 'Add New Client'}>
+        <Modal isOpen={isOpen} onClose={onClose} title={client ? t('modals.editClientTitle') : t('modals.addClientTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Client Name</label>
                     <input type="text" name="name" value={name} onChange={e => setName(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Client</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Client</button>
                 </div>
             </form>
         </Modal>
@@ -475,7 +598,8 @@ const CreateWorkOrderModal: React.FC<{
     customers: Customer[];
     clients: Client[];
     preselectedCustomerId?: string;
-}> = ({ isOpen, onClose, onSave, customers, clients, preselectedCustomerId }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, customers, clients, preselectedCustomerId, t }) => {
     const [customerId, setCustomerId] = useState(preselectedCustomerId || '');
     const [description, setDescription] = useState('');
     const [totalCost, setTotalCost] = useState('');
@@ -497,23 +621,23 @@ const CreateWorkOrderModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Create New Work Order">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('modals.createWorkOrderTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Customer</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('sidebar.customers')}</label>
                     <select value={customerId} onChange={e => setCustomerId(e.target.value)} required disabled={!!preselectedCustomerId} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md disabled:bg-gray-100">
                         {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Client (Optional)</label>
+                    <label className="block text-sm font-medium text-gray-700">Client ({t('common.optional')})</label>
                     <select value={clientId} onChange={e => setClientId(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
                         <option value="">-- No Client --</option>
                         {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.description')}</label>
                     <input type="text" value={description} onChange={e => setDescription(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
@@ -521,8 +645,8 @@ const CreateWorkOrderModal: React.FC<{
                     <input type="number" value={totalCost} onChange={e => setTotalCost(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                  <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Create Order</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.create')} Order</button>
                 </div>
             </form>
         </Modal>
@@ -534,7 +658,8 @@ const AssignTechnicianModal: React.FC<{
     technicians: User[];
     onClose: () => void;
     onSave: (workOrderId: string, technicianId: string) => void;
-}> = ({ workOrder, technicians, onClose, onSave }) => {
+    t: Function;
+}> = ({ workOrder, technicians, onClose, onSave, t }) => {
     const [selectedTech, setSelectedTech] = useState(workOrder.technicianId || '');
 
      const handleSave = () => {
@@ -544,7 +669,7 @@ const AssignTechnicianModal: React.FC<{
     }
 
     return (
-        <Modal isOpen={true} onClose={onClose} title={`Assign Technician to ${workOrder.id}`}>
+        <Modal isOpen={true} onClose={onClose} title={t('modals.assignTechnicianTitle', {id: workOrder.id})}>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Select Technician</label>
                 <select value={selectedTech} onChange={e => setSelectedTech(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
@@ -553,7 +678,7 @@ const AssignTechnicianModal: React.FC<{
                 </select>
             </div>
             <div className="mt-6 flex justify-end space-x-2">
-                 <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+                 <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
                 <button onClick={handleSave} disabled={!selectedTech} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:bg-gray-300">Assign Technician</button>
             </div>
         </Modal>
@@ -565,7 +690,8 @@ const AddSparePartModal: React.FC<{
     onClose: () => void;
     onSave: (workOrderId: string, parts: SparePart[]) => void;
     availableParts: SparePart[];
-}> = ({ workOrder, onClose, onSave, availableParts }) => {
+    t: Function;
+}> = ({ workOrder, onClose, onSave, availableParts, t }) => {
     const [selectedParts, setSelectedParts] = useState<SparePart[]>(workOrder.spareParts);
 
     const handleTogglePart = (part: SparePart) => {
@@ -584,13 +710,13 @@ const AddSparePartModal: React.FC<{
     }
 
     return (
-        <Modal isOpen={true} onClose={onClose} title={`Add Parts to ${workOrder.id}`}>
+        <Modal isOpen={true} onClose={onClose} title={t('modals.addPartsTitle', {id: workOrder.id})}>
            <div className="space-y-2 max-h-60 overflow-y-auto">
                 {availableParts.map(part => (
                     <div key={part.id} className={`flex items-center justify-between p-2 border rounded-md ${part.stock === 0 ? 'bg-gray-100 opacity-60' : ''}`}>
                         <div>
                             <p className="font-semibold">{part.name}</p>
-                            <p className="text-sm text-gray-500">{formatIDR(part.sellingPrice)} - <span className={`font-bold ${part.stock <= 5 ? 'text-red-600' : 'text-gray-700'}`}>Stock: {part.stock}</span></p>
+                            <p className="text-sm text-gray-500">{formatIDR(part.sellingPrice)} - <span className={`font-bold ${part.stock <= 5 ? 'text-red-600' : 'text-gray-700'}`}>{t('pages.spareParts.stock')}: {part.stock}</span></p>
                         </div>
                         <input
                             type="checkbox"
@@ -603,7 +729,7 @@ const AddSparePartModal: React.FC<{
                 ))}
             </div>
             <div className="mt-4 flex justify-end">
-                <button onClick={handleSave} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">Save Changes</button>
+                <button onClick={handleSave} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.save')} Changes</button>
             </div>
         </Modal>
     );
@@ -615,7 +741,8 @@ const AddEditInvoiceModal: React.FC<{
     onSave: (invoice: Invoice) => void;
     invoice: Invoice | null;
     workOrders: WorkOrder[];
-}> = ({ isOpen, onClose, onSave, invoice, workOrders }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, invoice, workOrders, t }) => {
     const getInitialState = () => ({
         workOrderId: '',
         subtotal: 0,
@@ -694,7 +821,7 @@ const AddEditInvoiceModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={invoice ? 'Edit Invoice' : 'Add New Invoice'} size="lg">
+        <Modal isOpen={isOpen} onClose={onClose} title={invoice ? t('modals.editInvoiceTitle') : t('modals.addInvoiceTitle')} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Completed Work Order</label>
@@ -732,21 +859,21 @@ const AddEditInvoiceModal: React.FC<{
                 </div>
                 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Notes / Terms & Conditions</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.notes')} / Terms & Conditions</label>
                     <textarea name="notes" value={formData.notes} onChange={handleChange} rows={3} placeholder="e.g. Pembayaran via transfer Bank ABC 123456789 a.n. ServisPro" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.status')}</label>
                     <select name="status" value={formData.status} onChange={handleChange} required className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
-                        <option value="Unpaid">Unpaid</option>
-                        <option value="Paid">Paid</option>
+                        <option value="Unpaid">{t('status.Unpaid')}</option>
+                        <option value="Paid">{t('status.Paid')}</option>
                     </select>
                 </div>
 
                 <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Invoice</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Invoice</button>
                 </div>
             </form>
         </Modal>
@@ -760,7 +887,8 @@ const AddEditSparePartModal: React.FC<{
     part: SparePart | null;
     suppliers: Supplier[];
     allSpareParts: SparePart[];
-}> = ({ isOpen, onClose, onSave, part, suppliers, allSpareParts }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, part, suppliers, allSpareParts, t }) => {
     const [formData, setFormData] = useState({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '', unit: '', location: '', supplierId: '' });
 
     useEffect(() => {
@@ -836,20 +964,20 @@ const AddEditSparePartModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={part ? 'Edit Spare Part' : 'Add New Spare Part'} size="lg">
+        <Modal isOpen={isOpen} onClose={onClose} title={part ? t('modals.editSparePartTitle') : t('modals.addSparePartTitle')} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Kode Item</label>
                     <input type="text" name="itemCode" value={formData.itemCode} onChange={handleChange} required disabled={!part} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Part Name</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('pages.spareParts.partName')}</label>
                     <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Harga Beli (IDR)</label>
-                        <input type="number" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder="Optional" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                        <input type="number" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder={t('common.optional')} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Harga Jual (IDR)</label>
@@ -867,7 +995,7 @@ const AddEditSparePartModal: React.FC<{
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Location (e.g. Rack A1)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('pages.spareParts.location')} (e.g. Rack A1)</label>
                     <input type="text" name="location" value={formData.location} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                  <div>
@@ -878,8 +1006,8 @@ const AddEditSparePartModal: React.FC<{
                     </select>
                 </div>
                 <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Part</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Part</button>
                 </div>
             </form>
         </Modal>
@@ -891,7 +1019,8 @@ const AddEditSupplierModal: React.FC<{
     onClose: () => void;
     onSave: (supplier: Supplier) => void;
     supplier: Supplier | null;
-}> = ({ isOpen, onClose, onSave, supplier }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, supplier, t }) => {
     const [formData, setFormData] = useState({ name: '', contactPerson: '', phone: '', email: '' });
 
     useEffect(() => {
@@ -924,7 +1053,7 @@ const AddEditSupplierModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={supplier ? 'Edit Supplier' : 'Add New Supplier'}>
+        <Modal isOpen={isOpen} onClose={onClose} title={supplier ? t('modals.editSupplierTitle') : t('modals.addSupplierTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Supplier Name</label>
@@ -936,17 +1065,17 @@ const AddEditSupplierModal: React.FC<{
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Phone</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.phone')}</label>
                         <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.email')}</label>
                         <input type="email" name="email" value={formData.email} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                 </div>
                 <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Supplier</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Supplier</button>
                 </div>
             </form>
         </Modal>
@@ -958,7 +1087,8 @@ const AddEditTransactionModal: React.FC<{
     onClose: () => void;
     onSave: (record: Transaction) => void;
     transaction: Transaction | null;
-}> = ({ isOpen, onClose, onSave, transaction }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, transaction, t }) => {
     const getInitialState = () => ({
         type: 'expense' as 'income' | 'expense',
         description: '',
@@ -996,7 +1126,6 @@ const AddEditTransactionModal: React.FC<{
             const newType = value as 'income' | 'expense';
             setFormData({
                 ...formData,
-                // FIX: Use the correctly typed `newType` instead of the generic `string` `value`.
                 [name]: newType,
                 category: newType === 'income' ? TransactionCategory.OTHER_INCOME : TransactionCategory.OTHER_EXPENSE
             });
@@ -1040,7 +1169,7 @@ const AddEditTransactionModal: React.FC<{
     const expenseCategories = Object.values(TransactionCategory).filter(c => !c.includes('Pendapatan') && c !== TransactionCategory.REIMBURSEMENT);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={transaction ? 'Edit Transaction' : 'Add New Transaction'}>
+        <Modal isOpen={isOpen} onClose={onClose} title={transaction ? t('modals.editTransactionTitle') : t('modals.addTransactionTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Type</label>
@@ -1050,22 +1179,22 @@ const AddEditTransactionModal: React.FC<{
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.description')}</label>
                     <input type="text" name="description" value={formData.description} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Amount (IDR)</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.amount')} (IDR)</label>
                         <input type="number" name="amount" value={formData.amount} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Date</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.date')}</label>
                         <input type="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Category</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.category')}</label>
                         <select name="category" value={formData.category} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
                             {(formData.type === 'income' ? incomeCategories : expenseCategories).map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
@@ -1073,7 +1202,7 @@ const AddEditTransactionModal: React.FC<{
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.paymentMethod')}</label>
                         <select name="paymentMethod" value={formData.paymentMethod} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
                             {Object.values(PaymentMethod).map(method => (
                                 <option key={method} value={method}>{method}</option>
@@ -1082,7 +1211,7 @@ const AddEditTransactionModal: React.FC<{
                     </div>
                 </div>
                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Attachment (Nota/Receipt)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.attachment')} (Nota/Receipt)</label>
                     <input type="file" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" />
                     {attachment && (
                         <div className="mt-2 flex items-center justify-between bg-gray-100 p-2 rounded-md">
@@ -1097,8 +1226,8 @@ const AddEditTransactionModal: React.FC<{
                     )}
                 </div>
                 <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Transaction</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Transaction</button>
                 </div>
             </form>
         </Modal>
@@ -1110,7 +1239,8 @@ const AddEditEmployeeModal: React.FC<{
     onClose: () => void;
     onSave: (user: User) => void;
     user: User | null;
-}> = ({ isOpen, onClose, onSave, user }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, user, t }) => {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', age: '', gender: 'Male' as 'Male' | 'Female' | 'Other', skills: '', role: UserRole.TECHNICIAN });
 
     useEffect(() => {
@@ -1148,19 +1278,19 @@ const AddEditEmployeeModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Edit Employee: ${formatUserName(user?.name)}`}>
+        <Modal isOpen={isOpen} onClose={onClose} title={t('modals.editEmployeeTitle', {name: formatUserName(user?.name)})}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.name')}</label>
                     <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Email</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.email')}</label>
                         <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Phone</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.phone')}</label>
                         <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                 </div>
@@ -1191,8 +1321,8 @@ const AddEditEmployeeModal: React.FC<{
                     </select>
                 </div>
                 <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Changes</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Changes</button>
                 </div>
             </form>
         </Modal>
@@ -1205,7 +1335,8 @@ const AddEditContractModal: React.FC<{
     onSave: (contract: ServiceContract) => void;
     contract: ServiceContract | null;
     customerId: string | null;
-}> = ({ isOpen, onClose, onSave, contract, customerId }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onSave, contract, customerId, t }) => {
     const getInitialState = () => ({
         title: '',
         startDate: new Date().toISOString().split('T')[0],
@@ -1251,7 +1382,7 @@ const AddEditContractModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={contract ? 'Edit Contract' : 'Add New Service Contract'} size="lg">
+        <Modal isOpen={isOpen} onClose={onClose} title={contract ? t('modals.editContractTitle') : t('modals.addContractTitle')} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Contract Title</label>
@@ -1268,9 +1399,9 @@ const AddEditContractModal: React.FC<{
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.status')}</label>
                     <select name="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md">
-                        {Object.values(ContractStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                        {Object.values(ContractStatus).map(s => <option key={s} value={s}>{t(`status.${s}`)}</option>)}
                     </select>
                 </div>
                 <div>
@@ -1278,8 +1409,8 @@ const AddEditContractModal: React.FC<{
                     <textarea name="terms" value={formData.terms} onChange={handleChange} rows={4} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                  <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Contract</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Contract</button>
                 </div>
             </form>
         </Modal>
@@ -1291,7 +1422,8 @@ const MarkAsPaidModal: React.FC<{
     onClose: () => void;
     onConfirm: (workOrderId: string, paymentMethod: PaymentMethod, attachment?: { name: string; type: string; data: string; }) => void;
     workOrder: WorkOrder | null;
-}> = ({ isOpen, onClose, onConfirm, workOrder }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onConfirm, workOrder, t }) => {
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
     const [attachment, setAttachment] = useState<{ name: string; type: string; data: string; } | null>(null);
 
@@ -1324,11 +1456,11 @@ const MarkAsPaidModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Confirm Payment for ${workOrder.id}`}>
+        <Modal isOpen={isOpen} onClose={onClose} title={t('modals.confirmPaymentTitle', {id: workOrder.id})}>
             <div className="space-y-4">
                 <p>Please confirm that you have received payment for this work order from <strong>{workOrder.customer.name}</strong>.</p>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.paymentMethod')}</label>
                     <select
                         value={paymentMethod}
                         onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
@@ -1340,7 +1472,7 @@ const MarkAsPaidModal: React.FC<{
                 </div>
                  {paymentMethod === PaymentMethod.BANK_TRANSFER && (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Upload Bukti Transfer (Optional)</label>
+                        <label className="block text-sm font-medium text-gray-700">Upload Bukti Transfer ({t('common.optional')})</label>
                         <input type="file" onChange={handleFileChange} accept="image/*" className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" />
                         {attachment && (
                             <div className="mt-2 flex items-center justify-between bg-gray-100 p-2 rounded-md">
@@ -1356,7 +1488,7 @@ const MarkAsPaidModal: React.FC<{
                     </div>
                 )}
                 <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
                     <button onClick={handleConfirm} className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700">Confirm Payment</button>
                 </div>
             </div>
@@ -1369,7 +1501,8 @@ const ReimbursementModal: React.FC<{
     onClose: () => void;
     onConfirm: (workOrderId: string, amount: number, description: string, attachment: { name: string; type: string; data: string; }) => void;
     workOrder: WorkOrder | null;
-}> = ({ isOpen, onClose, onConfirm, workOrder }) => {
+    t: Function;
+}> = ({ isOpen, onClose, onConfirm, workOrder, t }) => {
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [attachment, setAttachment] = useState<{ name: string; type: string; data: string; } | null>(null);
@@ -1408,14 +1541,14 @@ const ReimbursementModal: React.FC<{
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Request Reimbursement for ${workOrder.id}`}>
+        <Modal isOpen={isOpen} onClose={onClose} title={t('modals.requestReimbursementTitle', {id: workOrder.id})}>
             <div className="space-y-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Amount (IDR)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.amount')} (IDR)</label>
                     <input type="number" value={amount} onChange={e => setAmount(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Description</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('common.description')}</label>
                     <input type="text" value={description} onChange={e => setDescription(e.target.value)} required placeholder="e.g. Beli paku dan sekrup" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
@@ -1434,8 +1567,8 @@ const ReimbursementModal: React.FC<{
                     )}
                 </div>
                  <div className="flex justify-end pt-4 space-x-2">
-                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button>
-                    <button onClick={handleConfirm} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Submit Request</button>
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.cancel')}</button>
+                    <button onClick={handleConfirm} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.submit')} Request</button>
                 </div>
             </div>
         </Modal>
@@ -1446,13 +1579,14 @@ const AttachmentViewerModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
     attachment: { name: string; type: string; data: string; } | null;
-}> = ({ isOpen, onClose, attachment }) => {
+    t: Function;
+}> = ({ isOpen, onClose, attachment, t }) => {
     if (!isOpen || !attachment) return null;
 
     const isImage = attachment.type.startsWith('image/');
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Attachment: ${attachment.name}`} size="lg">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('modals.attachmentViewerTitle', {name: attachment.name})} size="lg">
             <div className="my-4 bg-gray-100 p-4 rounded-lg flex justify-center items-center">
                 {isImage ? (
                     <img src={attachment.data} alt={attachment.name} className="max-w-full max-h-[70vh] mx-auto rounded-md object-contain" />
@@ -1464,9 +1598,9 @@ const AttachmentViewerModal: React.FC<{
                 )}
             </div>
             <div className="flex justify-end pt-4 space-x-2 border-t mt-4">
-                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Close</button>
+                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">{t('common.close')}</button>
                 <a href={attachment.data} download={attachment.name} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 no-underline">
-                    Download File
+                    {t('common.download')} File
                 </a>
             </div>
         </Modal>
@@ -1476,20 +1610,20 @@ const AttachmentViewerModal: React.FC<{
 
 // --- PAGE COMPONENTS ---
 
-const NotificationsPage: React.FC<{ notifications: Notification[], onMarkAllRead: () => void }> = ({ notifications, onMarkAllRead }) => {
+const NotificationsPage: React.FC<{ notifications: Notification[], onMarkAllRead: () => void, t: Function }> = ({ notifications, onMarkAllRead, t }) => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Notifications</h1>
+                <h1 className="text-3xl font-bold text-gray-800">{t('pages.notifications.title')}</h1>
                 {notifications.some(n => !n.read) && (
                     <button onClick={onMarkAllRead} className="text-sm font-medium text-primary-600 hover:underline">
-                        Mark all as read
+                        {t('pages.notifications.markAllRead')}
                     </button>
                 )}
             </div>
             <div className="bg-white rounded-lg shadow-md">
                 {notifications.length === 0 ? (
-                    <p className="text-gray-500 text-center py-16">You have no notifications.</p>
+                    <p className="text-gray-500 text-center py-16">{t('pages.notifications.empty')}</p>
                 ) : (
                     <div className="divide-y divide-gray-200">
                         {notifications.slice().sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(n => (
@@ -1515,30 +1649,32 @@ const ReimbursementPage: React.FC<{
     users: User[],
     onApprove: (transactionId: string) => void,
     onViewAttachment: (attachment: NonNullable<Transaction['attachment']>) => void,
-}> = ({ transactions, users, onApprove, onViewAttachment }) => {
+    t: Function;
+}> = ({ transactions, users, onApprove, onViewAttachment, t }) => {
     const reimbursementRequests = transactions.filter(t => t.category === TransactionCategory.REIMBURSEMENT)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Reimbursement Requests</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{t('pages.reimbursement.title')}</h1>
             <div className="bg-white p-6 rounded-lg shadow-md">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Date</th>
-                                <th scope="col" className="px-6 py-3">Requested By</th>
-                                <th scope="col" className="px-6 py-3">Description</th>
-                                <th scope="col" className="px-6 py-3">Amount</th>
-                                <th scope="col" className="px-6 py-3">Status</th>
-                                <th scope="col" className="px-6 py-3">Attachment</th>
-                                <th scope="col" className="px-6 py-3">Actions</th>
+                                <th scope="col" className="px-6 py-3">{t('common.date')}</th>
+                                <th scope="col" className="px-6 py-3">{t('pages.reimbursement.requestedBy')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.description')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.amount')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.status')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.attachment')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {reimbursementRequests.map(req => {
                                 const user = users.find(u => u.id === req.requestedByUserId);
+                                const statusKey = req.approved ? 'Approved' : 'Pending Approval';
                                 return (
                                     <tr key={req.id} className="bg-white border-b hover:bg-gray-50">
                                         <td className="px-6 py-4">{req.date}</td>
@@ -1546,27 +1682,23 @@ const ReimbursementPage: React.FC<{
                                         <td className="px-6 py-4">{req.description}</td>
                                         <td className="px-6 py-4 font-semibold">{formatIDR(req.amount)}</td>
                                         <td className="px-6 py-4">
-                                            {req.approved ? (
-                                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Approved</span>
-                                            ) : (
-                                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending Approval</span>
-                                            )}
+                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(statusKey)}`}>{t(`status.${statusKey}`)}</span>
                                         </td>
                                         <td className="px-6 py-4">
                                             {req.attachment ? (
-                                                <button onClick={() => onViewAttachment(req.attachment!)} className="font-medium text-blue-600 hover:underline">View</button>
+                                                <button onClick={() => onViewAttachment(req.attachment!)} className="font-medium text-blue-600 hover:underline">{t('common.view')}</button>
                                             ) : '-'}
                                         </td>
                                         <td className="px-6 py-4">
                                             {!req.approved && (
-                                                <button onClick={() => onApprove(req.id)} className="font-medium text-green-600 hover:underline">Approve</button>
+                                                <button onClick={() => onApprove(req.id)} className="font-medium text-green-600 hover:underline">{t('common.approve')}</button>
                                             )}
                                         </td>
                                     </tr>
                                 );
                             })}
                             {reimbursementRequests.length === 0 && (
-                                <tr><td colSpan={7} className="text-center py-8 text-gray-500">No reimbursement requests found.</td></tr>
+                                <tr><td colSpan={7} className="text-center py-8 text-gray-500">{t('pages.reimbursement.empty')}</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -1580,50 +1712,49 @@ const MyReimbursementsPage: React.FC<{
     transactions: Transaction[],
     currentUser: User,
     onViewAttachment: (attachment: NonNullable<Transaction['attachment']>) => void,
-}> = ({ transactions, currentUser, onViewAttachment }) => {
+    t: Function;
+}> = ({ transactions, currentUser, onViewAttachment, t }) => {
     const myReimbursements = transactions
         .filter(t => t.category === TransactionCategory.REIMBURSEMENT && t.requestedByUserId === currentUser.id)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">My Reimbursement History</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{t('pages.myReimbursements.title')}</h1>
             <div className="bg-white p-6 rounded-lg shadow-md">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Date</th>
-                                <th scope="col" className="px-6 py-3">Work Order ID</th>
-                                <th scope="col" className="px-6 py-3">Description</th>
-                                <th scope="col" className="px-6 py-3">Amount</th>
-                                <th scope="col" className="px-6 py-3">Status</th>
-                                <th scope="col" className="px-6 py-3">Attachment</th>
+                                <th scope="col" className="px-6 py-3">{t('common.date')}</th>
+                                <th scope="col" className="px-6 py-3">{t('pages.myReimbursements.workOrderId')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.description')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.amount')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.status')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.attachment')}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {myReimbursements.map(req => (
+                            {myReimbursements.map(req => {
+                                const statusKey = req.approved ? 'Approved' : 'Pending Approval';
+                                return (
                                 <tr key={req.id} className="bg-white border-b hover:bg-gray-50">
                                     <td className="px-6 py-4">{req.date}</td>
                                     <td className="px-6 py-4 font-mono text-xs">{req.workOrderId ? `...${req.workOrderId.slice(-7)}` : '-'}</td>
                                     <td className="px-6 py-4">{req.description}</td>
                                     <td className="px-6 py-4 font-semibold">{formatIDR(req.amount)}</td>
                                     <td className="px-6 py-4">
-                                        {req.approved ? (
-                                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Approved</span>
-                                        ) : (
-                                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                                        )}
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(statusKey)}`}>{t(`status.${statusKey}`)}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         {req.attachment ? (
-                                            <button onClick={() => onViewAttachment(req.attachment!)} className="font-medium text-blue-600 hover:underline">View Receipt</button>
+                                            <button onClick={() => onViewAttachment(req.attachment!)} className="font-medium text-blue-600 hover:underline">{t('common.view')} Receipt</button>
                                         ) : '-'}
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                             {myReimbursements.length === 0 && (
-                                <tr><td colSpan={6} className="text-center py-8 text-gray-500">You have not requested any reimbursements.</td></tr>
+                                <tr><td colSpan={6} className="text-center py-8 text-gray-500">{t('pages.myReimbursements.empty')}</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -1634,7 +1765,7 @@ const MyReimbursementsPage: React.FC<{
 };
 
 
-const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users: User[], currentUser: User}> = ({ workOrders, customers, users, currentUser }) => {
+const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users: User[], currentUser: User, t: Function}> = ({ workOrders, customers, users, currentUser, t }) => {
   const [summary, setSummary] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -1643,8 +1774,8 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
       acc[wo.status] = (acc[wo.status] || 0) + 1;
       return acc;
     }, {} as Record<WorkOrderStatus, number>);
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [workOrders]);
+    return Object.entries(counts).map(([name, value]) => ({ name: t(`status.${name}`), value }));
+  }, [workOrders, t]);
   
   const technicians = users.filter(u => u.role === UserRole.TECHNICIAN);
 
@@ -1679,34 +1810,34 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800">Welcome back, {formatUserName(currentUser.name)}!</h1>
-      <p className="text-gray-500 mb-6">Here's a summary of your business activities today.</p>
+      <h1 className="text-3xl font-bold text-gray-800">{t('dashboard.welcome', {name: formatUserName(currentUser.name)})}</h1>
+      <p className="text-gray-500 mb-6">{t('dashboard.summary')}</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <StatCard title="Total Customers" value={customers.length.toString()} icon={<CustomerIcon />} color="blue" />
-        <StatCard title="Pending Work Orders" value={workOrders.filter(wo => wo.status === WorkOrderStatus.PENDING).length.toString()} icon={<WorkOrderIcon />} color="yellow" />
+        <StatCard title={t('dashboard.totalCustomers')} value={customers.length.toString()} icon={<CustomerIcon />} color="blue" />
+        <StatCard title={t('dashboard.pendingWorkOrders')} value={workOrders.filter(wo => wo.status === WorkOrderStatus.PENDING).length.toString()} icon={<WorkOrderIcon />} color="yellow" />
         
         <div className="bg-white p-6 rounded-lg shadow-md flex items-center space-x-4 transition-transform transform hover:-translate-y-1 hover:shadow-lg">
             <div className="bg-indigo-100 p-3 rounded-full"><TechnicianIcon className="h-6 w-6 text-indigo-600" /></div>
             <div>
-                <p className="text-sm text-gray-500">Technician Status</p>
+                <p className="text-sm text-gray-500">{t('dashboard.technicianStatus')}</p>
                 <div className="h-20 overflow-y-auto pr-2 mt-1">
                     {technicians.map(tech => (
                         <div key={tech.id} className="flex items-center justify-between text-sm py-0.5">
                             <span className="font-semibold text-gray-700">{formatUserName(tech.name)}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs ${getTechnicianStatusColor(tech.status)}`}>{tech.status || 'N/A'}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusColor(tech.status!)}`}>{t(`status.${tech.status!}`)}</span>
                         </div>
                     ))}
                 </div>
             </div>
         </div>
 
-        <StatCard title="Monthly Revenue" value={formatIDR(monthlyRevenueData[3].revenue)} icon={<FinanceIcon />} color="green" />
+        <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(monthlyRevenueData[3].revenue)} icon={<FinanceIcon />} color="green" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
         <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-           <h2 className="text-lg font-semibold text-gray-700 mb-4">Monthly Revenue</h2>
+           <h2 className="text-lg font-semibold text-gray-700 mb-4">{t('dashboard.monthlyRevenue')}</h2>
            <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyRevenueData}>
               <defs>
@@ -1725,7 +1856,7 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
           </ResponsiveContainer>
         </div>
         <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">Work Order Status</h2>
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">{t('dashboard.workOrderStatus')}</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie data={woStatusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} fill="#8884d8" label>
@@ -1740,7 +1871,7 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
       
        <div className="grid grid-cols-1 gap-6 mb-6">
          <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-           <h2 className="text-lg font-semibold text-gray-700 mb-4">Completed Work Orders by Technician</h2>
+           <h2 className="text-lg font-semibold text-gray-700 mb-4">{t('dashboard.completedByTechnician')}</h2>
            <ResponsiveContainer width="100%" height={300}>
             <BarChart data={technicianPerformanceData}>
                <defs>
@@ -1762,20 +1893,20 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
       
       <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <div className="flex justify-between items-center p-6 bg-gradient-to-r from-primary-600 to-indigo-600 text-white">
-           <h2 className="text-lg font-semibold">AI-Powered Business Summary</h2>
+           <h2 className="text-lg font-semibold">{t('dashboard.aiSummaryTitle')}</h2>
            <button onClick={handleGenerateSummary} disabled={isLoading} className="flex items-center space-x-2 bg-white text-primary-600 px-4 py-2 rounded-lg hover:bg-primary-50 transition disabled:bg-gray-300 disabled:text-gray-500 font-semibold">
              {isLoading ? <SpinnerIcon className="h-5 w-5"/> : <AiIcon className="h-5 w-5"/>}
-             <span>{isLoading ? 'Generating...' : 'Generate Summary'}</span>
+             <span>{isLoading ? t('dashboard.generating') : t('dashboard.generateSummary')}</span>
            </button>
         </div>
         <div className="p-6">
             <div className="prose max-w-none bg-gray-50 p-4 rounded-md min-h-[150px]">
             {isLoading ? (
                 <div className="flex justify-center items-center h-full">
-                <p className="text-gray-500">Generating insights...</p>
+                <p className="text-gray-500">{t('dashboard.generatingInsights')}</p>
                 </div>
             ) : (
-                summary ? <div dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br />') }} /> : <p className="text-gray-500">Click "Generate Summary" to get AI-powered insights for your business.</p>
+                summary ? <div dangerouslySetInnerHTML={{ __html: summary.replace(/\n/g, '<br />') }} /> : <p className="text-gray-500">{t('dashboard.aiPrompt')}</p>
             )}
             </div>
         </div>
@@ -1791,24 +1922,25 @@ const CustomersAndClientsPage: React.FC<{
     onEditCustomer: (c: Customer) => void,
     onAddClient: () => void,
     onEditClient: (c: Client) => void,
-}> = ({ customers, clients, onAddCustomer, onEditCustomer, onAddClient, onEditClient }) => {
+    t: Function;
+}> = ({ customers, clients, onAddCustomer, onEditCustomer, onAddClient, onEditClient, t }) => {
     const [activeTab, setActiveTab] = useState<'customers' | 'clients'>('customers');
     
     const renderCustomers = () => (
         <>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Customer List</h2>
-                <button onClick={onAddCustomer} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">Add Customer</button>
+                <h2 className="text-xl font-semibold">{t('pages.customers.customerList')}</h2>
+                <button onClick={onAddCustomer} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Customer</button>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-500">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
-                            <th scope="col" className="px-6 py-3">Name</th>
-                            <th scope="col" className="px-6 py-3">Category</th>
+                            <th scope="col" className="px-6 py-3">{t('common.name')}</th>
+                            <th scope="col" className="px-6 py-3">{t('common.category')}</th>
                             <th scope="col" className="px-6 py-3">Tags</th>
-                            <th scope="col" className="px-6 py-3">Contact</th>
-                            <th scope="col" className="px-6 py-3">Actions</th>
+                            <th scope="col" className="px-6 py-3">{t('pages.employees.contact')}</th>
+                            <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1828,7 +1960,7 @@ const CustomersAndClientsPage: React.FC<{
                                     <div>{customer.phone}</div>
                                 </td>
                                 <td className="px-6 py-4 space-x-2">
-                                    <button onClick={() => onEditCustomer(customer)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                    <button onClick={() => onEditCustomer(customer)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
                                 </td>
                             </tr>
                         ))}
@@ -1841,15 +1973,15 @@ const CustomersAndClientsPage: React.FC<{
     const renderClients = () => (
         <>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Client List</h2>
-                <button onClick={onAddClient} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">Add Client</button>
+                <h2 className="text-xl font-semibold">{t('pages.customers.clientList')}</h2>
+                <button onClick={onAddClient} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Client</button>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-500">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
                             <th scope="col" className="px-6 py-3">Client Name</th>
-                            <th scope="col" className="px-6 py-3">Actions</th>
+                            <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1857,7 +1989,7 @@ const CustomersAndClientsPage: React.FC<{
                             <tr key={client.id} className="bg-white border-b hover:bg-gray-50">
                                 <td className="px-6 py-4 font-medium text-gray-900">{client.name}</td>
                                 <td className="px-6 py-4 space-x-2">
-                                    <button onClick={() => onEditClient(client)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                    <button onClick={() => onEditClient(client)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
                                 </td>
                             </tr>
                         ))}
@@ -1869,7 +2001,7 @@ const CustomersAndClientsPage: React.FC<{
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Customers & Clients</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{t('pages.customers.title')}</h1>
             <div className="mb-6 border-b border-gray-200">
                 <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                     <button
@@ -1877,14 +2009,14 @@ const CustomersAndClientsPage: React.FC<{
                         className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'customers' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
                         <CustomerIcon className={`mr-2 h-5 w-5 ${activeTab === 'customers' ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'}`} />
-                        <span>Customers</span>
+                        <span>{t('pages.customers.customersTab')}</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('clients')}
                         className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'clients' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
                         <BriefcaseIcon className={`mr-2 h-5 w-5 ${activeTab === 'clients' ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'}`} />
-                        <span>Clients</span>
+                        <span>{t('pages.customers.clientsTab')}</span>
                     </button>
                 </nav>
             </div>
@@ -1906,7 +2038,8 @@ const CustomerDetail: React.FC<{
     onCreateWorkOrder: (customerId: string) => void,
     onChat: (c: Customer) => void,
     onNotify: (c: Customer) => void,
-}> = ({ customers, workOrders, contracts, users, onEditCustomer, onAddContract, onEditContract, onCreateWorkOrder, onChat, onNotify }) => {
+    t: Function;
+}> = ({ customers, workOrders, contracts, users, onEditCustomer, onAddContract, onEditContract, onCreateWorkOrder, onChat, onNotify, t }) => {
     const { customerId } = useParams();
     const customer = customers.find(c => c.id === customerId);
     
@@ -1922,7 +2055,7 @@ const CustomerDetail: React.FC<{
         return (
             <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-700">Customer Not Found</h2>
-                <Link to="/customers" className="mt-4 inline-block text-primary-600 hover:underline">← Back to Customer List</Link>
+                <Link to="/customers" className="mt-4 inline-block text-primary-600 hover:underline">← {t('pages.customerDetail.back')}</Link>
             </div>
         );
     }
@@ -1932,7 +2065,7 @@ const CustomerDetail: React.FC<{
             <div className="mb-6">
                  <Link to="/customers" className="text-sm font-medium text-primary-600 hover:underline flex items-center mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
-                    Back to all customers
+                    {t('pages.customerDetail.back')}
                 </Link>
                 <h1 className="text-3xl font-bold text-gray-800">{customer.name}</h1>
             </div>
@@ -1940,12 +2073,12 @@ const CustomerDetail: React.FC<{
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-semibold mb-4">Customer Details</h2>
+                        <h2 className="text-xl font-semibold mb-4">{t('pages.customerDetail.details')}</h2>
                         <div className="space-y-3 text-sm">
-                            <p><strong>Email:</strong> <a href={`mailto:${customer.email}`} className="text-primary-600">{customer.email}</a></p>
-                            <p><strong>Phone:</strong> <a href={`tel:${customer.phone}`} className="text-primary-600">{customer.phone}</a></p>
-                            <p><strong>Address:</strong> {customer.address}</p>
-                            <p><strong>Category:</strong> <span className="font-semibold">{customer.category || 'N/A'}</span></p>
+                            <p><strong>{t('common.email')}:</strong> <a href={`mailto:${customer.email}`} className="text-primary-600">{customer.email}</a></p>
+                            <p><strong>{t('common.phone')}:</strong> <a href={`tel:${customer.phone}`} className="text-primary-600">{customer.phone}</a></p>
+                            <p><strong>{t('common.address')}:</strong> {customer.address}</p>
+                            <p><strong>{t('common.category')}:</strong> <span className="font-semibold">{customer.category || 'N/A'}</span></p>
                             <div>
                                 <strong>Tags:</strong>
                                 <div className="mt-1">
@@ -1956,7 +2089,7 @@ const CustomerDetail: React.FC<{
                             </div>
                         </div>
                         <div className="mt-6 border-t pt-4 flex space-x-2">
-                            <button onClick={() => onEditCustomer(customer)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">Edit Customer</button>
+                            <button onClick={() => onEditCustomer(customer)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">{t('common.edit')} Customer</button>
                             <button onClick={() => onChat(customer)} className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 text-sm">Chat</button>
                             <button onClick={() => onNotify(customer)} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 text-sm">Notify</button>
                         </div>
@@ -1966,8 +2099,8 @@ const CustomerDetail: React.FC<{
                 <div className="lg:col-span-2 space-y-6">
                      <div className="bg-white p-6 rounded-lg shadow-md">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">Service Contracts</h2>
-                            <button onClick={() => onAddContract(customer.id)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">Add Contract</button>
+                            <h2 className="text-xl font-semibold">{t('pages.customerDetail.contracts')}</h2>
+                            <button onClick={() => onAddContract(customer.id)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">{t('common.add')} Contract</button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
@@ -1975,8 +2108,8 @@ const CustomerDetail: React.FC<{
                                     <tr>
                                         <th className="px-4 py-2">Title</th>
                                         <th className="px-4 py-2">Period</th>
-                                        <th className="px-4 py-2">Status</th>
-                                        <th className="px-4 py-2">Actions</th>
+                                        <th className="px-4 py-2">{t('common.status')}</th>
+                                        <th className="px-4 py-2">{t('common.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1985,15 +2118,15 @@ const CustomerDetail: React.FC<{
                                             <td className="px-4 py-2 font-medium">{contract.title}</td>
                                             <td className="px-4 py-2">{contract.startDate} to {contract.endDate}</td>
                                             <td className="px-4 py-2">
-                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getContractStatusColor(contract.status)}`}>{contract.status}</span>
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(contract.status)}`}>{t(`status.${contract.status}`)}</span>
                                             </td>
                                             <td className="px-4 py-2">
-                                                <button onClick={() => onEditContract(contract)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                                <button onClick={() => onEditContract(contract)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
                                             </td>
                                         </tr>
                                     ))}
                                     {customerContracts.length === 0 && (
-                                        <tr><td colSpan={4} className="text-center py-4 text-gray-500">No contracts found.</td></tr>
+                                        <tr><td colSpan={4} className="text-center py-4 text-gray-500">{t('pages.customerDetail.noContracts')}</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -2001,18 +2134,18 @@ const CustomerDetail: React.FC<{
                     </div>
                     <div className="bg-white p-6 rounded-lg shadow-md">
                         <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold">Service History</h2>
-                            <button onClick={() => onCreateWorkOrder(customer.id)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">Create Work Order</button>
+                            <h2 className="text-xl font-semibold">{t('pages.customerDetail.history')}</h2>
+                            <button onClick={() => onCreateWorkOrder(customer.id)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm">{t('common.create')} Work Order</button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-2">Date</th>
-                                        <th className="px-4 py-2">Description</th>
-                                        <th className="px-4 py-2">Technician</th>
-                                        <th className="px-4 py-2">Status</th>
-                                        <th className="px-4 py-2">Total</th>
+                                        <th className="px-4 py-2">{t('common.date')}</th>
+                                        <th className="px-4 py-2">{t('common.description')}</th>
+                                        <th className="px-4 py-2">{t('pages.workOrders.technician')}</th>
+                                        <th className="px-4 py-2">{t('common.status')}</th>
+                                        <th className="px-4 py-2">{t('common.total')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2022,13 +2155,13 @@ const CustomerDetail: React.FC<{
                                             <td className="px-4 py-2 max-w-xs truncate">{wo.description}</td>
                                             <td className="px-4 py-2">{formatUserName(users.find(u => u.id === wo.technicianId)?.name) || 'N/A'}</td>
                                             <td className="px-4 py-2">
-                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(wo.status)}`}>{wo.status}</span>
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span>
                                             </td>
                                             <td className="px-4 py-2 font-semibold">{formatIDR(wo.totalCost)}</td>
                                         </tr>
                                     ))}
                                     {customerWorkOrders.length === 0 && (
-                                        <tr><td colSpan={5} className="text-center py-4 text-gray-500">No service history found.</td></tr>
+                                        <tr><td colSpan={5} className="text-center py-4 text-gray-500">{t('pages.customerDetail.noHistory')}</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -2058,8 +2191,6 @@ const DropdownMenu: React.FC<{ trigger: React.ReactNode; children: React.ReactNo
 
     const childrenWithClickHandler = React.Children.map(children, child => {
         if (React.isValidElement(child)) {
-            // FIX: By casting `child` to `React.ReactElement`, we provide TypeScript with enough
-            // information to know that it can accept an `onClick` prop, resolving the overload error.
             const castedChild = child as React.ReactElement<any>;
             const originalOnClick = castedChild.props.onClick;
             return React.cloneElement(castedChild, {
@@ -2108,7 +2239,8 @@ const WorkOrders: React.FC<{
     onChat: (c: Customer, wo: WorkOrder) => void;
     onNotify: (c: Customer, wo: WorkOrder) => void;
     onRequestReimbursement: (wo: WorkOrder) => void;
-}> = ({ user, workOrders, invoices, users, transactions, companyProfile, clients, onAddPart, onCreate, onAssign, onClaim, onComplete, onMarkAsPaid, onChat, onNotify, onRequestReimbursement }) => {
+    t: Function;
+}> = ({ user, workOrders, invoices, users, transactions, companyProfile, clients, onAddPart, onCreate, onAssign, onClaim, onComplete, onMarkAsPaid, onChat, onNotify, onRequestReimbursement, t }) => {
     const isTechnician = user.role === UserRole.TECHNICIAN;
 
     const generateSpkPdf = (order: WorkOrder) => {
@@ -2169,20 +2301,20 @@ const WorkOrders: React.FC<{
             <div className="bg-white p-6 rounded-lg shadow-md mb-8">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-semibold">{title}</h2>
-                    {title === 'All Work Orders' && <button onClick={onCreate} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">Create Work Order</button>}
+                    {title === t('pages.workOrders.allOrders') && <button onClick={onCreate} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.create')} Work Order</button>}
                 </div>
                  <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
                                 <th scope="col" className="px-6 py-3">ID</th>
-                                <th scope="col" className="px-6 py-3">Customer</th>
+                                <th scope="col" className="px-6 py-3">{t('sidebar.customers')}</th>
                                 {showClientColumn && <th scope="col" className="px-6 py-3">Client</th>}
-                                <th scope="col" className="px-6 py-3">Description</th>
-                                <th scope="col" className="px-6 py-3">Status</th>
-                                <th scope="col" className="px-6 py-3">Technician</th>
-                                <th scope="col" className="px-6 py-3">Total</th>
-                                <th scope="col" className="px-6 py-3 text-right">Actions</th>
+                                <th scope="col" className="px-6 py-3">{t('common.description')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.status')}</th>
+                                <th scope="col" className="px-6 py-3">{t('pages.workOrders.technician')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.total')}</th>
+                                <th scope="col" className="px-6 py-3 text-right">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2200,15 +2332,15 @@ const WorkOrders: React.FC<{
                                     <>
                                         {order.status === WorkOrderStatus.IN_PROGRESS && (
                                             <>
-                                              <button onClick={() => onAddPart(order)} className={actionItemClass}>Add Part</button>
+                                              <button onClick={() => onAddPart(order)} className={actionItemClass}>{t('common.add')} Part</button>
                                               <button onClick={() => onComplete(order.id)} className={actionItemClass}>Complete</button>
                                             </>
                                         )}
                                         {order.status === WorkOrderStatus.COMPLETED && !isPaid && (
                                             <button onClick={() => onMarkAsPaid(order)} className={actionItemClassGreen}>Confirm Payment</button>
                                         )}
-                                        <button onClick={() => onRequestReimbursement(order)} className={actionItemClass}>Reimburse</button>
-                                        <button onClick={() => generateSpkPdf(order)} className={actionItemClass}>Print SPK</button>
+                                        <button onClick={() => onRequestReimbursement(order)} className={actionItemClass}>{t('sidebar.reimbursement')}</button>
+                                        <button onClick={() => generateSpkPdf(order)} className={actionItemClass}>{t('common.print')} SPK</button>
                                         {order.coordinates && (
                                             <a href={`https://www.google.com/maps/search/?api=1&query=${order.coordinates.lat},${order.coordinates.lng}`} target="_blank" rel="noopener noreferrer" className={`${actionItemClass} inline-flex items-center`}>
                                               <MapPinIcon className="h-4 w-4 mr-2"/>Map
@@ -2227,7 +2359,7 @@ const WorkOrders: React.FC<{
                                               <MapPinIcon className="h-4 w-4 mr-2"/>Map
                                             </a>
                                         )}
-                                        <button onClick={() => generateSpkPdf(order)} className={actionItemClass}>Print SPK</button>
+                                        <button onClick={() => generateSpkPdf(order)} className={actionItemClass}>{t('common.print')} SPK</button>
                                     </>
                                 );
 
@@ -2240,16 +2372,16 @@ const WorkOrders: React.FC<{
                                         <td className="px-6 py-4 max-w-xs truncate">{order.description}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(order.status)}`}>
-                                                {order.status}
+                                                {t(`status.${order.status}`)}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">{formatUserName(users.find(u => u.id === order.technicianId)?.name) || 'Unassigned'}</td>
+                                        <td className="px-6 py-4">{formatUserName(users.find(u => u.id === order.technicianId)?.name) || t('pages.workOrders.unassigned')}</td>
                                         <td className="px-6 py-4 font-semibold">{formatIDR(order.totalCost)}</td>
                                         <td className="px-6 py-4 text-right">
                                             {isTechnician ? (
                                                 order.technicianId === user.id ? (
                                                     isPaid ? (
-                                                        <span className="text-sm font-semibold text-green-700 bg-green-100 px-2 py-1 rounded-full">Paid</span>
+                                                        <span className="text-sm font-semibold text-green-700 bg-green-100 px-2 py-1 rounded-full">{t('status.Paid')}</span>
                                                     ) : (
                                                         <DropdownMenu trigger={<MoreVerticalIcon className="h-5 w-5 text-gray-500" />}>
                                                             {technicianActions}
@@ -2257,7 +2389,7 @@ const WorkOrders: React.FC<{
                                                     )
                                                 ) : !order.technicianId ? (
                                                     <DropdownMenu trigger={<MoreVerticalIcon className="h-5 w-5 text-gray-500" />}>
-                                                        <button onClick={() => onClaim(order.id, user.id)} className={actionItemClassPrimary}>Claim Job</button>
+                                                        <button onClick={() => onClaim(order.id, user.id)} className={actionItemClassPrimary}>{t('pages.workOrders.claimJob')}</button>
                                                     </DropdownMenu>
                                                 ) : (
                                                     <span className="text-gray-400">-</span>
@@ -2275,16 +2407,14 @@ const WorkOrders: React.FC<{
                                                 <div className="pl-8">
                                                     <h4 className="text-xs font-semibold text-gray-600 mb-2">Reimbursement History:</h4>
                                                     <ul className="space-y-1">
-                                                        {reimbursementHistory.map(req => (
+                                                        {reimbursementHistory.map(req => {
+                                                            const statusKey = req.approved ? 'Approved' : 'Pending Approval';
+                                                            return (
                                                             <li key={req.id} className="flex justify-between items-center text-xs text-gray-700">
                                                                 <span>{req.description} - {formatIDR(req.amount)}</span>
-                                                                {req.approved ? (
-                                                                    <span className="px-2 py-0.5 font-medium rounded-full bg-green-100 text-green-800">Approved</span>
-                                                                ) : (
-                                                                    <span className="px-2 py-0.5 font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                                                                )}
+                                                                <span className={`px-2 py-0.5 font-medium rounded-full ${getStatusColor(statusKey)}`}>{t(`status.${statusKey}`)}</span>
                                                             </li>
-                                                        ))}
+                                                        )})}
                                                     </ul>
                                                 </div>
                                             </td>
@@ -2306,19 +2436,19 @@ const WorkOrders: React.FC<{
         <div>
             {isTechnician ? (
                 <>
-                    <h1 className="text-3xl font-bold text-gray-800">{formatUserName(user.name)}</h1>
-                    <h2 className="text-xl text-gray-500 mb-6">Work Orders</h2>
+                    <h1 className="text-3xl font-bold text-gray-800">{t('pages.workOrders.myFullName', {name: formatUserName(user.name)})}</h1>
+                    <h2 className="text-xl text-gray-500 mb-6">{t('pages.workOrders.myTitle')}</h2>
                 </>
             ) : (
-                <h1 className="text-3xl font-bold text-gray-800 mb-6">Work Order Management</h1>
+                <h1 className="text-3xl font-bold text-gray-800 mb-6">{t('pages.workOrders.title')}</h1>
             )}
              {isTechnician ? (
                 <>
-                    {renderOrderTable('My Assigned Work Orders', myWorkOrders)}
-                    {renderOrderTable('Available Work Orders', unassignedWorkOrders)}
+                    {renderOrderTable(t('pages.workOrders.myAssigned'), myWorkOrders)}
+                    {renderOrderTable(t('pages.workOrders.available'), unassignedWorkOrders)}
                 </>
              ) : (
-                renderOrderTable('All Work Orders', workOrders)
+                renderOrderTable(t('pages.workOrders.allOrders'), workOrders)
              )}
         </div>
     );
@@ -2331,28 +2461,29 @@ const SpareParts: React.FC<{
     onEditPart: (sp: SparePart) => void,
     onAddSupplier: () => void,
     onEditSupplier: (s: Supplier) => void,
-}> = ({ spareParts, suppliers, onAddPart, onEditPart, onAddSupplier, onEditSupplier }) => {
+    t: Function;
+}> = ({ spareParts, suppliers, onAddPart, onEditPart, onAddSupplier, onEditSupplier, t }) => {
     const [activeTab, setActiveTab] = useState<'inventory' | 'suppliers'>('inventory');
 
     const renderInventory = () => (
         <>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Spare Part Inventory</h2>
-                <button onClick={onAddPart} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">Add Spare Part</button>
+                <h2 className="text-xl font-semibold">{t('pages.spareParts.inventory')}</h2>
+                <button onClick={onAddPart} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Spare Part</button>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-500">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
                             <th scope="col" className="px-6 py-3">Kode Item</th>
-                            <th scope="col" className="px-6 py-3">Part Name</th>
+                            <th scope="col" className="px-6 py-3">{t('pages.spareParts.partName')}</th>
                             <th scope="col" className="px-6 py-3">Supplier</th>
                             <th scope="col" className="px-6 py-3">Harga Beli</th>
                             <th scope="col" className="px-6 py-3">Harga Jual</th>
-                            <th scope="col" className="px-6 py-3">Stock</th>
+                            <th scope="col" className="px-6 py-3">{t('pages.spareParts.stock')}</th>
                             <th scope="col" className="px-6 py-3">Satuan</th>
-                            <th scope="col" className="px-6 py-3">Location</th>
-                            <th scope="col" className="px-6 py-3">Actions</th>
+                            <th scope="col" className="px-6 py-3">{t('pages.spareParts.location')}</th>
+                            <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2367,7 +2498,7 @@ const SpareParts: React.FC<{
                                 <td className="px-6 py-4">{part.unit}</td>
                                 <td className="px-6 py-4">{part.location}</td>
                                 <td className="px-6 py-4 space-x-2">
-                                    <button onClick={() => onEditPart(part)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                    <button onClick={() => onEditPart(part)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
                                 </td>
                             </tr>
                         ))}
@@ -2381,7 +2512,7 @@ const SpareParts: React.FC<{
         <>
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Supplier List</h2>
-                <button onClick={onAddSupplier} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">Add Supplier</button>
+                <button onClick={onAddSupplier} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Supplier</button>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-500">
@@ -2390,7 +2521,7 @@ const SpareParts: React.FC<{
                             <th scope="col" className="px-6 py-3">Supplier Name</th>
                             <th scope="col" className="px-6 py-3">Contact Person</th>
                             <th scope="col" className="px-6 py-3">Contact Info</th>
-                            <th scope="col" className="px-6 py-3">Actions</th>
+                            <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2403,7 +2534,7 @@ const SpareParts: React.FC<{
                                     <div>{supplier.email}</div>
                                 </td>
                                 <td className="px-6 py-4 space-x-2">
-                                    <button onClick={() => onEditSupplier(supplier)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                    <button onClick={() => onEditSupplier(supplier)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
                                 </td>
                             </tr>
                         ))}
@@ -2415,7 +2546,7 @@ const SpareParts: React.FC<{
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Spare Part Management</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{t('pages.spareParts.title')}</h1>
              <div className="mb-6 border-b border-gray-200">
                 <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                     <button
@@ -2423,14 +2554,14 @@ const SpareParts: React.FC<{
                         className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'inventory' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
                         <SparePartIcon className={`mr-2 h-5 w-5 ${activeTab === 'inventory' ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'}`} />
-                        <span>Inventory</span>
+                        <span>{t('pages.spareParts.inventory')}</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('suppliers')}
                         className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'suppliers' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                     >
                         <TruckIcon className={`mr-2 h-5 w-5 ${activeTab === 'suppliers' ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'}`} />
-                        <span>Suppliers</span>
+                        <span>{t('pages.spareParts.suppliers')}</span>
                     </button>
                 </nav>
             </div>
@@ -2460,6 +2591,7 @@ const Finance: React.FC<{
     currentUser: User,
     onApproveReimbursement: (transactionId: string) => void,
     onViewAttachment: (attachment: NonNullable<Transaction['attachment']>) => void,
+    t: Function;
 }> = ({ 
     invoices, 
     customers, 
@@ -2478,37 +2610,38 @@ const Finance: React.FC<{
     onGenerateReport,
     currentUser,
     onApproveReimbursement,
-    onViewAttachment
+    onViewAttachment,
+    t
 }) => {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Finance</h1>
+                <h1 className="text-3xl font-bold text-gray-800">{t('pages.finance.title')}</h1>
                 <button onClick={onGenerateReport} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                    Generate Financial Report
+                    {t('pages.finance.generateReport')}
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                 <StatCard title="Total Income" value={formatIDR(totalIncome)} icon={<FinanceIcon className="h-6 w-6 text-green-600" />} color="green" />
-                 <StatCard title="Total Expense" value={formatIDR(totalExpense)} icon={<FinanceIcon className="h-6 w-6 text-red-600" />} color="yellow" />
-                 <StatCard title="Profit / Loss" value={formatIDR(labaRugi)} icon={<FinanceIcon className={`h-6 w-6 ${labaRugi >= 0 ? 'text-blue-600' : 'text-red-600'}`} />} color="blue" />
+                 <StatCard title={t('pages.finance.totalIncome')} value={formatIDR(totalIncome)} icon={<FinanceIcon />} color="green" />
+                 <StatCard title={t('pages.finance.totalExpense')} value={formatIDR(totalExpense)} icon={<FinanceIcon />} color="red" />
+                 <StatCard title={t('pages.finance.profitLoss')} value={formatIDR(labaRugi)} icon={<FinanceIcon />} color="blue" />
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">Invoices</h2>
-                    <button onClick={onAddInvoice} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">Add Invoice</button>
+                    <h2 className="text-xl font-semibold">{t('pages.finance.invoices')}</h2>
+                    <button onClick={onAddInvoice} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Invoice</button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3">Invoice ID</th>
-                                <th className="px-6 py-3">Customer</th>
+                                <th className="px-6 py-3">{t('sidebar.customers')}</th>
                                 <th className="px-6 py-3">Issued Date</th>
-                                <th className="px-6 py-3">Amount</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3">Actions</th>
+                                <th className="px-6 py-3">{t('common.amount')}</th>
+                                <th className="px-6 py-3">{t('common.status')}</th>
+                                <th className="px-6 py-3">{t('common.actions')}</th>
                             </tr>
                         </thead>
                          <tbody>
@@ -2520,12 +2653,12 @@ const Finance: React.FC<{
                                     <td className="px-6 py-4 font-semibold">{formatIDR(invoice.amount)}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(invoice.status)}`}>
-                                            {invoice.status}
+                                            {t(`status.${invoice.status}`)}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 space-x-2 whitespace-nowrap">
-                                        <button onClick={() => onEditInvoice(invoice)} className="font-medium text-primary-600 hover:underline">Edit</button>
-                                        <button onClick={() => onPrintInvoice(invoice)} className="font-medium text-green-600 hover:underline">Print</button>
+                                        <button onClick={() => onEditInvoice(invoice)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
+                                        <button onClick={() => onPrintInvoice(invoice)} className="font-medium text-green-600 hover:underline">{t('common.print')}</button>
                                     </td>
                                 </tr>
                             ))}
@@ -2537,18 +2670,18 @@ const Finance: React.FC<{
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">All Transactions</h2>
-                        <button onClick={onAddTransaction} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm">Add Transaction</button>
+                        <h2 className="text-xl font-semibold">{t('pages.finance.allTransactions')}</h2>
+                        <button onClick={onAddTransaction} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm">{t('common.add')} Transaction</button>
                     </div>
                      <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left text-gray-500">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3">Date</th>
-                                    <th className="px-6 py-3">Description</th>
-                                    <th className="px-6 py-3">Category</th>
-                                    <th className="px-6 py-3">Amount</th>
-                                    <th className="px-6 py-3">Actions</th>
+                                    <th className="px-6 py-3">{t('common.date')}</th>
+                                    <th className="px-6 py-3">{t('common.description')}</th>
+                                    <th className="px-6 py-3">{t('common.category')}</th>
+                                    <th className="px-6 py-3">{t('common.amount')}</th>
+                                    <th className="px-6 py-3">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2559,7 +2692,7 @@ const Finance: React.FC<{
                                             <td className="px-6 py-4">{record.date}</td>
                                             <td className="px-6 py-4">
                                                 {record.description}
-                                                {isPendingReimbursement && <span className="text-xs font-bold text-yellow-800 ml-2">(Pending Approval)</span>}
+                                                {isPendingReimbursement && <span className="text-xs font-bold text-yellow-800 ml-2">({t('status.Pending Approval')})</span>}
                                             </td>
                                             <td className="px-6 py-4">{record.category}</td>
                                             <td className={`px-6 py-4 font-semibold ${record.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
@@ -2568,14 +2701,14 @@ const Finance: React.FC<{
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {record.attachment && (
                                                     <button onClick={() => onViewAttachment(record.attachment!)} className="font-medium text-blue-600 hover:underline mr-2">
-                                                        View
+                                                        {t('common.view')}
                                                     </button>
                                                 )}
                                                 {!record.invoiceId && record.category !== TransactionCategory.REIMBURSEMENT && (
-                                                    <button onClick={() => onEditTransaction(record)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                                    <button onClick={() => onEditTransaction(record)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
                                                 )}
                                                 {isPendingReimbursement && currentUser.role === UserRole.ADMINISTRATOR && (
-                                                    <button onClick={() => onApproveReimbursement(record.id)} className="font-medium text-green-600 hover:underline">Approve</button>
+                                                    <button onClick={() => onApproveReimbursement(record.id)} className="font-medium text-green-600 hover:underline">{t('common.approve')}</button>
                                                 )}
                                             </td>
                                         </tr>
@@ -2586,12 +2719,12 @@ const Finance: React.FC<{
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md">
-                     <h2 className="text-xl font-semibold mb-4">Balance Sheet (Neraca)</h2>
+                     <h2 className="text-xl font-semibold mb-4">{t('pages.finance.balanceSheet')}</h2>
                      <div className="space-y-4">
                         <div>
-                            <h3 className="font-semibold text-lg text-green-700">Assets</h3>
+                            <h3 className="font-semibold text-lg text-green-700">{t('pages.finance.assets')}</h3>
                             <div className="flex justify-between items-center mt-1">
-                                <span>Cash</span>
+                                <span>{t('pages.finance.cash')}</span>
                                 <span className="font-bold">{formatIDR(assets)}</span>
                             </div>
                             <div className="flex justify-between items-center mt-2 border-t pt-2">
@@ -2600,9 +2733,9 @@ const Finance: React.FC<{
                             </div>
                         </div>
                          <div>
-                            <h3 className="font-semibold text-lg text-red-700">Liabilities</h3>
+                            <h3 className="font-semibold text-lg text-red-700">{t('pages.finance.liabilities')}</h3>
                             <div className="flex justify-between items-center mt-1">
-                                <span>Operational Costs</span>
+                                <span>{t('pages.finance.opCosts')}</span>
                                 <span className="font-bold">{formatIDR(liabilities)}</span>
                             </div>
                             <div className="flex justify-between items-center mt-2 border-t pt-2">
@@ -2611,9 +2744,9 @@ const Finance: React.FC<{
                             </div>
                         </div>
                          <div>
-                            <h3 className="font-semibold text-lg text-blue-700">Equity</h3>
+                            <h3 className="font-semibold text-lg text-blue-700">{t('pages.finance.equity')}</h3>
                              <div className="flex justify-between items-center mt-1">
-                                <span>Retained Earnings (Profit)</span>
+                                <span>{t('pages.finance.retainedEarnings')}</span>
                                 <span className="font-bold">{formatIDR(equity)}</span>
                             </div>
                              <div className="flex justify-between items-center mt-2 border-t pt-2">
@@ -2636,7 +2769,8 @@ const EmployeesPage: React.FC<{
     workOrders: WorkOrder[];
     onEdit: (user: User) => void;
     onStatusChange: (userId: string, status: TechnicianStatus) => void;
-}> = ({ users, workOrders, onEdit, onStatusChange }) => {
+    t: Function;
+}> = ({ users, workOrders, onEdit, onStatusChange, t }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredUsers = useMemo(() => {
@@ -2659,14 +2793,14 @@ const EmployeesPage: React.FC<{
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Employee Management</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{t('pages.employees.title')}</h1>
             <div className="bg-white p-6 rounded-lg shadow-md">
                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">All Employees</h2>
+                    <h2 className="text-xl font-semibold">{t('pages.employees.allEmployees')}</h2>
                     <div className="w-full max-w-xs">
                         <input
                             type="text"
-                            placeholder="Search by name..."
+                            placeholder={`${t('common.search')} by name...`}
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
@@ -2677,12 +2811,12 @@ const EmployeesPage: React.FC<{
                     <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-6 py-3">Name</th>
+                                <th scope="col" className="px-6 py-3">{t('common.name')}</th>
                                 <th scope="col" className="px-6 py-3">Role</th>
-                                <th scope="col" className="px-6 py-3">Status</th>
-                                <th scope="col" className="px-6 py-3">Performance</th>
-                                <th scope="col" className="px-6 py-3">Contact</th>
-                                <th scope="col" className="px-6 py-3">Actions</th>
+                                <th scope="col" className="px-6 py-3">{t('common.status')}</th>
+                                <th scope="col" className="px-6 py-3">{t('pages.employees.performance')}</th>
+                                <th scope="col" className="px-6 py-3">{t('pages.employees.contact')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2703,10 +2837,10 @@ const EmployeesPage: React.FC<{
                                             <select
                                                 value={user.status}
                                                 onChange={(e) => onStatusChange(user.id, e.target.value as TechnicianStatus)}
-                                                className={`w-full p-1 text-xs border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${getTechnicianStatusColor(user.status)}`}
+                                                className={`w-full p-1 text-xs border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 ${getStatusColor(user.status!)}`}
                                             >
                                                 {Object.values(TechnicianStatus).map(status => (
-                                                    <option key={status} value={status}>{status}</option>
+                                                    <option key={status} value={status}>{t(`status.${status}`)}</option>
                                                 ))}
                                             </select>
                                         ) : (
@@ -2729,7 +2863,7 @@ const EmployeesPage: React.FC<{
                                         <div>{user.phone || '-'}</div>
                                     </td>
                                     <td className="px-6 py-4 space-x-2">
-                                        <button onClick={() => onEdit(user)} className="font-medium text-primary-600 hover:underline">Edit</button>
+                                        <button onClick={() => onEdit(user)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
                                     </td>
                                 </tr>
                             )})}
@@ -2741,7 +2875,7 @@ const EmployeesPage: React.FC<{
     );
 };
 
-const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }> = ({ users, workOrders }) => {
+const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[]; t: Function; }> = ({ users, workOrders, t }) => {
     const { employeeId } = useParams();
     const technician = users.find(u => u.id === employeeId);
 
@@ -2766,7 +2900,7 @@ const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }
         return (
             <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-700">Technician Not Found</h2>
-                <Link to="/employees" className="mt-4 inline-block text-primary-600 hover:underline">← Back to Employee List</Link>
+                <Link to="/employees" className="mt-4 inline-block text-primary-600 hover:underline">← {t('pages.technicianProfile.back')}</Link>
             </div>
         );
     }
@@ -2776,9 +2910,9 @@ const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }
             <div className="mb-6">
                  <Link to="/employees" className="text-sm font-medium text-primary-600 hover:underline flex items-center mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
-                    Back to all employees
+                    {t('pages.technicianProfile.back')}
                 </Link>
-                <h1 className="text-3xl font-bold text-gray-800">Technician Profile</h1>
+                <h1 className="text-3xl font-bold text-gray-800">{t('pages.technicianProfile.title')}</h1>
             </div>
 
              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -2789,16 +2923,16 @@ const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }
                         </div>
                         <h2 className="text-2xl font-bold text-gray-800">{formatUserName(technician.name)}</h2>
                         <p className="text-gray-500 capitalize">{technician.role}</p>
-                        <span className={`mt-2 inline-block px-3 py-1 text-sm font-medium rounded-full ${getTechnicianStatusColor(technician.status)}`}>
-                            {technician.status}
+                        <span className={`mt-2 inline-block px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(technician.status!)}`}>
+                            {t(`status.${technician.status!}`)}
                         </span>
                         <div className="mt-4 text-left space-y-2 text-sm border-t pt-4">
-                            <p><strong>Email:</strong> <a href={`mailto:${technician.email}`} className="text-primary-600">{technician.email || '-'}</a></p>
-                            <p><strong>Phone:</strong> <a href={`tel:${technician.phone}`} className="text-primary-600">{technician.phone || '-'}</a></p>
+                            <p><strong>{t('common.email')}:</strong> <a href={`mailto:${technician.email}`} className="text-primary-600">{technician.email || '-'}</a></p>
+                            <p><strong>{t('common.phone')}:</strong> <a href={`tel:${technician.phone}`} className="text-primary-600">{technician.phone || '-'}</a></p>
                         </div>
                     </div>
                     <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h3 className="text-lg font-semibold mb-4 text-gray-700">Performance</h3>
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700">{t('pages.employees.performance')}</h3>
                         <div className="space-y-3">
                             <div className="flex justify-between"><span>Completed WOs</span><span className="font-bold">{kpis.completed}</span></div>
                             <div className="flex justify-between"><span>In Progress WOs</span><span className="font-bold">{kpis.inProgress}</span></div>
@@ -2808,13 +2942,13 @@ const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }
                 </div>
                  <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h3 className="text-lg font-semibold mb-4 text-gray-700">Personal Information</h3>
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700">{t('pages.technicianProfile.personalInfo')}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                             <div><strong>No. Karyawan:</strong> <p>{technician.employeeId || '-'}</p></div>
                             <div><strong>Jenis Kelamin:</strong> <p>{technician.gender || '-'}</p></div>
                             <div><strong>Tempat, Tgl Lahir:</strong> <p>{technician.placeOfBirth || '-'}, {technician.dateOfBirth || '-'}</p></div>
                              <div><strong>Lama Bekerja:</strong> <p>{technician.joinDate ? calculateTenure(technician.joinDate) : '-'}</p></div>
-                            <div className="md:col-span-2"><strong>Alamat:</strong> <p>{technician.address || '-'}</p></div>
+                            <div className="md:col-span-2"><strong>{t('common.address')}:</strong> <p>{technician.address || '-'}</p></div>
                             <div className="md:col-span-2">
                                 <strong>Keahlian:</strong>
                                 <div className="mt-1 flex flex-wrap gap-2">
@@ -2826,15 +2960,15 @@ const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }
                         </div>
                     </div>
                      <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h3 className="text-lg font-semibold mb-4 text-gray-700">Recent Activity</h3>
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700">{t('pages.technicianProfile.recentActivity')}</h3>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-gray-500">
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                     <tr>
-                                        <th className="px-4 py-2">Date</th>
-                                        <th className="px-4 py-2">Customer</th>
-                                        <th className="px-4 py-2">Description</th>
-                                        <th className="px-4 py-2">Status</th>
+                                        <th className="px-4 py-2">{t('common.date')}</th>
+                                        <th className="px-4 py-2">{t('sidebar.customers')}</th>
+                                        <th className="px-4 py-2">{t('common.description')}</th>
+                                        <th className="px-4 py-2">{t('common.status')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2844,7 +2978,7 @@ const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }
                                             <td className="px-4 py-2">{wo.customer.name}</td>
                                             <td className="px-4 py-2 truncate max-w-xs">{wo.description}</td>
                                             <td className="px-4 py-2">
-                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(wo.status)}`}>{wo.status}</span>
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span>
                                             </td>
                                         </tr>
                                     ))}
@@ -2862,13 +2996,16 @@ const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }
 }
 
 
-const Settings: React.FC<{
+const SettingsPage: React.FC<{
     customers: Customer[], 
     workOrders: WorkOrder[], 
     users: User[],
     profile: CompanyProfile,
-    onProfileSave: (profile: CompanyProfile) => void
-}> = ({customers, workOrders, users, profile, onProfileSave}) => {
+    onProfileSave: (profile: CompanyProfile) => void,
+    t: Function,
+    language: string,
+    setLanguage: (lang: 'en' | 'id') => void,
+}> = ({customers, workOrders, users, profile, onProfileSave, t, language, setLanguage}) => {
     const [formData, setFormData] = useState<CompanyProfile>(profile);
     const [saved, setSaved] = useState(false);
 
@@ -2944,26 +3081,40 @@ const Settings: React.FC<{
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Settings & Data</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{t('pages.settings.title')}</h1>
             
             <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                <h2 className="text-xl font-semibold mb-4">Company Profile (KOP Surat)</h2>
+                <h2 className="text-xl font-semibold mb-4">{t('pages.settings.language')}</h2>
+                <div className="max-w-xs">
+                    <select
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value as 'en' | 'id')}
+                        className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                    >
+                        <option value="en">English</option>
+                        <option value="id">Indonesian</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h2 className="text-xl font-semibold mb-4">{t('pages.settings.companyProfile')}</h2>
                  <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Company Name</label>
                         <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Address</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('common.address')}</label>
                         <input type="text" name="address" value={formData.address} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Email</label>
+                            <label className="block text-sm font-medium text-gray-700">{t('common.email')}</label>
                             <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Phone</label>
+                            <label className="block text-sm font-medium text-gray-700">{t('common.phone')}</label>
                             <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                         </div>
                     </div>
@@ -2975,18 +3126,18 @@ const Settings: React.FC<{
                         </div>
                     </div>
                     <div className="flex items-center space-x-4 pt-2">
-                        <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Save Changes</button>
+                        <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Changes</button>
                         {saved && <span className="text-sm text-green-600">Profile saved successfully!</span>}
                     </div>
                 </form>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-4">Data Backup & Restore</h2>
+                <h2 className="text-xl font-semibold mb-4">{t('pages.settings.dataBackup')}</h2>
                 <div className="space-y-4">
                     <div>
-                        <h3 className="font-semibold text-gray-700">Export Data</h3>
-                        <p className="text-sm text-gray-500 mb-2">Download a copy of your application data.</p>
+                        <h3 className="font-semibold text-gray-700">{t('pages.settings.exportData')}</h3>
+                        <p className="text-sm text-gray-500 mb-2">{t('pages.settings.exportDesc')}</p>
                         <div className="flex space-x-2">
                             <button onClick={() => handleExport('json')} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Export JSON</button>
                             <button onClick={() => handleExport('pdf')} className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Export PDF</button>
@@ -2994,8 +3145,8 @@ const Settings: React.FC<{
                         </div>
                     </div>
                      <div>
-                        <h3 className="font-semibold text-gray-700">Restore Data</h3>
-                        <p className="text-sm text-gray-500 mb-2">Upload a JSON backup file to restore data.</p>
+                        <h3 className="font-semibold text-gray-700">{t('pages.settings.restoreData')}</h3>
+                        <p className="text-sm text-gray-500 mb-2">{t('pages.settings.restoreDesc')}</p>
                         <input type="file" className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100" />
                     </div>
                 </div>
@@ -3107,10 +3258,36 @@ const Chatbot: React.FC<{
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
+  const [language, setLanguage] = useState<'en' | 'id'>((localStorage.getItem('appLanguage') as 'en' | 'id') || 'en');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authScreen, setAuthScreen] = useState<'login' | 'signup'>('login');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
+  useEffect(() => {
+    localStorage.setItem('appLanguage', language);
+  }, [language]);
+
+  const useTranslation = () => {
+    const t = (key: string, replacements?: Record<string, string | number>): string => {
+      const keys = key.split('.');
+      let text: any = translations[language] || translations.en;
+      for (const k of keys) {
+        text = text?.[k];
+        if (text === undefined) return key; 
+      }
+      let result = String(text);
+      if (replacements) {
+        Object.keys(replacements).forEach(rKey => {
+          result = result.replace(`{${rKey}}`, String(replacements[rKey]));
+        });
+      }
+      return result;
+    };
+    return { t, language, setLanguage };
+  };
+
+  const { t } = useTranslation();
+
   // App-wide state
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
@@ -3671,22 +3848,22 @@ const App: React.FC = () => {
 
   if (!currentUser) {
     if (authScreen === 'signup') {
-        return <SignUpScreen onSignUp={handleSignUp} onSwitchToLogin={() => setAuthScreen('login')} />;
+        return <SignUpScreen onSignUp={handleSignUp} onSwitchToLogin={() => setAuthScreen('login')} t={t} />;
     }
-    return <LoginScreen onLogin={handleLogin} onSwitchToSignUp={() => setAuthScreen('signup')} users={users} />;
+    return <LoginScreen onLogin={handleLogin} onSwitchToSignUp={() => setAuthScreen('signup')} users={users} t={t} />;
   }
   
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-blue-500' },
-    { path: '/customers', label: 'Customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-green-500' },
-    { path: '/work-orders', label: 'Work Orders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-orange-500' },
-    { path: '/notifications', label: 'Notifications', icon: BellIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-red-500' },
-    { path: '/my-reimbursements', label: 'My Reimbursements', icon: ReceiptIcon, roles: [UserRole.TECHNICIAN], color: 'text-cyan-500' },
-    { path: '/reimbursements', label: 'Reimbursement', icon: ReceiptIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-cyan-500' },
-    { path: '/spare-parts', label: 'Spare Parts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-indigo-500' },
-    { path: '/finance', label: 'Finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-purple-500' },
-    { path: '/employees', label: 'Employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-teal-500' },
-    { path: '/settings', label: 'Settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-gray-500' },
+    { path: '/', labelKey: 'sidebar.dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-blue-500' },
+    { path: '/customers', labelKey: 'sidebar.customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-green-500' },
+    { path: '/work-orders', labelKey: 'sidebar.workOrders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-orange-500' },
+    { path: '/notifications', labelKey: 'sidebar.notifications', icon: BellIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-red-500' },
+    { path: '/my-reimbursements', labelKey: 'sidebar.myReimbursements', icon: ReceiptIcon, roles: [UserRole.TECHNICIAN], color: 'text-cyan-500' },
+    { path: '/reimbursements', labelKey: 'sidebar.reimbursement', icon: ReceiptIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-cyan-500' },
+    { path: '/spare-parts', labelKey: 'sidebar.spareParts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-indigo-500' },
+    { path: '/finance', labelKey: 'sidebar.finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-purple-500' },
+    { path: '/employees', labelKey: 'sidebar.employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-teal-500' },
+    { path: '/settings', labelKey: 'sidebar.settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-gray-500' },
   ];
 
   const accessibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));
@@ -3706,10 +3883,10 @@ const App: React.FC = () => {
             </div>
             <nav className="flex-1 p-4 space-y-2">
                 {accessibleNavItems.map(item => (
-                     <Link key={item.path} to={item.path} title={isSidebarCollapsed ? item.label : ''} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${(location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path) ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+                     <Link key={item.path} to={item.path} title={isSidebarCollapsed ? t(item.labelKey) : ''} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${(location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path) ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
                         <item.icon className={`${isSidebarCollapsed ? `h-9 w-9 ${item.color}` : 'h-5 w-5'}`} />
-                        {!isSidebarCollapsed && <span className="font-medium">{item.label}</span>}
-                        {item.label === 'Notifications' && !isSidebarCollapsed && unreadCount > 0 && (
+                        {!isSidebarCollapsed && <span className="font-medium">{t(item.labelKey)}</span>}
+                        {item.labelKey === 'sidebar.notifications' && !isSidebarCollapsed && unreadCount > 0 && (
                             <span className="ml-auto bg-red-500 text-white text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center">
                                 {unreadCount}
                             </span>
@@ -3718,13 +3895,13 @@ const App: React.FC = () => {
                 ))}
             </nav>
             <div className="p-4 border-t border-gray-200">
-                 <button onClick={handleLogout} className={`flex items-center w-full space-x-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? 'Logout' : ''}>
+                 <button onClick={handleLogout} className={`flex items-center w-full space-x-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? t('sidebar.logout') : ''}>
                     <LogoutIcon className="h-5 w-5" />
-                    {!isSidebarCollapsed && <span className="font-medium">Logout</span>}
+                    {!isSidebarCollapsed && <span className="font-medium">{t('sidebar.logout')}</span>}
                 </button>
-                 <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className={`flex items-center w-full space-x-3 px-4 py-2 mt-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? 'Expand' : 'Collapse'}>
+                 <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className={`flex items-center w-full space-x-3 px-4 py-2 mt-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? t('sidebar.expandMenu') : t('sidebar.collapseMenu')}>
                     {isSidebarCollapsed ? <ChevronsRightIcon className="h-5 w-5" /> : <ChevronsLeftIcon className="h-5 w-5" />}
-                    {!isSidebarCollapsed && <span className="font-medium">Collapse Menu</span>}
+                    {!isSidebarCollapsed && <span className="font-medium">{t('sidebar.collapseMenu')}</span>}
                 </button>
             </div>
         </div>
@@ -3737,51 +3914,65 @@ const App: React.FC = () => {
             <Sidebar />
             <main className="flex-1 overflow-y-auto p-8">
                 <Routes>
-                    <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} />} />
-                    <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} />} />
-                    <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddContract={(customerId) => setModalState({ type: 'add_contract', data: { customerId } })} onEditContract={(c) => setModalState({type: 'edit_contract', data: c})} onCreateWorkOrder={(customerId) => setModalState({ type: 'create_work_order_from_detail', data: { customerId } })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
-                    <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} invoices={invoices} users={users} transactions={transactions} companyProfile={companyProfile} clients={clients} onCreate={() => setModalState({ type: 'create_work_order', data: null })} onAssign={(wo) => setModalState({ type: 'assign_technician', data: wo })} onClaim={handleClaimJob} onAddPart={(wo) => setModalState({ type: 'add_part_to_wo', data: wo })} onComplete={handleCompleteWorkOrder} onMarkAsPaid={(wo) => setModalState({ type: 'mark_as_paid', data: wo })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} />} />
-                    <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} />} />
-                    <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} />} />
-                    <Route path="/reimbursements" element={<ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} />} />
-                    <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} />} />
-                    <Route path="/finance" element={<Finance invoices={invoices} customers={customers} transactions={sortedTransactions} totalIncome={totalIncome} totalExpense={totalExpense} labaRugi={labaRugi} assets={assets} liabilities={liabilities} equity={equity} onAddInvoice={() => setModalState({ type: 'add_invoice', data: null })} onEditInvoice={(i) => setModalState({ type: 'edit_invoice', data: i })} onPrintInvoice={handlePrintInvoice} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} onEditTransaction={(r) => setModalState({ type: 'edit_transaction', data: r })} onGenerateReport={handleGenerateFinancialReport} currentUser={currentUser} onApproveReimbursement={handleApproveReimbursement} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} />} />
-                    <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} onStatusChange={handleTechnicianStatusChange} />} />
-                    <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} />} />
-                    <Route path="/settings" element={<Settings customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} />} />
+                    <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} t={t} />} />
+                    <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
+                    <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddContract={(customerId) => setModalState({ type: 'add_contract', data: { customerId } })} onEditContract={(c) => setModalState({type: 'edit_contract', data: c})} onCreateWorkOrder={(customerId) => setModalState({ type: 'create_work_order_from_detail', data: { customerId } })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} t={t} />} />
+                    <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} invoices={invoices} users={users} transactions={transactions} companyProfile={companyProfile} clients={clients} onCreate={() => setModalState({ type: 'create_work_order', data: null })} onAssign={(wo) => setModalState({ type: 'assign_technician', data: wo })} onClaim={handleClaimJob} onAddPart={(wo) => setModalState({ type: 'add_part_to_wo', data: wo })} onComplete={handleCompleteWorkOrder} onMarkAsPaid={(wo) => setModalState({ type: 'mark_as_paid', data: wo })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} t={t} />} />
+                    <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} t={t} />} />
+                    <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} t={t} />} />
+                    <Route path="/reimbursements" element={ currentUser.role === UserRole.ADMINISTRATOR ? <ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} t={t}/> : <Navigate to="/" replace />} />
+                    <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} t={t} />} />
+                    <Route path="/finance" element={<Finance invoices={invoices} customers={customers} transactions={sortedTransactions} totalIncome={totalIncome} totalExpense={totalExpense} labaRugi={labaRugi} assets={assets} liabilities={liabilities} equity={equity} onAddInvoice={() => setModalState({ type: 'add_invoice', data: null })} onEditInvoice={(i) => setModalState({ type: 'edit_invoice', data: i })} onPrintInvoice={handlePrintInvoice} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} onEditTransaction={(r) => setModalState({ type: 'edit_transaction', data: r })} onGenerateReport={handleGenerateFinancialReport} currentUser={currentUser} onApproveReimbursement={handleApproveReimbursement} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} t={t} />} />
+                    <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} onStatusChange={handleTechnicianStatusChange} t={t} />} />
+                    <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} t={t} />} />
+                    <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} t={t} language={language} setLanguage={setLanguage} />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
             
             {/* --- MODALS --- */}
-            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} />}
-            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} />}
-            {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} />}
-            {modalState.type === 'edit_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={modalState.data} />}
-            {modalState.type === 'create_work_order' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} />}
-            {modalState.type === 'create_work_order_from_detail' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} preselectedCustomerId={modalState.data.customerId} />}
-            {modalState.type === 'assign_technician' && <AssignTechnicianModal workOrder={modalState.data} technicians={technicians} onClose={() => setModalState({ type: null, data: null })} onSave={handleAssignTechnician} />}
-            {modalState.type === 'add_part_to_wo' && <AddSparePartModal workOrder={modalState.data} onClose={() => setModalState({ type: null, data: null })} onSave={handleUpdateWorkOrderParts} availableParts={spareParts} />}
-            {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} />}
-            {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} />}
-            {modalState.type === 'add_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={null} />}
-            {modalState.type === 'edit_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={modalState.data} />}
-            {modalState.type === 'add_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={null} workOrders={workOrders} />}
-            {modalState.type === 'edit_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={modalState.data} workOrders={workOrders} />}
-            {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} />}
-            {modalState.type === 'edit_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={modalState.data} />}
-            {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={modalState.data} />}
-            {modalState.type === 'add_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveContract} contract={null} customerId={modalState.data.customerId} />}
-            {modalState.type === 'edit_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveContract} contract={modalState.data} customerId={modalState.data.customerId} />}
-            {modalState.type === 'mark_as_paid' && <MarkAsPaidModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleMarkAsPaid} workOrder={modalState.data} />}
-            {modalState.type === 'request_reimbursement' && <ReimbursementModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleRequestReimbursement} workOrder={modalState.data} />}
-            {modalState.type === 'view_attachment' && <AttachmentViewerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} attachment={modalState.data} />}
-            
-            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, technicians }} />
+            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} t={t} />}
+            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} t={t} />}
+            {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} t={t} />}
+            {modalState.type === 'edit_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={modalState.data} t={t} />}
+            {modalState.type === 'create_work_order' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} t={t} />}
+            {modalState.type === 'create_work_order_from_detail' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} preselectedCustomerId={modalState.data.customerId} t={t} />}
+            {modalState.type === 'assign_technician' && <AssignTechnicianModal workOrder={modalState.data} technicians={technicians} onClose={() => setModalState({ type: null, data: null })} onSave={handleAssignTechnician} t={t} />}
+            {modalState.type === 'add_part_to_wo' && <AddSparePartModal workOrder={modalState.data} onClose={() => setModalState({ type: null, data: null })} onSave={handleUpdateWorkOrderParts} availableParts={spareParts} t={t} />}
+            {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
+            {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
+            {modalState.type === 'add_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={null} t={t} />}
+            {modalState.type === 'edit_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={modalState.data} t={t} />}
+            {modalState.type === 'add_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={null} workOrders={workOrders} t={t} />}
+            {modalState.type === 'edit_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={modalState.data} workOrders={workOrders} t={t} />}
+            {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} t={t} />}
+            {modalState.type === 'edit_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={modalState.data} t={t} />}
+            {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={modalState.data} t={t} />}
+            {modalState.type === 'add_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveContract} contract={null} customerId={modalState.data.customerId} t={t} />}
+            {modalState.type === 'edit_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveContract} contract={modalState.data} customerId={modalState.data.customerId} t={t} />}
+            {modalState.type === 'mark_as_paid' && <MarkAsPaidModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleMarkAsPaid} workOrder={modalState.data} t={t} />}
+            {modalState.type === 'request_reimbursement' && <ReimbursementModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleRequestReimbursement} workOrder={modalState.data} t={t} />}
+            {modalState.type === 'view_attachment' && <AttachmentViewerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} attachment={modalState.data} t={t} />}
+
+            <Chatbot 
+                currentUser={currentUser} 
+                appData={{ 
+                    customers, 
+                    workOrders, 
+                    spareParts, 
+                    invoices, 
+                    transactions,
+                    users,
+                    clients,
+                    suppliers,
+                    contracts,
+                    technicians: users.filter(u => u.role === UserRole.TECHNICIAN)
+                }} 
+            />
+
         </div>
     </HashRouter>
   );
 };
 
-// FIX: Export the App component to be available for import in index.tsx.
 export default App;
