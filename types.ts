@@ -43,9 +43,11 @@ export enum WorkOrderStatus {
 
 export interface SparePart {
   id: string;
+  itemCode: string;
   name: string;
   price: number;
   stock: number;
+  unit: string;
   location: string;
 }
 

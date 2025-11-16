@@ -23,10 +23,10 @@ const INITIAL_CUSTOMERS: Customer[] = [
 ];
 
 const INITIAL_SPARE_PARTS: SparePart[] = [
-  { id: 'sp-1', name: 'Compressor XYZ', price: 750000, stock: 10, location: 'Rak A1' },
-  { id: 'sp-2', name: 'Freon R32', price: 150000, stock: 25, location: 'Rak B2' },
-  { id: 'sp-3', name: 'Capacitor 25uF', price: 85000, stock: 5, location: 'Rak A2' },
-  { id: 'sp-4', name: 'Fan Motor', price: 350000, stock: 0, location: 'Rak C1' },
+  { id: 'sp-1', itemCode: 'CMP-XYZ-001', name: 'Compressor XYZ', price: 750000, stock: 10, unit: 'pcs', location: 'Rak A1' },
+  { id: 'sp-2', itemCode: 'FRN-R32-001', name: 'Freon R32', price: 150000, stock: 25, unit: 'kg', location: 'Rak B2' },
+  { id: 'sp-3', itemCode: 'CAP-25-UF', name: 'Capacitor 25uF', price: 85000, stock: 5, unit: 'pcs', location: 'Rak A2' },
+  { id: 'sp-4', itemCode: 'MTR-FAN-001', name: 'Fan Motor', price: 350000, stock: 0, unit: 'pcs', location: 'Rak C1' },
 ];
 
 const INITIAL_WORK_ORDERS: WorkOrder[] = [
@@ -612,13 +612,20 @@ const AddEditSparePartModal: React.FC<{
     onSave: (part: SparePart) => void;
     part: SparePart | null;
 }> = ({ isOpen, onClose, onSave, part }) => {
-    const [formData, setFormData] = useState({ name: '', price: '', stock: '', location: '' });
+    const [formData, setFormData] = useState({ itemCode: '', name: '', price: '', stock: '', unit: '', location: '' });
 
     useEffect(() => {
         if (part) {
-            setFormData({ name: part.name, price: String(part.price), stock: String(part.stock), location: part.location });
+            setFormData({ 
+                itemCode: part.itemCode, 
+                name: part.name, 
+                price: String(part.price), 
+                stock: String(part.stock), 
+                unit: part.unit,
+                location: part.location 
+            });
         } else {
-            setFormData({ name: '', price: '', stock: '0', location: '' });
+            setFormData({ itemCode: '', name: '', price: '', stock: '0', unit: '', location: '' });
         }
     }, [part, isOpen]);
 
@@ -631,9 +638,11 @@ const AddEditSparePartModal: React.FC<{
         onSave({
             ...part,
             id: part?.id || `sp-${Date.now()}`,
+            itemCode: formData.itemCode,
             name: formData.name,
             price: Number(formData.price),
             stock: Number(formData.stock),
+            unit: formData.unit,
             location: formData.location,
         });
     };
@@ -641,13 +650,23 @@ const AddEditSparePartModal: React.FC<{
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={part ? 'Edit Spare Part' : 'Add New Spare Part'}>
             <form onSubmit={handleSubmit} className="space-y-4">
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Kode Item</label>
+                    <input type="text" name="itemCode" value={formData.itemCode} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Part Name</label>
                     <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Price (IDR)</label>
-                    <input type="number" name="price" value={formData.price} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Price (IDR)</label>
+                        <input type="number" name="price" value={formData.price} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Satuan (e.g. pcs, kg)</label>
+                        <input type="text" name="unit" value={formData.unit} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Stock Quantity</label>
@@ -1536,9 +1555,11 @@ const SpareParts: React.FC<{ spareParts: SparePart[], onAdd: () => void, onEdit:
                     <table className="w-full text-sm text-left text-gray-500">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
+                                <th scope="col" className="px-6 py-3">Kode Item</th>
                                 <th scope="col" className="px-6 py-3">Part Name</th>
                                 <th scope="col" className="px-6 py-3">Price</th>
                                 <th scope="col" className="px-6 py-3">Stock</th>
+                                <th scope="col" className="px-6 py-3">Satuan</th>
                                 <th scope="col" className="px-6 py-3">Location</th>
                                 <th scope="col" className="px-6 py-3">Actions</th>
                             </tr>
@@ -1546,9 +1567,11 @@ const SpareParts: React.FC<{ spareParts: SparePart[], onAdd: () => void, onEdit:
                         <tbody>
                             {spareParts.map(part => (
                                 <tr key={part.id} className="bg-white border-b hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-mono text-xs">{part.itemCode}</td>
                                     <td className="px-6 py-4 font-medium text-gray-900">{part.name}</td>
                                     <td className="px-6 py-4">{formatIDR(part.price)}</td>
                                     <td className={`px-6 py-4 font-semibold ${part.stock <= 5 ? 'text-red-600' : 'text-gray-900'}`}>{part.stock}</td>
+                                    <td className="px-6 py-4">{part.unit}</td>
                                     <td className="px-6 py-4">{part.location}</td>
                                     <td className="px-6 py-4 space-x-2">
                                         <button onClick={() => onEdit(part)} className="font-medium text-primary-600 hover:underline">Edit</button>
