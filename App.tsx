@@ -1580,7 +1580,14 @@ const WorkOrders: React.FC<{
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">{isTechnician ? 'My Work Orders (SPK)' : 'Work Order Management'}</h1>
+            {isTechnician ? (
+                <>
+                    <h1 className="text-3xl font-bold text-gray-800">{formatUserName(user.name)}</h1>
+                    <h2 className="text-xl text-gray-500 mb-6">Work Orders</h2>
+                </>
+            ) : (
+                <h1 className="text-3xl font-bold text-gray-800 mb-6">Work Order Management</h1>
+            )}
              {isTechnician ? (
                 <>
                     {renderOrderTable('My Assigned Work Orders', myWorkOrders)}
