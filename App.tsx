@@ -12,8 +12,8 @@ import autoTable from 'jspdf-autotable';
 const INITIAL_USERS: User[] = [
   { id: 'user-1', name: 'Alice (Administrator)', role: UserRole.ADMINISTRATOR, password: 'password123', age: 35, gender: 'Female', skills: ['Management', 'Finance', 'System Administration'] },
   { id: 'user-2', name: 'Bob (Admin)', role: UserRole.ADMIN, password: 'password123', age: 28, gender: 'Male', skills: ['Data Entry', 'Customer Support'] },
-  { id: 'user-3', name: 'Budi Santoso (Technician)', role: UserRole.TECHNICIAN, email: 'budi.s@example.com', password: 'password123', age: 32, gender: 'Male', skills: ['AC Repair', 'Refrigeration'], status: TechnicianStatus.ON_JOB },
-  { id: 'user-4', name: 'Charlie (Technician)', role: UserRole.TECHNICIAN, phone: '081234567891', password: 'password123', age: 25, gender: 'Male', skills: ['Electrical Wiring', 'Plumbing'], status: TechnicianStatus.ON_JOB },
+  { id: 'user-3', name: 'Budi Santoso (Technician)', role: UserRole.TECHNICIAN, email: 'budi.s@example.com', password: 'password123', age: 32, gender: 'Male', skills: ['AC Repair', 'Refrigeration', 'Compressor Specialist'], status: TechnicianStatus.ON_JOB, employeeId: 'TEK-001', joinDate: '2021-03-15', placeOfBirth: 'Jakarta', dateOfBirth: '1991-08-20', address: 'Jl. Mawar No. 10, Jakarta' },
+  { id: 'user-4', name: 'Charlie (Technician)', role: UserRole.TECHNICIAN, phone: '081234567891', password: 'password123', age: 25, gender: 'Male', skills: ['Electrical Wiring', 'Plumbing', 'Water Heater'], status: TechnicianStatus.ON_JOB, employeeId: 'TEK-002', joinDate: '2022-07-01', placeOfBirth: 'Bandung', dateOfBirth: '1998-05-12', address: 'Jl. Anggrek No. 5, Bandung' },
 ];
 
 const INITIAL_CUSTOMERS: Customer[] = [
@@ -23,10 +23,10 @@ const INITIAL_CUSTOMERS: Customer[] = [
 ];
 
 const INITIAL_SPARE_PARTS: SparePart[] = [
-  { id: 'sp-1', itemCode: 'CMP-XYZ-001', name: 'Compressor XYZ', price: 750000, stock: 10, unit: 'pcs', location: 'Rak A1' },
-  { id: 'sp-2', itemCode: 'FRN-R32-001', name: 'Freon R32', price: 150000, stock: 25, unit: 'kg', location: 'Rak B2' },
-  { id: 'sp-3', itemCode: 'CAP-25-UF', name: 'Capacitor 25uF', price: 85000, stock: 5, unit: 'pcs', location: 'Rak A2' },
-  { id: 'sp-4', itemCode: 'MTR-FAN-001', name: 'Fan Motor', price: 350000, stock: 0, unit: 'pcs', location: 'Rak C1' },
+  { id: 'sp-1', itemCode: 'CMP-XYZ-001', name: 'Compressor XYZ', purchasePrice: 600000, sellingPrice: 750000, stock: 10, unit: 'pcs', location: 'Rak A1' },
+  { id: 'sp-2', itemCode: 'FRN-R32-001', name: 'Freon R32', purchasePrice: 100000, sellingPrice: 150000, stock: 25, unit: 'kg', location: 'Rak B2' },
+  { id: 'sp-3', itemCode: 'CAP-25-UF', name: 'Capacitor 25uF', sellingPrice: 85000, stock: 5, unit: 'pcs', location: 'Rak A2' },
+  { id: 'sp-4', itemCode: 'MTR-FAN-001', name: 'Fan Motor', purchasePrice: 280000, sellingPrice: 350000, stock: 0, unit: 'pcs', location: 'Rak C1' },
 ];
 
 const INITIAL_WORK_ORDERS: WorkOrder[] = [
@@ -125,6 +125,20 @@ const timeAgo = (dateString: string) => {
     interval = seconds / 60;
     if (interval > 1) return Math.floor(interval) + " minutes ago";
     return Math.floor(seconds) + " seconds ago";
+};
+
+const calculateTenure = (joinDate: string): string => {
+    const start = new Date(joinDate);
+    const now = new Date();
+    let years = now.getFullYear() - start.getFullYear();
+    let months = now.getMonth() - start.getMonth();
+    
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+    
+    return `${years} tahun, ${months} bulan`;
 };
 
 const generatePdfHeader = (doc: jsPDF, profile: CompanyProfile) => {
@@ -502,7 +516,7 @@ const AddSparePartModal: React.FC<{
                     <div key={part.id} className={`flex items-center justify-between p-2 border rounded-md ${part.stock === 0 ? 'bg-gray-100 opacity-60' : ''}`}>
                         <div>
                             <p className="font-semibold">{part.name}</p>
-                            <p className="text-sm text-gray-500">{formatIDR(part.price)} - <span className={`font-bold ${part.stock <= 5 ? 'text-red-600' : 'text-gray-700'}`}>Stock: {part.stock}</span></p>
+                            <p className="text-sm text-gray-500">{formatIDR(part.sellingPrice)} - <span className={`font-bold ${part.stock <= 5 ? 'text-red-600' : 'text-gray-700'}`}>Stock: {part.stock}</span></p>
                         </div>
                         <input
                             type="checkbox"
@@ -612,20 +626,21 @@ const AddEditSparePartModal: React.FC<{
     onSave: (part: SparePart) => void;
     part: SparePart | null;
 }> = ({ isOpen, onClose, onSave, part }) => {
-    const [formData, setFormData] = useState({ itemCode: '', name: '', price: '', stock: '', unit: '', location: '' });
+    const [formData, setFormData] = useState({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '', unit: '', location: '' });
 
     useEffect(() => {
         if (part) {
             setFormData({ 
                 itemCode: part.itemCode, 
                 name: part.name, 
-                price: String(part.price), 
+                purchasePrice: String(part.purchasePrice || ''),
+                sellingPrice: String(part.sellingPrice), 
                 stock: String(part.stock), 
                 unit: part.unit,
                 location: part.location 
             });
         } else {
-            setFormData({ itemCode: '', name: '', price: '', stock: '0', unit: '', location: '' });
+            setFormData({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '0', unit: '', location: '' });
         }
     }, [part, isOpen]);
 
@@ -640,7 +655,8 @@ const AddEditSparePartModal: React.FC<{
             id: part?.id || `sp-${Date.now()}`,
             itemCode: formData.itemCode,
             name: formData.name,
-            price: Number(formData.price),
+            purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : undefined,
+            sellingPrice: Number(formData.sellingPrice),
             stock: Number(formData.stock),
             unit: formData.unit,
             location: formData.location,
@@ -660,17 +676,23 @@ const AddEditSparePartModal: React.FC<{
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Price (IDR)</label>
-                        <input type="number" name="price" value={formData.price} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                        <label className="block text-sm font-medium text-gray-700">Harga Beli (IDR)</label>
+                        <input type="number" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder="Optional" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Harga Jual (IDR)</label>
+                        <input type="number" name="sellingPrice" value={formData.sellingPrice} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
+                    </div>
+                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Stock Quantity</label>
+                        <input type="number" name="stock" value={formData.stock} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Satuan (e.g. pcs, kg)</label>
                         <input type="text" name="unit" value={formData.unit} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                     </div>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Stock Quantity</label>
-                    <input type="number" name="stock" value={formData.stock} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Location (e.g. Rack A1)</label>
@@ -1436,7 +1458,7 @@ const WorkOrders: React.FC<{
             autoTable(doc, {
                 startY: (doc as any).lastAutoTable.finalY + 10,
                 head: [['No', 'Spare Part', 'Harga']],
-                body: order.spareParts.map((part, i) => [i + 1, part.name, formatIDR(part.price)]),
+                body: order.spareParts.map((part, i) => [i + 1, part.name, formatIDR(part.sellingPrice)]),
                 theme: 'grid'
             });
         }
@@ -1557,7 +1579,8 @@ const SpareParts: React.FC<{ spareParts: SparePart[], onAdd: () => void, onEdit:
                             <tr>
                                 <th scope="col" className="px-6 py-3">Kode Item</th>
                                 <th scope="col" className="px-6 py-3">Part Name</th>
-                                <th scope="col" className="px-6 py-3">Price</th>
+                                <th scope="col" className="px-6 py-3">Harga Beli</th>
+                                <th scope="col" className="px-6 py-3">Harga Jual</th>
                                 <th scope="col" className="px-6 py-3">Stock</th>
                                 <th scope="col" className="px-6 py-3">Satuan</th>
                                 <th scope="col" className="px-6 py-3">Location</th>
@@ -1569,7 +1592,8 @@ const SpareParts: React.FC<{ spareParts: SparePart[], onAdd: () => void, onEdit:
                                 <tr key={part.id} className="bg-white border-b hover:bg-gray-50">
                                     <td className="px-6 py-4 font-mono text-xs">{part.itemCode}</td>
                                     <td className="px-6 py-4 font-medium text-gray-900">{part.name}</td>
-                                    <td className="px-6 py-4">{formatIDR(part.price)}</td>
+                                    <td className="px-6 py-4">{part.purchasePrice ? formatIDR(part.purchasePrice) : '-'}</td>
+                                    <td className="px-6 py-4">{formatIDR(part.sellingPrice)}</td>
                                     <td className={`px-6 py-4 font-semibold ${part.stock <= 5 ? 'text-red-600' : 'text-gray-900'}`}>{part.stock}</td>
                                     <td className="px-6 py-4">{part.unit}</td>
                                     <td className="px-6 py-4">{part.location}</td>
@@ -1822,7 +1846,13 @@ const EmployeesPage: React.FC<{
                                 const kpis = user.role === UserRole.TECHNICIAN ? getTechnicianKpis(user.id) : null;
                                 return (
                                 <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{formatUserName(user.name)}</td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                        {user.role === UserRole.TECHNICIAN ? (
+                                            <Link to={`/employees/${user.id}`} className="text-primary-600 hover:underline">{formatUserName(user.name)}</Link>
+                                        ) : (
+                                            formatUserName(user.name)
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 capitalize">{user.role}</td>
                                     <td className="px-6 py-4">
                                         {user.role === UserRole.TECHNICIAN ? (
@@ -1866,6 +1896,126 @@ const EmployeesPage: React.FC<{
         </div>
     );
 };
+
+const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[] }> = ({ users, workOrders }) => {
+    const { employeeId } = useParams();
+    const technician = users.find(u => u.id === employeeId);
+
+    const technicianWorkOrders = useMemo(() =>
+        workOrders
+            .filter(wo => wo.technicianId === employeeId)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        [workOrders, employeeId]
+    );
+    
+    const kpis = useMemo(() => {
+        if (!technician) return { completed: 0, inProgress: 0, revenue: 0 };
+        const completedWos = technicianWorkOrders.filter(wo => wo.status === WorkOrderStatus.COMPLETED);
+        return {
+            completed: completedWos.length,
+            inProgress: technicianWorkOrders.filter(wo => wo.status === WorkOrderStatus.IN_PROGRESS).length,
+            revenue: completedWos.reduce((acc, wo) => acc + wo.totalCost, 0)
+        }
+    }, [technician, technicianWorkOrders]);
+
+    if (!technician) {
+        return (
+            <div className="text-center">
+                <h2 className="text-2xl font-bold text-gray-700">Technician Not Found</h2>
+                <Link to="/employees" className="mt-4 inline-block text-primary-600 hover:underline">← Back to Employee List</Link>
+            </div>
+        );
+    }
+    
+    return (
+        <div>
+            <div className="mb-6">
+                 <Link to="/employees" className="text-sm font-medium text-primary-600 hover:underline flex items-center mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                    Back to all employees
+                </Link>
+                <h1 className="text-3xl font-bold text-gray-800">Technician Profile</h1>
+            </div>
+
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow-md text-center">
+                        <div className="w-24 h-24 rounded-full bg-gray-200 mx-auto mb-4 flex items-center justify-center">
+                            <UsersIcon className="w-12 h-12 text-gray-500" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-800">{formatUserName(technician.name)}</h2>
+                        <p className="text-gray-500 capitalize">{technician.role}</p>
+                        <span className={`mt-2 inline-block px-3 py-1 text-sm font-medium rounded-full ${getTechnicianStatusColor(technician.status)}`}>
+                            {technician.status}
+                        </span>
+                        <div className="mt-4 text-left space-y-2 text-sm border-t pt-4">
+                            <p><strong>Email:</strong> <a href={`mailto:${technician.email}`} className="text-primary-600">{technician.email || '-'}</a></p>
+                            <p><strong>Phone:</strong> <a href={`tel:${technician.phone}`} className="text-primary-600">{technician.phone || '-'}</a></p>
+                        </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700">Performance</h3>
+                        <div className="space-y-3">
+                            <div className="flex justify-between"><span>Completed WOs</span><span className="font-bold">{kpis.completed}</span></div>
+                            <div className="flex justify-between"><span>In Progress WOs</span><span className="font-bold">{kpis.inProgress}</span></div>
+                            <div className="flex justify-between"><span>Revenue Generated</span><span className="font-bold">{formatIDR(kpis.revenue)}</span></div>
+                        </div>
+                    </div>
+                </div>
+                 <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700">Personal Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div><strong>No. Karyawan:</strong> <p>{technician.employeeId || '-'}</p></div>
+                            <div><strong>Jenis Kelamin:</strong> <p>{technician.gender || '-'}</p></div>
+                            <div><strong>Tempat, Tgl Lahir:</strong> <p>{technician.placeOfBirth || '-'}, {technician.dateOfBirth || '-'}</p></div>
+                             <div><strong>Lama Bekerja:</strong> <p>{technician.joinDate ? calculateTenure(technician.joinDate) : '-'}</p></div>
+                            <div className="md:col-span-2"><strong>Alamat:</strong> <p>{technician.address || '-'}</p></div>
+                            <div className="md:col-span-2">
+                                <strong>Keahlian:</strong>
+                                <div className="mt-1 flex flex-wrap gap-2">
+                                    {technician.skills?.map(skill => (
+                                        <span key={skill} className="bg-primary-100 text-primary-700 px-2 py-1 rounded-full text-xs">{skill}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-700">Recent Activity</h3>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left text-gray-500">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th className="px-4 py-2">Date</th>
+                                        <th className="px-4 py-2">Customer</th>
+                                        <th className="px-4 py-2">Description</th>
+                                        <th className="px-4 py-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {technicianWorkOrders.slice(0, 5).map(wo => (
+                                        <tr key={wo.id} className="border-b hover:bg-gray-50">
+                                            <td className="px-4 py-2">{wo.createdAt}</td>
+                                            <td className="px-4 py-2">{wo.customer.name}</td>
+                                            <td className="px-4 py-2 truncate max-w-xs">{wo.description}</td>
+                                            <td className="px-4 py-2">
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(wo.status)}`}>{wo.status}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {technicianWorkOrders.length === 0 && (
+                                        <tr><td colSpan={4} className="text-center py-4 text-gray-500">No work orders found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+             </div>
+        </div>
+    );
+}
 
 
 const Settings: React.FC<{
@@ -2250,8 +2400,8 @@ const App: React.FC = () => {
       
       setWorkOrders(prev => prev.map(wo => {
           if (wo.id === workOrderId) {
-              const partsCost = newParts.reduce((sum, part) => sum + part.price, 0);
-              const baseCost = wo.totalCost - wo.spareParts.reduce((sum, part) => sum + part.price, 0);
+              const partsCost = newParts.reduce((sum, part) => sum + part.sellingPrice, 0);
+              const baseCost = wo.totalCost - wo.spareParts.reduce((sum, part) => sum + part.sellingPrice, 0);
               return { ...wo, spareParts: newParts, totalCost: baseCost + partsCost };
           }
           return wo;
@@ -2355,12 +2505,12 @@ const App: React.FC = () => {
     doc.text(customer.name, 14, 79);
     doc.text(customer.address, 14, 86);
 
-    const partsDescription = workOrder.spareParts.map(p => `${p.name} (${formatIDR(p.price)})`).join('\n');
+    const partsDescription = workOrder.spareParts.map(p => `${p.name} (${formatIDR(p.sellingPrice)})`).join('\n');
     const tableBody = [
-        ['Jasa Perbaikan', workOrder.description, formatIDR(workOrder.totalCost - workOrder.spareParts.reduce((sum, p) => sum + p.price, 0))]
+        ['Jasa Perbaikan', workOrder.description, formatIDR(workOrder.totalCost - workOrder.spareParts.reduce((sum, p) => sum + p.sellingPrice, 0))]
     ];
     workOrder.spareParts.forEach(p => {
-        tableBody.push(['Spare Part', p.name, formatIDR(p.price)])
+        tableBody.push(['Spare Part', p.name, formatIDR(p.sellingPrice)])
     })
 
 
@@ -2585,6 +2735,7 @@ const App: React.FC = () => {
                     onGenerateReport={handleGenerateFinancialReport}
                 />} />
                 <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'EDIT_EMPLOYEE', data: user })} onStatusChange={handleTechnicianStatusChange} />} />
+                <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} />} />
                 <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))} />} />
                 <Route path="/settings" element={<Settings customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile}/>} />
                 <Route path="*" element={<Navigate to="/" />} />

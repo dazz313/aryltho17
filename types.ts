@@ -22,6 +22,12 @@ export interface User {
   gender?: 'Male' | 'Female' | 'Other';
   skills?: string[];
   status?: TechnicianStatus;
+  // Technician Profile Fields
+  employeeId?: string;
+  joinDate?: string;
+  placeOfBirth?: string;
+  dateOfBirth?: string;
+  address?: string;
 }
 
 export interface Customer {
@@ -45,7 +51,8 @@ export interface SparePart {
   id: string;
   itemCode: string;
   name: string;
-  price: number;
+  purchasePrice?: number;
+  sellingPrice: number;
   stock: number;
   unit: string;
   location: string;
