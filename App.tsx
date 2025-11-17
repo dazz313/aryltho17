@@ -1,8 +1,10 @@
+
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus, Supplier, Client } from './types';
-import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon, ReceiptIcon, MapPinIcon, MoreVerticalIcon, TruckIcon, BriefcaseIcon } from './components/icons';
+import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon, ReceiptIcon, MapPinIcon, MoreVerticalIcon, TruckIcon, BriefcaseIcon, ClipboardIcon } from './components/icons';
 import { generateAiSummary, getChatbotResponse } from './services/geminiService';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14,6 +16,7 @@ const translations = {
       dashboard: 'Dashboard', customers: 'Customers', workOrders: 'Work Orders', notifications: 'Notifications',
       myReimbursements: 'My Reimbursements', reimbursement: 'Reimbursement', spareParts: 'Spare Parts',
       finance: 'Finance', employees: 'Employees', settings: 'Settings', logout: 'Logout',
+      dataPendaftaran: 'Registration Data',
       collapseMenu: 'Collapse Menu', expandMenu: 'Expand Menu'
     },
     dashboard: {
@@ -29,6 +32,7 @@ const translations = {
       total: 'Total', date: 'Date', category: 'Category', amount: 'Amount', paymentMethod: 'Payment Method',
       attachment: 'Attachment', notes: 'Notes', search: 'Search', back: 'Back', close: 'Close', download: 'Download',
       approve: 'Approve', view: 'View', submit: 'Submit', optional: 'Optional', required: 'Required',
+      reject: 'Reject',
     },
     status: {
       [WorkOrderStatus.PENDING]: 'Pending', [WorkOrderStatus.IN_PROGRESS]: 'In Progress', [WorkOrderStatus.COMPLETED]: 'Completed',
@@ -64,7 +68,8 @@ const translations = {
         finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)' },
         employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact' },
         technicianProfile: { title: 'Technician Profile', back: 'Back to all employees', personalInfo: 'Personal Information', recentActivity: 'Recent Activity' },
-        settings: { title: 'Settings & Data', companyProfile: 'Company Profile (KOP Surat)', dataBackup: 'Data Backup & Restore', exportData: 'Export Data', exportDesc: 'Download a copy of your application data.', restoreData: 'Restore Data', restoreDesc: 'Upload a JSON backup file to restore data.', language: 'Language / Bahasa' }
+        settings: { title: 'Settings & Data', companyProfile: 'Company Profile (KOP Surat)', dataBackup: 'Data Backup & Restore', exportData: 'Export Data', exportDesc: 'Download a copy of your application data.', restoreData: 'Restore Data', restoreDesc: 'Upload a JSON backup file to restore data.', language: 'Language / Bahasa' },
+        registrations: { title: 'Pending Registrations', applicant: 'Applicant', role: 'Role', contact: 'Contact Info', approve: 'Approve', reject: 'Reject', empty: 'No pending registrations.' }
     },
     login: {
       title: 'ServisPro CRM',
@@ -75,7 +80,8 @@ const translations = {
       logIn: 'Log In',
       createAccount: 'Create Account',
       joinTeam: 'Join the ServisPro team',
-      invalidCredentials: 'Invalid credentials. Please check your email/phone and password.'
+      invalidCredentials: 'Invalid credentials. Please check your email/phone and password.',
+      approvalPending: 'Your account is pending administrator approval.'
     }
   },
   id: {
@@ -83,6 +89,7 @@ const translations = {
       dashboard: 'Dasbor', customers: 'Pelanggan', workOrders: 'Perintah Kerja', notifications: 'Notifikasi',
       myReimbursements: 'Reimbursement Saya', reimbursement: 'Reimbursement', spareParts: 'Suku Cadang',
       finance: 'Keuangan', employees: 'Karyawan', settings: 'Pengaturan', logout: 'Keluar',
+      dataPendaftaran: 'Data Pendaftaran',
       collapseMenu: 'Ciutkan Menu', expandMenu: 'Perluas Menu'
     },
     dashboard: {
@@ -98,6 +105,7 @@ const translations = {
       total: 'Total', date: 'Tanggal', category: 'Kategori', amount: 'Jumlah', paymentMethod: 'Metode Pembayaran',
       attachment: 'Lampiran', notes: 'Catatan', search: 'Cari', back: 'Kembali', close: 'Tutup', download: 'Unduh',
       approve: 'Setujui', view: 'Lihat', submit: 'Kirim', optional: 'Opsional', required: 'Wajib',
+      reject: 'Tolak',
     },
     status: {
       [WorkOrderStatus.PENDING]: 'Tertunda', [WorkOrderStatus.IN_PROGRESS]: 'Sedang Dikerjakan', [WorkOrderStatus.COMPLETED]: 'Selesai',
@@ -133,7 +141,8 @@ const translations = {
         finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan' },
         employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak' },
         technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini' },
-        settings: { title: 'Pengaturan & Data', companyProfile: 'Profil Perusahaan (KOP Surat)', dataBackup: 'Cadangkan & Pulihkan Data', exportData: 'Ekspor Data', exportDesc: 'Unduh salinan data aplikasi Anda.', restoreData: 'Pulihkan Data', restoreDesc: 'Unggah file cadangan JSON untuk memulihkan data.', language: 'Language / Bahasa' }
+        settings: { title: 'Pengaturan & Data', companyProfile: 'Profil Perusahaan (KOP Surat)', dataBackup: 'Cadangkan & Pulihkan Data', exportData: 'Ekspor Data', exportDesc: 'Unduh salinan data aplikasi Anda.', restoreData: 'Pulihkan Data', restoreDesc: 'Unggah file cadangan JSON untuk memulihkan data.', language: 'Language / Bahasa' },
+        registrations: { title: 'Pendaftaran Tertunda', applicant: 'Pemohon', role: 'Peran', contact: 'Info Kontak', approve: 'Setujui', reject: 'Tolak', empty: 'Tidak ada pendaftaran tertunda.' }
     },
     login: {
       title: 'ServisPro CRM',
@@ -144,7 +153,8 @@ const translations = {
       logIn: 'Masuk',
       createAccount: 'Buat Akun',
       joinTeam: 'Bergabung dengan tim ServisPro',
-      invalidCredentials: 'Kredensial salah. Silakan periksa email/telepon dan kata sandi Anda.'
+      invalidCredentials: 'Kredensial salah. Silakan periksa email/telepon dan kata sandi Anda.',
+      approvalPending: 'Akun Anda sedang menunggu persetujuan administrator.'
     }
   }
 };
@@ -320,6 +330,10 @@ const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: (
     );
 
     if (user) {
+        if (user.approved === false) {
+            setError(t('login.approvalPending'));
+            return;
+        }
         onLogin(user);
     } else {
         setError(t('login.invalidCredentials'));
@@ -398,7 +412,8 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
             age: age ? parseInt(age, 10) : undefined,
             gender: gender,
             skills: skills.split(',').map(s => s.trim()).filter(Boolean),
-            status: role === UserRole.TECHNICIAN ? TechnicianStatus.AVAILABLE : undefined
+            status: role === UserRole.TECHNICIAN ? TechnicianStatus.AVAILABLE : undefined,
+            approved: false,
         };
         onSignUp(newUser);
     };
@@ -1768,6 +1783,64 @@ const MyReimbursementsPage: React.FC<{
     );
 };
 
+const RegistrationsPage: React.FC<{
+    users: User[];
+    onApprove: (userId: string) => void;
+    onReject: (userId: string) => void;
+    t: Function;
+}> = ({ users, onApprove, onReject, t }) => {
+    const pendingUsers = users.filter(u => u.approved === false);
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{t('pages.registrations.title')}</h1>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th scope="col" className="px-6 py-3">{t('pages.registrations.applicant')}</th>
+                                <th scope="col" className="px-6 py-3">{t('pages.registrations.role')}</th>
+                                <th scope="col" className="px-6 py-3">{t('pages.registrations.contact')}</th>
+                                <th scope="col" className="px-6 py-3">{t('common.status')}</th>
+                                <th scope="col" className="px-6 py-3 text-right">{t('common.actions')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {pendingUsers.map(user => (
+                                <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-medium">{formatUserName(user.name)}</td>
+                                    <td className="px-6 py-4 capitalize">{user.role}</td>
+                                    <td className="px-6 py-4">
+                                        <div>{user.email || '-'}</div>
+                                        <div>{user.phone || '-'}</div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor('Pending Approval')}`}>
+                                            {t('status.Pending Approval')}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right space-x-2">
+                                        <button onClick={() => onApprove(user.id)} className="font-medium text-green-600 hover:underline">{t('pages.registrations.approve')}</button>
+                                        <button onClick={() => onReject(user.id)} className="font-medium text-red-600 hover:underline">{t('pages.registrations.reject')}</button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {pendingUsers.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="text-center py-8 text-gray-500">
+                                        {t('pages.registrations.empty')}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users: User[], currentUser: User, t: Function}> = ({ workOrders, customers, users, currentUser, t }) => {
   const [summary, setSummary] = useState('');
@@ -2779,7 +2852,7 @@ const EmployeesPage: React.FC<{
 
     const filteredUsers = useMemo(() => {
         return users.filter(user =>
-            (user.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+            user.approved !== false && (user.name || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [users, searchTerm]);
 
@@ -3348,8 +3421,18 @@ const App: React.FC = () => {
 
   const handleSignUp = (newUser: User) => {
     setUsers(prev => [...prev, newUser]);
-    alert(`User ${newUser.name} created! Please log in.`);
+    alert(`Account for ${newUser.name} created! Your registration is now pending administrator approval.`);
     setAuthScreen('login');
+  };
+
+  const handleApproveRegistration = (userId: string) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, approved: true } : u));
+  };
+
+  const handleRejectRegistration = (userId: string) => {
+    if (window.confirm('Are you sure you want to reject this registration? This action cannot be undone.')) {
+        setUsers(prev => prev.filter(u => u.id !== userId));
+    }
   };
   
   const handleSaveCustomer = (customer: Customer) => {
@@ -3472,497 +3555,391 @@ const App: React.FC = () => {
       
       setWorkOrders(prev => prev.map(wo => {
           if (wo.id === workOrderId) {
-              const partsCost = newParts.reduce((sum, part) => sum + part.sellingPrice, 0);
-              const baseCost = wo.totalCost - (wo.spareParts || []).reduce((sum, part) => sum + part.sellingPrice, 0);
-              return { ...wo, spareParts: newParts, totalCost: baseCost + partsCost };
+              const newPartsCost = newParts.reduce((sum, part) => sum + part.sellingPrice, 0);
+              const oldPartsCost = (wo.spareParts || []).reduce((sum, part) => sum + part.sellingPrice, 0);
+              const baseServiceCost = wo.totalCost - oldPartsCost;
+              const newTotalCost = baseServiceCost + newPartsCost;
+              return { ...wo, spareParts: newParts, totalCost: newTotalCost };
           }
           return wo;
       }));
+      setModalState({ type: null, data: null });
   };
 
   const handleCompleteWorkOrder = (workOrderId: string) => {
-    const workOrderToComplete = workOrders.find(wo => wo.id === workOrderId);
-
-    if (workOrderToComplete) {
-      const completionDate = new Date().toISOString().split('T')[0];
-      
-      const existingInvoice = invoices.find(inv => inv.workOrderId === workOrderId);
-      if (!existingInvoice) {
-          const newInvoice: Invoice = {
-            id: `INV-${workOrderToComplete.id}`,
-            workOrderId: workOrderToComplete.id,
-            customerId: workOrderToComplete.customer.id,
-            amount: workOrderToComplete.totalCost,
-            issuedDate: completionDate,
-            status: 'Unpaid',
-          };
-          setInvoices(prev => [...prev, newInvoice]);
-      }
-      
-      setWorkOrders(prev => prev.map(wo => 
+    setWorkOrders(prev => prev.map(wo => 
         wo.id === workOrderId 
-          ? { 
-              ...wo, 
-              status: WorkOrderStatus.COMPLETED,
-              completedAt: completionDate
-            } 
-          : wo
-      ));
-      
-      const technicianId = workOrderToComplete.technicianId;
-      const hasOtherJobs = workOrders.some(wo => wo.technicianId === technicianId && wo.status === WorkOrderStatus.IN_PROGRESS && wo.id !== workOrderId);
-      if (technicianId && !hasOtherJobs) {
-        setUsers(prev => prev.map(u => u.id === technicianId ? { ...u, status: TechnicianStatus.AVAILABLE } : u));
-      }
-
+            ? { ...wo, status: WorkOrderStatus.COMPLETED, completedAt: new Date().toISOString().split('T')[0] } 
+            : wo
+    ));
+    const wo = workOrders.find(w => w.id === workOrderId);
+    if (wo && wo.technicianId) {
+        setUsers(prev => prev.map(u => u.id === wo.technicianId ? { ...u, status: TechnicianStatus.AVAILABLE } : u));
     }
   };
-  
+
   const handleMarkAsPaid = (workOrderId: string, paymentMethod: PaymentMethod, attachment?: { name: string; type: string; data: string; }) => {
-    const invoiceToUpdate = invoices.find(inv => inv.workOrderId === workOrderId);
-    if (!invoiceToUpdate) {
-        alert("Error: Invoice not found for this work order.");
-        return;
+    const workOrder = workOrders.find(wo => wo.id === workOrderId);
+    if (!workOrder) return;
+
+    const existingInvoice = invoices.find(inv => inv.workOrderId === workOrderId);
+    const invoiceId = existingInvoice?.id || `INV-${workOrderId}`;
+    
+    if (existingInvoice) {
+        setInvoices(prev => prev.map(inv => inv.id === invoiceId ? { ...inv, status: 'Paid', paidDate: new Date().toISOString().split('T')[0] } : inv));
+    } else {
+        const newInvoice: Invoice = {
+            id: invoiceId,
+            workOrderId: workOrderId,
+            customerId: workOrder.customer.id,
+            amount: workOrder.totalCost,
+            issuedDate: workOrder.completedAt || new Date().toISOString().split('T')[0],
+            status: 'Paid',
+            paidDate: new Date().toISOString().split('T')[0],
+        };
+        setInvoices(prev => [newInvoice, ...prev]);
     }
-
-    const updatedInvoice = { 
-        ...invoiceToUpdate, 
-        status: 'Paid' as 'Paid', 
-        paidDate: new Date().toISOString().split('T')[0] 
-    };
-    setInvoices(prev => prev.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv));
-
-    const customerName = workOrders.find(wo => wo.id === workOrderId)?.customer.name || 'N/A';
+    
     const newTransaction: Transaction = {
-        id: `trn-${updatedInvoice.id}`,
-        invoiceId: updatedInvoice.workOrderId,
-        date: updatedInvoice.paidDate!,
-        description: `Payment for WO from ${customerName}`,
+        id: `trn-${Date.now()}`,
+        date: new Date().toISOString().split('T')[0],
+        description: `Payment for Work Order ${workOrderId}`,
         type: 'income',
-        amount: updatedInvoice.amount,
+        amount: workOrder.totalCost,
         category: TransactionCategory.SERVICE_INCOME,
         paymentMethod: paymentMethod,
+        invoiceId: invoiceId,
         attachment: attachment,
+        workOrderId: workOrderId,
     };
     setTransactions(prev => [newTransaction, ...prev]);
-    
-    const newNotification: Notification = {
-        id: `notif-${Date.now()}`,
-        message: `${formatUserName(currentUser?.name)} confirmed payment of ${formatIDR(updatedInvoice.amount)} for ${workOrderId} via ${paymentMethod}.`,
-        timestamp: new Date().toISOString(),
-        read: false,
-        link: '/finance',
-        workOrderId: workOrderId
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-
     setModalState({ type: null, data: null });
-  };
-
-  const handleSaveSparePart = (part: SparePart) => {
-    const exists = spareParts.some(p => p.id === part.id);
-    if (exists) {
-        setSpareParts(spareParts.map(p => p.id === part.id ? part : p));
-    } else {
-        setSpareParts([part, ...spareParts]);
-    }
-    setModalState({ type: null, data: null });
-  };
-
-  const handleSaveSupplier = (supplier: Supplier) => {
-    const exists = suppliers.some(s => s.id === supplier.id);
-    if (exists) {
-        setSuppliers(suppliers.map(s => s.id === supplier.id ? supplier : s));
-    } else {
-        setSuppliers([supplier, ...suppliers]);
-    }
-    setModalState({ type: null, data: null });
-  };
-
-  const handleSaveInvoice = (invoice: Invoice) => {
-    const originalInvoice = invoices.find(i => i.id === invoice.id);
-    const wasPaid = originalInvoice?.status === 'Paid';
-    const isNowPaid = invoice.status === 'Paid';
-
-    const exists = !!originalInvoice;
-    if (exists) {
-        setInvoices(invoices.map(i => (i.id === invoice.id ? invoice : i)));
-    } else {
-        setInvoices([invoice, ...invoices]);
-    }
-
-    if (isNowPaid && !wasPaid) {
-        const newTransaction: Transaction = {
-            id: `trn-${invoice.id}`,
-            invoiceId: invoice.workOrderId,
-            date: invoice.paidDate || new Date().toISOString().split('T')[0],
-            description: `Payment for Invoice ${invoice.id}`,
-            type: 'income',
-            amount: invoice.amount,
-            category: TransactionCategory.SERVICE_INCOME,
-            paymentMethod: PaymentMethod.BANK_TRANSFER,
-        };
-        setTransactions(prev => [...prev, newTransaction]);
-    }
-    else if (!isNowPaid && wasPaid) {
-        setTransactions(prev => prev.filter(t => t.invoiceId !== invoice.workOrderId));
-    }
-
-    setModalState({ type: null, data: null });
-  };
-
-  const handlePrintInvoice = (invoice: Invoice) => {
-    const doc = new jsPDF();
-    const customer = customers.find(c => c.id === invoice.customerId);
-    const workOrder = workOrders.find(w => w.id === invoice.workOrderId);
-    if (!customer || !workOrder) return;
-
-    generatePdfHeader(doc, companyProfile);
-
-    // Invoice details below header
-    doc.setFontSize(16);
-    doc.text("INVOICE", 196, 65, { align: 'right' });
-    doc.setFontSize(12);
-    doc.text(`Invoice #: ${invoice.id}`, 196, 72, { align: 'right' });
-    doc.text(`Date Issued: ${invoice.issuedDate}`, 196, 79, { align: 'right' });
-
-    doc.text("Bill To:", 14, 72);
-    doc.text(customer.name, 14, 79);
-    doc.text(customer.address, 14, 86);
-    
-    const currentSpareParts = workOrder.spareParts || [];
-    const serviceFee = workOrder.totalCost - currentSpareParts.reduce((sum, p) => sum + p.sellingPrice, 0);
-    const tableBody = [
-        ['Jasa Perbaikan', workOrder.description, formatIDR(serviceFee)]
-    ];
-    currentSpareParts.forEach(p => {
-        tableBody.push(['Spare Part', p.name, formatIDR(p.sellingPrice)])
-    });
-
-
-    autoTable(doc, {
-        startY: 100,
-        head: [['Item', 'Description', 'Amount']],
-        body: tableBody,
-        theme: 'striped',
-    });
-    
-    let finalY = (doc as any).lastAutoTable.finalY;
-    let summaryY = finalY + 10;
-    
-    const subtotal = workOrder.totalCost;
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Subtotal:', 150, summaryY, { align: 'right' });
-    doc.text(formatIDR(subtotal), 196, summaryY, { align: 'right' });
-    summaryY += 7;
-
-    if (invoice.discount) {
-        doc.text('Discount:', 150, summaryY, { align: 'right' });
-        doc.text(`- ${formatIDR(invoice.discount)}`, 196, summaryY, { align: 'right' });
-        summaryY += 7;
-    }
-
-    if (invoice.tax) {
-        doc.text('Tax:', 150, summaryY, { align: 'right' });
-        doc.text(`+ ${formatIDR(invoice.tax)}`, 196, summaryY, { align: 'right' });
-        summaryY += 7;
-    }
-    
-    doc.setLineWidth(0.2);
-    doc.line(145, summaryY - 2, 196, summaryY - 2);
-
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total:', 150, summaryY + 2, { align: 'right' });
-    doc.text(formatIDR(invoice.amount), 196, summaryY + 2, { align: 'right' });
-    summaryY += 15;
-    
-    if (invoice.notes) {
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'italic');
-        const splitNotes = doc.splitTextToSize(invoice.notes, 182);
-        if (splitNotes && splitNotes.length > 0) {
-            doc.text('Notes:', 14, summaryY);
-            doc.text(splitNotes, 14, summaryY + 5);
-            summaryY += (splitNotes.length * 5) + 5;
-        }
-    }
-
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Status: ${invoice.status}`, 14, summaryY);
-    doc.text("Thank you for your business!", 105, summaryY + 20, { align: 'center'});
-
-    doc.save(`Invoice-${invoice.id}.pdf`);
-  };
-
-  const handleSaveTransaction = (transaction: Transaction) => {
-    const exists = transactions.some(r => r.id === transaction.id);
-    if (exists) {
-        setTransactions(transactions.map(r => r.id === transaction.id ? transaction : r));
-    } else {
-        setTransactions([transaction, ...transactions]);
-    }
-    setModalState({ type: null, data: null });
-  };
-
-   const handleSaveContract = (contract: ServiceContract) => {
-    const exists = contracts.some(c => c.id === contract.id);
-    if(exists) {
-        setContracts(contracts.map(c => c.id === contract.id ? contract : c));
-    } else {
-        setContracts([contract, ...contracts]);
-    }
-    setModalState({ type: null, data: null });
-  };
-  
-  const handleTechnicianStatusChange = (userId: string, status: TechnicianStatus) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
-  };
-
-  const handleWhatsAppChat = (customer: Customer, workOrder?: WorkOrder) => {
-    if (!customer.phone) {
-        alert('Customer phone number is not available.');
-        return;
-    }
-    const formattedPhone = customer.phone.replace(/[^0-9]/g, '').replace(/^0/, '62');
-    let text = `Hello ${customer.name}, this is from ServisPro.`;
-    if (workOrder) {
-        text = `Hello ${customer.name}, this is regarding your service request (ID: ${workOrder.id}).`;
-    }
-    const encodedText = encodeURIComponent(text);
-    const url = `https://wa.me/${formattedPhone}?text=${encodedText}`;
-    window.open(url, '_blank');
-  };
-
-  const handleEmailNotify = (customer: Customer, workOrder?: WorkOrder) => {
-    if (!customer.email) {
-        alert('Customer email is not available.');
-        return;
-    }
-    let subject = 'Notification from ServisPro';
-    let body = `Dear ${customer.name},\n\nWe are contacting you regarding your service with us.\n\nBest regards,\nServisPro Team`;
-    if (workOrder) {
-        subject = `Update on Work Order: ${workOrder.id}`;
-        body = `Dear ${customer.name},\n\nThis is an update regarding your work order (ID: ${workOrder.id} - ${workOrder.description}).\n\n\nBest regards,\nServisPro Team`;
-    }
-    const encodedSubject = encodeURIComponent(subject);
-    const encodedBody = encodeURIComponent(body);
-    window.location.href = `mailto:${customer.email}?subject=${encodedSubject}&body=${encodedBody}`;
   };
   
   const handleRequestReimbursement = (workOrderId: string, amount: number, description: string, attachment: { name: string; type: string; data: string; }) => {
-    const workOrder = workOrders.find(wo => wo.id === workOrderId);
-    if (!currentUser || !workOrder) return;
-    
-    const newTransaction: Transaction = {
-      id: `reimburse-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
-      description: `Reimbursement for ${workOrderId}: ${description}`,
-      type: 'expense',
-      amount,
-      category: TransactionCategory.REIMBURSEMENT,
-      paymentMethod: PaymentMethod.CASH,
-      attachment,
-      approved: false,
-      requestedByUserId: currentUser.id,
-      workOrderId: workOrderId,
-    };
-    
-    setTransactions(prev => [newTransaction, ...prev]);
-
-    const newNotification: Notification = {
-      id: `notif-${Date.now()}`,
-      message: `${formatUserName(currentUser.name)} requested a reimbursement of ${formatIDR(amount)}. Authorization required.`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      link: '/reimbursements',
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-    
-    setModalState({ type: null, data: null });
+      if (!currentUser) return;
+      const newTransaction: Transaction = {
+          id: `trn-reim-${Date.now()}`,
+          date: new Date().toISOString().split('T')[0],
+          description: description,
+          type: 'expense',
+          amount: amount,
+          category: TransactionCategory.REIMBURSEMENT,
+          paymentMethod: PaymentMethod.CASH,
+          attachment: attachment,
+          approved: false,
+          requestedByUserId: currentUser.id,
+          workOrderId: workOrderId,
+      };
+      setTransactions(prev => [newTransaction, ...prev]);
+      setModalState({type: null, data: null});
   };
-
+  
   const handleApproveReimbursement = (transactionId: string) => {
       setTransactions(prev => prev.map(t => t.id === transactionId ? { ...t, approved: true } : t));
   };
 
+  const handleSaveSparePart = (part: SparePart) => {
+      const exists = spareParts.some(p => p.id === part.id);
+      if (exists) {
+          setSpareParts(prev => prev.map(p => p.id === part.id ? part : p));
+      } else {
+          setSpareParts(prev => [part, ...prev]);
+      }
+      setModalState({ type: null, data: null });
+  };
+
+  const handleSaveSupplier = (supplier: Supplier) => {
+      const exists = suppliers.some(s => s.id === supplier.id);
+      if (exists) {
+          setSuppliers(prev => prev.map(s => s.id === supplier.id ? supplier : s));
+      } else {
+          setSuppliers(prev => [supplier, ...prev]);
+      }
+      setModalState({ type: null, data: null });
+  };
+  
+  const handleSaveTransaction = (transaction: Transaction) => {
+      const exists = transactions.some(t => t.id === transaction.id);
+      if (exists) {
+          setTransactions(prev => prev.map(t => t.id === transaction.id ? transaction : t));
+      } else {
+          setTransactions(prev => [transaction, ...prev]);
+      }
+      setModalState({ type: null, data: null });
+  };
+  
+  const handleSaveInvoice = (invoice: Invoice) => {
+      const exists = invoices.some(i => i.id === invoice.id);
+      if (exists) {
+          setInvoices(prev => prev.map(i => i.id === invoice.id ? invoice : i));
+      } else {
+          setInvoices(prev => [invoice, ...prev]);
+      }
+      if (invoice.status === 'Paid' && !transactions.some(t => t.invoiceId === invoice.id)) {
+          const workOrder = workOrders.find(wo => wo.id === invoice.workOrderId);
+          if (!workOrder) return;
+          const newTransaction: Transaction = {
+              id: `trn-inv-${Date.now()}`,
+              date: invoice.paidDate!,
+              description: `Payment for Invoice ${invoice.id}`,
+              type: 'income',
+              amount: invoice.amount,
+              category: TransactionCategory.SERVICE_INCOME,
+              paymentMethod: PaymentMethod.BANK_TRANSFER,
+              invoiceId: invoice.id,
+              workOrderId: workOrder.id,
+          };
+          setTransactions(prev => [newTransaction, ...prev]);
+      }
+      setModalState({ type: null, data: null });
+  };
+
+  const handleSaveContract = (contract: ServiceContract) => {
+      const exists = contracts.some(c => c.id === contract.id);
+      if (exists) {
+          setContracts(prev => prev.map(c => c.id === contract.id ? contract : c));
+      } else {
+          setContracts(prev => [contract, ...prev]);
+      }
+      setModalState({ type: null, data: null });
+  };
+
+  const handleTechnicianStatusChange = (userId: string, status: TechnicianStatus) => {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+  };
+  
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+  
+  const handleSaveProfile = (profile: CompanyProfile) => {
+      setCompanyProfile(profile);
+  };
+  
+  const generateInvoicePdf = (invoice: Invoice) => {
+    const doc = new jsPDF();
+    const workOrder = workOrders.find(wo => wo.id === invoice.workOrderId);
+    if (!workOrder) return;
+
+    generatePdfHeader(doc, companyProfile);
+
+    doc.setFontSize(20);
+    doc.text("INVOICE", 105, 65, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Invoice Number: ${invoice.id}`, 14, 80);
+    doc.text(`Invoice Date: ${invoice.issuedDate}`, 14, 85);
+    doc.text(`Work Order ID: ${invoice.workOrderId}`, 14, 90);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Billed To:', 14, 100);
+    doc.setFont('helvetica', 'normal');
+    doc.text(workOrder.customer.name, 14, 105);
+    doc.text(workOrder.customer.address, 14, 110);
+    doc.text(workOrder.customer.phone, 14, 115);
+
+    const serviceCost = workOrder.totalCost - (workOrder.spareParts?.reduce((s, p) => s + p.sellingPrice, 0) || 0);
+    const tableBody = [
+        ['1', `Jasa Servis: ${workOrder.description}`, '1', formatIDR(serviceCost)],
+        ...(workOrder.spareParts?.map((p, i) => [i + 2, `Spare Part: ${p.name}`, '1', formatIDR(p.sellingPrice)]) || [])
+    ];
+    
+    autoTable(doc, {
+        startY: 125,
+        head: [['No.', 'Description', 'Qty', 'Amount']],
+        body: tableBody,
+        theme: 'grid',
+        didDrawCell: (data) => { if (data.section === 'body' && data.column.index === 3) { data.cell.styles.halign = 'right'; } }
+    });
+    
+    const finalY = (doc as any).lastAutoTable.finalY;
+    let yPos = finalY + 10;
+    doc.setFontSize(10);
+    doc.text('Subtotal:', 150, yPos, { align: 'right' });
+    doc.text(formatIDR(workOrder.totalCost), 196, yPos, { align: 'right' });
+    yPos += 7;
+
+    if(invoice.discount) {
+        doc.text('Discount:', 150, yPos, { align: 'right' });
+        doc.text(`-${formatIDR(invoice.discount)}`, 196, yPos, { align: 'right' });
+        yPos += 7;
+    }
+    if(invoice.tax) {
+        doc.text('Tax:', 150, yPos, { align: 'right' });
+        doc.text(formatIDR(invoice.tax), 196, yPos, { align: 'right' });
+        yPos += 7;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total:', 150, yPos, { align: 'right' });
+    doc.text(formatIDR(invoice.amount), 196, yPos, { align: 'right' });
+
+    if (invoice.notes) {
+        yPos += 15;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Notes:', 14, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.text(invoice.notes, 14, yPos + 5, { maxWidth: 180 });
+    }
+
+    doc.save(`Invoice-${invoice.id}.pdf`);
+  };
 
   const handleGenerateFinancialReport = () => {
     const doc = new jsPDF();
     generatePdfHeader(doc, companyProfile);
-
     doc.setFontSize(20);
-    doc.text("Laporan Keuangan", 105, 65, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`Periode: Sampai dengan ${new Date().toLocaleDateString('id-ID')}`, 105, 72, { align: 'center' });
-
+    doc.text('Financial Report', 105, 65, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Period: ${new Date().toLocaleDateString('id-ID')}`, 14, 75);
+    
     autoTable(doc, {
         startY: 85,
-        head: [['Laporan Laba Rugi', '']],
+        head: [['', '']],
         body: [
-            ['Total Pendapatan (Income)', formatIDR(totalIncome)],
-            ['Total Pengeluaran (Expense)', formatIDR(totalExpense)],
+            ['Total Income', formatIDR(totalIncome)],
+            ['Total Expense', formatIDR(totalExpense)],
+            [{content: 'Profit / Loss', styles: {fontStyle: 'bold'}} , {content: formatIDR(labaRugi), styles: {fontStyle: 'bold'}}],
         ],
-        foot: [['Laba / Rugi Bersih (Profit / Loss)', formatIDR(labaRugi)]],
-        theme: 'grid',
-        headStyles: { fillColor: [22, 160, 133] },
-        footStyles: { fillColor: labaRugi >= 0 ? [46, 204, 113] : [231, 76, 60], textColor: [255,255,255] }
+        theme: 'plain'
     });
 
     autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 15,
-        head: [['Tanggal', 'Deskripsi', 'Tipe', 'Jumlah']],
-        body: sortedTransactions.map(record => [
-            record.date,
-            record.description,
-            record.type,
-            formatIDR(record.amount)
-        ]),
-        didDrawPage: (data: any) => {
-            doc.setFontSize(16);
-            doc.text('Rincian Arus Kas (Cash Flow)', data.settings.margin.left, (doc as any).lastAutoTable.finalY + 10);
-        },
-        headStyles: { fillColor: [41, 128, 185] },
-        theme: 'striped'
-    });
-    
-    const finalYAfterCashFlow = (doc as any).lastAutoTable.finalY;
-    if (finalYAfterCashFlow > 200) { // Add new page if not enough space
-        doc.addPage();
-    }
-    
-    autoTable(doc, {
-        startY: finalYAfterCashFlow > 200 ? 20 : finalYAfterCashFlow + 15,
-        head: [['Neraca (Balance Sheet)', '']],
-        body: [
-            ['Aset (Assets)', formatIDR(assets)],
-            ['Liabilitas (Liabilities)', formatIDR(liabilities)],
-            ['Ekuitas (Equity)', formatIDR(equity)],
-        ],
-        foot: [['Total Liabilitas + Ekuitas', formatIDR(liabilities + equity)]],
-        theme: 'grid',
-        headStyles: { fillColor: [142, 68, 173] }
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        head: [['Date', 'Description', 'Category', 'Type', 'Amount']],
+        body: transactions.map(t => [t.date, t.description, t.category, t.type, formatIDR(t.amount)]),
     });
 
-    doc.save(`Laporan-Keuangan-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`FinancialReport-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   if (!currentUser) {
-    if (authScreen === 'signup') {
-        return <SignUpScreen onSignUp={handleSignUp} onSwitchToLogin={() => setAuthScreen('login')} t={t} />;
-    }
-    return <LoginScreen onLogin={handleLogin} onSwitchToSignUp={() => setAuthScreen('signup')} users={users} t={t} />;
+    return authScreen === 'login' 
+        ? <LoginScreen onLogin={handleLogin} onSwitchToSignUp={() => setAuthScreen('signup')} users={users} t={t} /> 
+        : <SignUpScreen onSignUp={handleSignUp} onSwitchToLogin={() => setAuthScreen('login')} t={t} />;
   }
-  
-  const navItems = [
-    { path: '/', labelKey: 'sidebar.dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-blue-500' },
-    { path: '/customers', labelKey: 'sidebar.customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-green-500' },
-    { path: '/work-orders', labelKey: 'sidebar.workOrders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-orange-500' },
-    { path: '/notifications', labelKey: 'sidebar.notifications', icon: BellIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-red-500' },
-    { path: '/my-reimbursements', labelKey: 'sidebar.myReimbursements', icon: ReceiptIcon, roles: [UserRole.TECHNICIAN], color: 'text-cyan-500' },
-    { path: '/reimbursements', labelKey: 'sidebar.reimbursement', icon: ReceiptIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-cyan-500' },
-    { path: '/spare-parts', labelKey: 'sidebar.spareParts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-indigo-500' },
-    { path: '/finance', labelKey: 'sidebar.finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-purple-500' },
-    { path: '/employees', labelKey: 'sidebar.employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-teal-500' },
-    { path: '/settings', labelKey: 'sidebar.settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-gray-500' },
-  ];
 
-  const accessibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));
+  const unreadNotifications = notifications.filter(n => !n.read).length;
 
-  const Sidebar: React.FC = () => {
-    const location = useLocation();
-    const unreadCount = notifications.filter(n => !n.read).length;
-    
-    return (
-        <div className={`flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
-            <div className={`h-16 flex items-center border-b border-gray-200 ${isSidebarCollapsed ? 'justify-center' : 'justify-center'}`}>
-                {isSidebarCollapsed ? (
-                    <DashboardIcon className="h-10 w-10 text-primary-600" />
-                ) : (
-                    <h1 className="text-2xl font-bold text-primary-600">ServisPro</h1>
-                )}
-            </div>
-            <nav className="flex-1 p-4 space-y-2">
-                {accessibleNavItems.map(item => (
-                     <Link key={item.path} to={item.path} title={isSidebarCollapsed ? t(item.labelKey) : ''} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${(location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path) ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-                        <item.icon className={`${isSidebarCollapsed ? `h-9 w-9 ${item.color}` : 'h-5 w-5'}`} />
-                        {!isSidebarCollapsed && <span className="font-medium">{t(item.labelKey)}</span>}
-                        {item.labelKey === 'sidebar.notifications' && !isSidebarCollapsed && unreadCount > 0 && (
-                            <span className="ml-auto bg-red-500 text-white text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center">
-                                {unreadCount}
-                            </span>
-                        )}
-                    </Link>
-                ))}
-            </nav>
-            <div className="p-4 border-t border-gray-200">
-                 <button onClick={handleLogout} className={`flex items-center w-full space-x-3 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? t('sidebar.logout') : ''}>
-                    <LogoutIcon className="h-5 w-5" />
-                    {!isSidebarCollapsed && <span className="font-medium">{t('sidebar.logout')}</span>}
-                </button>
-                 <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className={`flex items-center w-full space-x-3 px-4 py-2 mt-2 rounded-lg text-gray-600 hover:bg-gray-100 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? t('sidebar.expandMenu') : t('sidebar.collapseMenu')}>
-                    {isSidebarCollapsed ? <ChevronsRightIcon className="h-5 w-5" /> : <ChevronsLeftIcon className="h-5 w-5" />}
-                    {!isSidebarCollapsed && <span className="font-medium">{t('sidebar.collapseMenu')}</span>}
-                </button>
-            </div>
-        </div>
-    );
-  }
-  
+// FIX: Updated the icon prop type to correctly accept a className, resolving a TypeScript error with React.cloneElement.
+  const NavLink: React.FC<{ to: string; icon: React.ReactElement<{ className?: string }>; label: string; }> = ({ to, icon, label }) => (
+    <Link to={to} className="flex items-center p-2 text-base font-normal text-gray-200 rounded-lg hover:bg-gray-700">
+      {React.cloneElement(icon, { className: "w-6 h-6 text-gray-400"})}
+      {!isSidebarCollapsed && <span className="ml-3">{label}</span>}
+    </Link>
+  );
+
   return (
     <HashRouter>
-        <div className="flex h-screen bg-gray-50">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto p-8">
-                <Routes>
-                    <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} t={t} />} />
-                    <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
-                    <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddContract={(customerId) => setModalState({ type: 'add_contract', data: { customerId } })} onEditContract={(c) => setModalState({type: 'edit_contract', data: c})} onCreateWorkOrder={(customerId) => setModalState({ type: 'create_work_order_from_detail', data: { customerId } })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} t={t} />} />
-                    <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} invoices={invoices} users={users} transactions={transactions} companyProfile={companyProfile} clients={clients} onCreate={() => setModalState({ type: 'create_work_order', data: null })} onAssign={(wo) => setModalState({ type: 'assign_technician', data: wo })} onClaim={handleClaimJob} onAddPart={(wo) => setModalState({ type: 'add_part_to_wo', data: wo })} onComplete={handleCompleteWorkOrder} onMarkAsPaid={(wo) => setModalState({ type: 'mark_as_paid', data: wo })} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} t={t} />} />
-                    <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))} t={t} />} />
-                    <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} t={t} />} />
-                    <Route path="/reimbursements" element={ currentUser.role === UserRole.ADMINISTRATOR ? <ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} t={t}/> : <Navigate to="/" replace />} />
-                    <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} t={t} />} />
-                    <Route path="/finance" element={<Finance invoices={invoices} customers={customers} transactions={sortedTransactions} totalIncome={totalIncome} totalExpense={totalExpense} labaRugi={labaRugi} assets={assets} liabilities={liabilities} equity={equity} onAddInvoice={() => setModalState({ type: 'add_invoice', data: null })} onEditInvoice={(i) => setModalState({ type: 'edit_invoice', data: i })} onPrintInvoice={handlePrintInvoice} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} onEditTransaction={(r) => setModalState({ type: 'edit_transaction', data: r })} onGenerateReport={handleGenerateFinancialReport} currentUser={currentUser} onApproveReimbursement={handleApproveReimbursement} onViewAttachment={(a) => setModalState({ type: 'view_attachment', data: a })} t={t} />} />
-                    <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} onStatusChange={handleTechnicianStatusChange} t={t} />} />
-                    <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} t={t} />} />
-                    <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} t={t} language={language} setLanguage={setLanguage} />} />
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-            </main>
-            
-            {/* --- MODALS --- */}
-            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} t={t} />}
-            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} t={t} />}
-            {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} t={t} />}
-            {modalState.type === 'edit_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={modalState.data} t={t} />}
-            {modalState.type === 'create_work_order' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} t={t} />}
-            {modalState.type === 'create_work_order_from_detail' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} preselectedCustomerId={modalState.data.customerId} t={t} />}
-            {modalState.type === 'assign_technician' && <AssignTechnicianModal workOrder={modalState.data} technicians={technicians} onClose={() => setModalState({ type: null, data: null })} onSave={handleAssignTechnician} t={t} />}
-            {modalState.type === 'add_part_to_wo' && <AddSparePartModal workOrder={modalState.data} onClose={() => setModalState({ type: null, data: null })} onSave={handleUpdateWorkOrderParts} availableParts={spareParts} t={t} />}
-            {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
-            {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
-            {modalState.type === 'add_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={null} t={t} />}
-            {modalState.type === 'edit_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={modalState.data} t={t} />}
-            {modalState.type === 'add_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={null} workOrders={workOrders} t={t} />}
-            {modalState.type === 'edit_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={modalState.data} workOrders={workOrders} t={t} />}
-            {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} t={t} />}
-            {modalState.type === 'edit_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={modalState.data} t={t} />}
-            {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={modalState.data} t={t} />}
-            {modalState.type === 'add_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveContract} contract={null} customerId={modalState.data.customerId} t={t} />}
-            {modalState.type === 'edit_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveContract} contract={modalState.data} customerId={modalState.data.customerId} t={t} />}
-            {modalState.type === 'mark_as_paid' && <MarkAsPaidModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleMarkAsPaid} workOrder={modalState.data} t={t} />}
-            {modalState.type === 'request_reimbursement' && <ReimbursementModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onConfirm={handleRequestReimbursement} workOrder={modalState.data} t={t} />}
-            {modalState.type === 'view_attachment' && <AttachmentViewerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} attachment={modalState.data} t={t} />}
-            
-            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users }} />
+      <div className={`flex h-screen bg-gray-100 transition-all duration-300 ${isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64'}`}>
+        <aside className={`fixed top-0 left-0 z-40 h-screen bg-gray-800 text-gray-200 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
+          <div className={`p-4 ${isSidebarCollapsed ? 'flex justify-center' : 'flex items-center'}`}>
+            <h1 className={`text-2xl font-bold text-white ${isSidebarCollapsed ? 'hidden' : 'block'}`}>ServisPro</h1>
+          </div>
+          <nav className="flex-1 px-3 py-4 space-y-2">
+            <NavLink to="/" icon={<DashboardIcon />} label={t('sidebar.dashboard')} />
+            <NavLink to="/customers" icon={<CustomerIcon />} label={t('sidebar.customers')} />
+            <NavLink to="/work-orders" icon={<WorkOrderIcon />} label={t('sidebar.workOrders')} />
+            {currentUser.role === UserRole.TECHNICIAN && (
+              <NavLink to="/my-reimbursements" icon={<ReceiptIcon />} label={t('sidebar.myReimbursements')} />
+            )}
+            {currentUser.role !== UserRole.TECHNICIAN && (
+                 <>
+                    <NavLink to="/spare-parts" icon={<SparePartIcon />} label={t('sidebar.spareParts')} />
+                    <NavLink to="/finance" icon={<FinanceIcon />} label={t('sidebar.finance')} />
+                    <NavLink to="/employees" icon={<UsersIcon />} label={t('sidebar.employees')} />
+                 </>
+            )}
+            {currentUser.role === UserRole.ADMINISTRATOR && (
+                <>
+                    <NavLink to="/registrations" icon={<ClipboardIcon />} label={t('sidebar.dataPendaftaran')} />
+                    <NavLink to="/reimbursement" icon={<ReceiptIcon />} label={t('sidebar.reimbursement')} />
+                </>
+            )}
+          </nav>
+
+          <div className="px-3 py-4 mt-auto">
+            <NavLink to="/settings" icon={<SettingsIcon />} label={t('sidebar.settings')} />
+            <button onClick={handleLogout} className="w-full flex items-center p-2 text-base font-normal text-gray-200 rounded-lg hover:bg-gray-700">
+                <LogoutIcon className="w-6 h-6 text-gray-400" />
+                {!isSidebarCollapsed && <span className="ml-3">{t('sidebar.logout')}</span>}
+            </button>
+          </div>
+        </aside>
+
+        <div className="flex-1 flex flex-col">
+          <header className="bg-white shadow-sm p-4 flex justify-between items-center">
+            <div>
+                 <button 
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+                    className="p-2 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+                    title={isSidebarCollapsed ? t('sidebar.expandMenu') : t('sidebar.collapseMenu')}
+                >
+                    {isSidebarCollapsed ? <ChevronsRightIcon className="h-6 w-6"/> : <ChevronsLeftIcon className="h-6 w-6"/>}
+                </button>
+            </div>
+            <div className="flex items-center space-x-4">
+                <Link to="/notifications" className="relative p-2 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                    <BellIcon className="h-6 w-6" />
+                    {unreadNotifications > 0 && (
+                        <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+                    )}
+                </Link>
+                <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold">
+                        {currentUser.name.charAt(0)}
+                    </div>
+                    <span className="font-semibold text-gray-700">{formatUserName(currentUser.name)}</span>
+                </div>
+            </div>
+          </header>
+
+          <main className="flex-1 p-6 overflow-y-auto">
+            <Routes>
+                <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} t={t} />} />
+                <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={c => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={c => setModalState({ type: 'edit_client', data: c })} t={t} />} />
+                <Route path="/customers/:customerId" element={<CustomerDetail customers={customers} workOrders={workOrders} contracts={contracts} users={users} onEditCustomer={c => setModalState({ type: 'edit_customer', data: c })} onAddContract={id => setModalState({type: 'add_contract', data: {customerId: id}})} onEditContract={c => setModalState({type: 'edit_contract', data: c})} onCreateWorkOrder={id => setModalState({type: 'create_work_order', data: {preselectedCustomerId: id}})} onChat={() => {}} onNotify={() => {}} t={t} />} />
+                <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} invoices={invoices} users={users} transactions={transactions} companyProfile={companyProfile} clients={clients} onAddPart={wo => setModalState({ type: 'add_part', data: wo })} onCreate={() => setModalState({ type: 'create_work_order', data: null })} onAssign={wo => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimJob} onComplete={handleCompleteWorkOrder} onMarkAsPaid={wo => setModalState({type: 'mark_as_paid', data: wo})} onChat={() => {}} onNotify={() => {}} onRequestReimbursement={wo => setModalState({type: 'request_reimbursement', data: wo})} t={t} />} />
+                <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(a) => setModalState({type: 'view_attachment', data: a})} t={t} />} />
+                <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={sp => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={s => setModalState({ type: 'edit_supplier', data: s })} t={t}/>} />
+                <Route path="/finance" element={<Finance invoices={invoices} customers={customers} transactions={sortedTransactions} totalIncome={totalIncome} totalExpense={totalExpense} labaRugi={labaRugi} assets={assets} liabilities={liabilities} equity={equity} onAddInvoice={() => setModalState({ type: 'add_invoice', data: null })} onEditInvoice={inv => setModalState({ type: 'edit_invoice', data: inv })} onPrintInvoice={generateInvoicePdf} onAddTransaction={() => setModalState({type: 'add_transaction', data: null})} onEditTransaction={rec => setModalState({type: 'edit_transaction', data: rec})} onGenerateReport={handleGenerateFinancialReport} currentUser={currentUser} onApproveReimbursement={handleApproveReimbursement} onViewAttachment={(a) => setModalState({type: 'view_attachment', data: a})} t={t} />} />
+                <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} onEdit={u => setModalState({ type: 'edit_employee', data: u })} onStatusChange={handleTechnicianStatusChange} t={t} />} />
+                <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} t={t} />} />
+                <Route path="/registrations" element={<RegistrationsPage users={users} onApprove={handleApproveRegistration} onReject={handleRejectRegistration} t={t} />} />
+                <Route path="/reimbursement" element={<ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(a) => setModalState({type: 'view_attachment', data: a})} t={t} />} />
+                <Route path="/notifications" element={<NotificationsPage notifications={notifications} onMarkAllRead={handleMarkAllNotificationsRead} t={t} />} />
+                <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={handleSaveProfile} t={t} language={language} setLanguage={setLanguage} />} />
+                <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </main>
         </div>
+
+        {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} t={t} />}
+        {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} t={t} />}
+        {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} t={t} />}
+        {modalState.type === 'edit_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={modalState.data} t={t} />}
+        {modalState.type === 'create_work_order' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} clients={clients} preselectedCustomerId={modalState.data?.preselectedCustomerId} t={t} />}
+        {modalState.type === 'assign_tech' && <AssignTechnicianModal workOrder={modalState.data} technicians={technicians} onClose={() => setModalState({ type: null, data: null })} onSave={handleAssignTechnician} t={t} />}
+        {modalState.type === 'add_part' && <AddSparePartModal workOrder={modalState.data} onClose={() => setModalState({ type: null, data: null })} onSave={handleUpdateWorkOrderParts} availableParts={spareParts} t={t} />}
+        {modalState.type === 'add_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={null} workOrders={workOrders} t={t} />}
+        {modalState.type === 'edit_invoice' && <AddEditInvoiceModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveInvoice} invoice={modalState.data} workOrders={workOrders} t={t} />}
+        {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
+        {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
+        {modalState.type === 'add_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={null} t={t} />}
+        {modalState.type === 'edit_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={modalState.data} t={t} />}
+        {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({type: null, data: null})} onSave={handleSaveTransaction} transaction={null} t={t} />}
+        {modalState.type === 'edit_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({type: null, data: null})} onSave={handleSaveTransaction} transaction={modalState.data} t={t} />}
+        {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({type: null, data: null})} onSave={handleSaveEmployee} user={modalState.data} t={t} />}
+        {modalState.type === 'add_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({type: null, data: null})} onSave={handleSaveContract} contract={null} customerId={modalState.data?.customerId} t={t} />}
+        {modalState.type === 'edit_contract' && <AddEditContractModal isOpen={true} onClose={() => setModalState({type: null, data: null})} onSave={handleSaveContract} contract={modalState.data} customerId={modalState.data?.customerId} t={t} />}
+        {modalState.type === 'mark_as_paid' && <MarkAsPaidModal isOpen={true} onClose={() => setModalState({type: null, data: null})} onConfirm={handleMarkAsPaid} workOrder={modalState.data} t={t} />}
+        {modalState.type === 'request_reimbursement' && <ReimbursementModal isOpen={true} onClose={() => setModalState({type: null, data: null})} onConfirm={handleRequestReimbursement} workOrder={modalState.data} t={t} />}
+        {modalState.type === 'view_attachment' && <AttachmentViewerModal isOpen={true} onClose={() => setModalState({type: null, data: null})} attachment={modalState.data} t={t} />}
+
+        <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, technicians }}/>
+      </div>
     </HashRouter>
   );
-}
+};
 
-// FIX: Add default export for the App component to fix import error in index.tsx.
+// FIX: Add default export for App component to be used in index.tsx.
 export default App;
