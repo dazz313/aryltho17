@@ -1885,6 +1885,8 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
     setIsLoading(false);
   };
 
+  const isAdministrator = currentUser.role === UserRole.ADMINISTRATOR;
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-800">{t('dashboard.welcome', {name: formatUserName(currentUser.name)})}</h1>
@@ -1909,30 +1911,34 @@ const Dashboard: React.FC<{workOrders: WorkOrder[], customers: Customer[], users
             </div>
         </div>
 
-        <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(monthlyRevenueData[3].revenue)} icon={<FinanceIcon />} color="green" />
+        {isAdministrator && (
+            <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(monthlyRevenueData[3].revenue)} icon={<FinanceIcon />} color="green" />
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-        <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
-           <h2 className="text-lg font-semibold text-gray-700 mb-4">{t('dashboard.monthlyRevenue')}</h2>
-           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={monthlyRevenueData}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis tickFormatter={(tick) => formatIDR(tick as number)}/>
-              <Tooltip formatter={(value) => formatIDR(value as number)} />
-              <Legend />
-              <Bar dataKey="revenue" fill="url(#colorRevenue)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+        {isAdministrator && (
+            <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">{t('dashboard.monthlyRevenue')}</h2>
+            <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyRevenueData}>
+                <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                    </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis tickFormatter={(tick) => formatIDR(tick as number)}/>
+                <Tooltip formatter={(value) => formatIDR(value as number)} />
+                <Legend />
+                <Bar dataKey="revenue" fill="url(#colorRevenue)" />
+                </BarChart>
+            </ResponsiveContainer>
+            </div>
+        )}
+        <div className={`${isAdministrator ? 'lg:col-span-2' : 'lg:col-span-5'} bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300`}>
           <h2 className="text-lg font-semibold text-gray-700 mb-4">{t('dashboard.workOrderStatus')}</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -3420,8 +3426,22 @@ const App: React.FC = () => {
   }
 
   const handleSignUp = (newUser: User) => {
-    setUsers(prev => [...prev, newUser]);
-    alert(`Account for ${newUser.name} created! Your registration is now pending administrator approval.`);
+    // Check if this is the very first user registering.
+    if (users.length === 0) {
+      // If so, automatically approve them and make them an administrator.
+      const firstAdmin = {
+        ...newUser,
+        role: UserRole.ADMINISTRATOR,
+        name: `${formatUserName(newUser.name)} (Administrator)`,
+        approved: true,
+      };
+      setUsers(prev => [...prev, firstAdmin]);
+      alert(`Welcome, Administrator! Your account for ${formatUserName(newUser.name)} has been created and automatically approved. You can now log in.`);
+    } else {
+      // For all subsequent users, they must be approved.
+      setUsers(prev => [...prev, newUser]);
+      alert(`Account for ${newUser.name} created! Your registration is now pending administrator approval.`);
+    }
     setAuthScreen('login');
   };
 
