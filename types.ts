@@ -22,7 +22,6 @@ export interface User {
   gender?: 'Male' | 'Female' | 'Other';
   skills?: string[];
   status?: TechnicianStatus;
-  approved?: boolean;
   // Technician Profile Fields
   employeeId?: string;
   joinDate?: string;
