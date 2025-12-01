@@ -986,8 +986,9 @@ const WorkOrders: React.FC<{
     onAddPart: (wo: WorkOrder) => void;
     onAddCost: (wo: WorkOrder) => void;
     onComplete: (wo: WorkOrder) => void;
+    onRequestReimbursement: (wo: WorkOrder) => void;
     t: Function;
-}> = ({ user, workOrders, users, onCreate, onAssign, onClaim, onAddPart, onAddCost, onComplete, t }) => {
+}> = ({ user, workOrders, users, onCreate, onAssign, onClaim, onAddPart, onAddCost, onComplete, onRequestReimbursement, t }) => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState(user.role === UserRole.TECHNICIAN ? 'my_assigned' : 'all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -1077,7 +1078,9 @@ const WorkOrders: React.FC<{
                                                     <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700 z-10">
                                                         <button onClick={() => { onAddPart(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addPart')}</button>
                                                         <button onClick={() => { onAddCost(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addCost')}</button>
-                                                        <button onClick={() => { onComplete(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.completeWork')}</button>
+                                                        <button onClick={() => { onRequestReimbursement(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.requestReimbursement')}</button>
+                                                        <div className="border-t my-1 dark:border-gray-700"></div>
+                                                        <button onClick={() => { onComplete(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.completeWork')}</button>
                                                     </div>
                                                 )}
                                              </div>
@@ -2526,7 +2529,7 @@ const App: React.FC = () => {
                 <main className="flex-1 overflow-y-auto p-6">
                     <Routes>
                         <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} transactions={transactions} t={t} />} />
-                        <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} />} />
+                        <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} t={t} />} />
                         <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} onPrint={handlePrintWorkOrder} onUploadProof={handleUploadProof} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} />} />
                         <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
                         <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} onAddEmployee={() => setModalState({ type: 'add_employee', data: null })} t={t} />} />
