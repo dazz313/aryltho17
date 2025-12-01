@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus, Supplier, Client, AttendanceRecord } from './types';
-import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon, ReceiptIcon, MapPinIcon, MoreVerticalIcon, TruckIcon, BriefcaseIcon, TrashIcon, ArrowLeftIcon } from './components/icons';
+import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon, ReceiptIcon, MapPinIcon, MoreVerticalIcon, TruckIcon, BriefcaseIcon, TrashIcon, ArrowLeftIcon, WhatsAppIcon, MailIcon } from './components/icons';
 import { generateAiSummary, getChatbotResponse } from './services/geminiService';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -813,108 +813,79 @@ const Dashboard: React.FC<{
     transactions: Transaction[];
     t: Function;
 }> = ({ workOrders, customers, users, currentUser, transactions, t }) => {
-    const [aiSummary, setAiSummary] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
+    const navigate = useNavigate();
 
-    const handleGenerateSummary = async () => {
-        setIsGenerating(true);
-        const summaryData = {
-            workOrders,
-            transactions,
-            technicians: users.filter(u => u.role === UserRole.TECHNICIAN)
-        };
-        const summary = await generateAiSummary(summaryData);
-        setAiSummary(summary);
-        setIsGenerating(false);
-    };
-
-    const pendingWorkOrders = workOrders.filter(wo => wo.status === WorkOrderStatus.PENDING).length;
     const technicians = users.filter(u => u.role === UserRole.TECHNICIAN);
-    
-    const technicianStatusData = technicians.reduce((acc, tech) => {
-        const status = tech.status || TechnicianStatus.OFFLINE;
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-    }, {} as Record<TechnicianStatus, number>);
 
-    const workOrderStatusData = workOrders.reduce((acc, wo) => {
-        acc[wo.status] = (acc[wo.status] || 0) + 1;
-        return acc;
-    }, {} as Record<WorkOrderStatus, number>);
+    const monthlyRevenue = useMemo(() => 
+        transactions
+            .filter(t => t.type === 'income')
+            .reduce((sum, t) => sum + t.amount, 0), 
+        [transactions]
+    );
 
-    const workOrderPieData = Object.entries(workOrderStatusData).map(([name, value]) => ({ name, value }));
-    
-    const completedOrdersByTechnician = workOrders
-        .filter(wo => wo.status === WorkOrderStatus.COMPLETED && wo.technicianId)
-        .reduce((acc, wo) => {
-            const techName = users.find(u => u.id === wo.technicianId)?.name || 'Unknown';
-            acc[techName] = (acc[techName] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-    
-    const technicianChartData = Object.entries(completedOrdersByTechnician).map(([name, count]) => ({ name, 'Completed Orders': count }));
-    
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+    const pendingWorkOrders = useMemo(() => 
+        workOrders.filter(wo => {
+            if (currentUser.role === UserRole.TECHNICIAN) {
+                return wo.technicianId === currentUser.id && wo.status === WorkOrderStatus.PENDING;
+            }
+            return wo.status === WorkOrderStatus.PENDING;
+        }).length,
+        [workOrders, currentUser]
+    );
+
+    const completedWorkOrders = useMemo(() => 
+        workOrders.filter(wo => {
+            if (currentUser.role === UserRole.TECHNICIAN) {
+                return wo.technicianId === currentUser.id && wo.status === WorkOrderStatus.COMPLETED;
+            }
+            return wo.status === WorkOrderStatus.COMPLETED;
+        }).length,
+        [workOrders, currentUser]
+    );
 
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.welcome', { name: formatUserName(currentUser.name) })}</h1>
-            <p className="text-gray-600 dark:text-gray-400">{t('dashboard.summary')}</p>
-
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title={t('dashboard.totalCustomers')} value={String(customers.length)} icon={<CustomerIcon />} color="blue" />
-                <StatCard title={t('dashboard.pendingWorkOrders')} value={String(pendingWorkOrders)} icon={<WorkOrderIcon />} color="yellow" />
-                <StatCard title={t('dashboard.technicianStatus')} value={`${technicians.filter(t => t.status === TechnicianStatus.AVAILABLE).length} / ${technicians.length}`} icon={<TechnicianIcon />} color="green" />
-                <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0))} icon={<FinanceIcon />} color="indigo" />
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.aiSummaryTitle')}</h2>
-                {isGenerating && (
-                    <div className="flex items-center space-x-2 text-gray-500">
-                        <SpinnerIcon className="h-5 w-5" />
-                        <span>{t('dashboard.generatingInsights')}</span>
+                <StatCard title={t('dashboard.totalCustomers')} value={String(customers.length)} icon={<CustomerIcon />} color="blue" onClick={() => navigate('/customers')} />
+                <StatCard title={currentUser.role === UserRole.TECHNICIAN ? "My Pending Jobs" : t('dashboard.pendingWorkOrders')} value={String(pendingWorkOrders)} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
+                {currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.TECHNICIAN && (
+                     <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(monthlyRevenue)} icon={<FinanceIcon />} color="green" onClick={() => navigate('/finance')} />
+                )}
+                {currentUser.role === UserRole.TECHNICIAN ? (
+                     <StatCard title="My Completed Jobs" value={String(completedWorkOrders)} icon={<ReceiptIcon />} color="green" />
+                ) : (
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('dashboard.technicianStatus')}</h3>
+                        <div className="space-y-2">
+                            {technicians.map(tech => (
+                                <div key={tech.id} className="flex items-center justify-between text-sm">
+                                    <span>{tech.name}</span>
+                                    <div className="flex items-center space-x-2">
+                                        <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusColor(tech.status || TechnicianStatus.OFFLINE)}`}>{t(`status.${tech.status || TechnicianStatus.OFFLINE}`)}</span>
+                                        <div className={`h-2.5 w-2.5 rounded-full ${
+                                            tech.status === TechnicianStatus.ON_JOB ? 'bg-green-500' :
+                                            tech.status === TechnicianStatus.AVAILABLE ? 'bg-blue-500' :
+                                            tech.status === TechnicianStatus.ON_BREAK ? 'bg-yellow-500' : 'bg-gray-400'
+                                        }`}></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
-                {aiSummary ? (
-                     <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: aiSummary.replace(/\n/g, '<br/>') }} />
-                ) : !isGenerating && (
-                    <p className="text-gray-500 dark:text-gray-400">{t('dashboard.aiPrompt')}</p>
-                )}
-                <div className="mt-4">
-                    <button onClick={handleGenerateSummary} disabled={isGenerating} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-400">
-                        {isGenerating ? t('dashboard.generating') : t('dashboard.generateSummary')}
-                    </button>
-                </div>
+                 {(currentUser.role === UserRole.ADMINISTRATOR) && (
+                     <StatCard title={t('dashboard.technicianStatus')} value={`${technicians.filter(t=>t.status === 'Available').length} Available`} icon={<TechnicianIcon />} color="indigo" onClick={() => navigate('/employees')} />
+                 )}
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <h3 className="font-semibold mb-4">{t('dashboard.workOrderStatus')}</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie data={workOrderPieData} cx="50%" cy="50%" labelLine={false} outerRadius={80} fill="#8884d8" dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                                {workOrderPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <h3 className="font-semibold mb-4">{t('dashboard.completedByTechnician')}</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={technicianChartData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="Completed Orders" fill="#82ca9d" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
+             {currentUser.role === UserRole.ADMINISTRATOR && (
+                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                     <h3 className="font-semibold mb-4">{t('dashboard.technicianStatus')}</h3>
+                     {/* Detailed technician status widget for admin */}
+                 </div>
+             )}
         </div>
     );
 };
@@ -934,6 +905,7 @@ const WorkOrders: React.FC<{
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState(user.role === UserRole.TECHNICIAN ? 'my_assigned' : 'all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
     const getTechnicianName = (id: string | null) => users.find(u => u.id === id)?.name || <span className="text-gray-400">{t('pages.workOrders.unassigned')}</span>;
 
@@ -998,9 +970,20 @@ const WorkOrders: React.FC<{
                                         <td className="px-6 py-4">{getTechnicianName(wo.technicianId)}</td>
                                         <td className="px-6 py-4">{formatIDR(wo.totalCost)}</td>
                                         <td className="px-6 py-4 space-x-2 whitespace-nowrap">
-                                            <button onClick={() => navigate(`/work-orders/${wo.id}`)} className="text-blue-600 hover:underline">{t('common.view')}</button>
-                                            {isAdmin && !wo.technicianId && <button onClick={() => onAssign(wo)} className="text-green-600 hover:underline">Assign</button>}
-                                            {user.role === UserRole.TECHNICIAN && !wo.technicianId && wo.status === WorkOrderStatus.PENDING && <button onClick={() => onClaim(wo)} className="text-green-600 hover:underline">{t('pages.workOrders.claimJob')}</button>}
+                                             {user.role === UserRole.TECHNICIAN && activeTab === 'available' && <button onClick={() => onClaim(wo)} className="text-green-600 hover:underline">{t('pages.workOrders.claimJob')}</button>}
+                                             {isAdmin && !wo.technicianId && <button onClick={() => onAssign(wo)} className="text-green-600 hover:underline">Assign</button>}
+                                             <div className="relative inline-block">
+                                                <button onClick={() => setOpenDropdown(openDropdown === wo.id ? null : wo.id)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                    <MoreVerticalIcon className="h-5 w-5" />
+                                                </button>
+                                                {openDropdown === wo.id && (
+                                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700 z-10">
+                                                        <button onClick={() => { onAddPart(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addPart')}</button>
+                                                        <button onClick={() => { onAddCost(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addCost')}</button>
+                                                        <button onClick={() => { onComplete(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.completeWork')}</button>
+                                                    </div>
+                                                )}
+                                             </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -1022,8 +1005,10 @@ const WorkOrderDetailPage: React.FC<{
     onComplete: (wo: WorkOrder) => void;
     onPrint: (wo: WorkOrder, action: 'print' | 'download') => void;
     onUploadProof: (workOrderId: string, proofType: 'work' | 'payment') => void;
+    onChat: (wo: WorkOrder) => void;
+    onNotify: (wo: WorkOrder) => void;
     t: Function;
-}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, onPrint, onUploadProof, t }) => {
+}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, onPrint, onUploadProof, onChat, onNotify, t }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const workOrder = workOrders.find(wo => wo.id === id);
@@ -1094,8 +1079,15 @@ const WorkOrderDetailPage: React.FC<{
                         <div>
                             <h3 className="font-semibold text-lg mb-2">{t('pages.customers.customersTab')}</h3>
                             <p className="font-bold">{workOrder.customer.name}</p>
-                            <p className="text-sm text-gray-500">{workOrder.customer.phone}</p>
-                            <p className="text-sm text-gray-500">{workOrder.customer.address}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                                <p className="text-sm text-gray-500">{workOrder.customer.phone}</p>
+                                <button onClick={() => onChat(workOrder)} className="text-green-500 hover:text-green-600" title="Chat on WhatsApp"><WhatsAppIcon className="h-5 w-5"/></button>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-1">
+                                <p className="text-sm text-gray-500">{workOrder.customer.email}</p>
+                                <button onClick={() => onNotify(workOrder)} className="text-gray-500 hover:text-gray-600" title="Send Email"><MailIcon className="h-5 w-5"/></button>
+                            </div>
+                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(workOrder.customer.address)}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline mt-1 block">{workOrder.customer.address}</a>
                         </div>
                         <div>
                             <h3 className="font-semibold text-lg mb-2">{t('pages.workOrders.technician')}</h3>
@@ -2122,6 +2114,28 @@ const App: React.FC = () => {
     addNotification('You have successfully clocked out.', '/');
   };
 
+  const handleWhatsAppChat = (workOrder: WorkOrder) => {
+    if (!workOrder.customer.phone) {
+        alert('Customer phone number is not available.');
+        return;
+    }
+    let phoneNumber = workOrder.customer.phone.replace(/[^0-9]/g, '');
+    if (phoneNumber.startsWith('0')) {
+        phoneNumber = '62' + phoneNumber.substring(1);
+    }
+    const message = encodeURIComponent(`Hello, regarding Work Order #${workOrder.id}, `);
+    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+  };
+
+  const handleEmailNotify = (workOrder: WorkOrder) => {
+      if (!workOrder.customer.email) {
+          alert('Customer email is not available.');
+          return;
+      }
+      const subject = encodeURIComponent(`Regarding Work Order #${workOrder.id}`);
+      window.open(`mailto:${workOrder.customer.email}?subject=${subject}`, '_blank');
+  };
+
   if (!currentUser) {
     if (authScreen === 'signup') return <SignUpScreen onSignUp={handleSignUp} onSwitchToLogin={() => setAuthScreen('login')} t={t} />;
     return <LoginScreen onLogin={handleLogin} onSwitchToSignUp={() => setAuthScreen('signup')} users={users} t={t} />;
@@ -2217,7 +2231,7 @@ const App: React.FC = () => {
                     <Routes>
                         <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} transactions={transactions} t={t} />} />
                         <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} />} />
-                        <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} onPrint={handlePrintWorkOrder} onUploadProof={handleUploadProof} />} />
+                        <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} onPrint={handlePrintWorkOrder} onUploadProof={handleUploadProof} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
                         <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
                         <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} onAddEmployee={() => setModalState({ type: 'add_employee', data: null })} t={t} />} />
                         <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} t={t} />} />
