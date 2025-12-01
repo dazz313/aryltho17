@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -55,8 +53,8 @@ const translations = {
         editEmployeeTitle: 'Edit Employee',
         addContractTitle: 'Add New Service Contract', editContractTitle: 'Edit Service Contract',
         confirmPaymentTitle: 'Confirm Payment for {id}',
-        requestReimbursementTitle: 'Request Reimbursement for {id}',
-        attachmentViewerTitle: 'Attachment: {name}',
+        requestReimbursementTitle: 'Request Reimbursement',
+        attachmentViewerTitle: 'Attachment Viewer',
     },
     pages: {
         notifications: { title: 'Notifications', markAllRead: 'Mark all as read', empty: 'You have no notifications.' },
@@ -64,7 +62,7 @@ const translations = {
         myReimbursements: { title: 'My Reimbursement History', workOrderId: 'Work Order ID', empty: 'You have not requested any reimbursements.'},
         customers: { title: 'Customers & Clients', customerList: 'Customer List', clientList: 'Client List', clientsTab: 'Clients', customersTab: 'Customers', importCustomers: 'Import Customers' },
         customerDetail: { back: 'Back to all customers', details: 'Customer Details', contracts: 'Service Contracts', history: 'Service History', noContracts: 'No contracts found.', noHistory: 'No service history found.' },
-        workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Orders', myAssigned: 'My Assigned', available: 'Available', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job', addPart: 'Add Part', addCost: 'Add Cost', actions: 'Actions', uploadWorkProof: 'Upload Work Proof', uploadPaymentProof: 'Upload Payment Proof', generatePDF: 'Generate PDF', printWO: 'Print Work Order', completeWork: 'Complete Work' },
+        workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Orders', myAssigned: 'My Assigned', available: 'Available', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job', addPart: 'Add Part', addCost: 'Add Cost', actions: 'Actions', uploadWorkProof: 'Upload Work Proof', uploadPaymentProof: 'Upload Payment Proof', generatePDF: 'Generate PDF', printWO: 'Print Work Order', completeWork: 'Complete Work', requestReimbursement: 'Request Reimbursement' },
         spareParts: { title: 'Spare Part Management', inventory: 'Spare Part Inventory', suppliers: 'Suppliers', partName: 'Part Name', stock: 'Stock', location: 'Location', importParts: 'Import CSV', deleteSelected: 'Delete Selected', downloadTemplate: 'Download Template' },
         finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)', addTransaction: 'Add Transaction', clientReport: 'Client Report' },
         employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact', role: 'Role', monthlyPerformance: 'Monthly Performance (Completed WO)', attendanceStatus: 'Today\'s Attendance', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clocked In @ {time}', clockedOut: 'Clocked Out', absent: 'Absent', addEmployee: 'Add Employee' },
@@ -139,8 +137,8 @@ const translations = {
         editEmployeeTitle: 'Ubah Karyawan',
         addContractTitle: 'Tambah Kontrak Servis Baru', editContractTitle: 'Ubah Kontrak Servis',
         confirmPaymentTitle: 'Konfirmasi Pembayaran untuk {id}',
-        requestReimbursementTitle: 'Ajukan Reimbursement untuk {id}',
-        attachmentViewerTitle: 'Lampiran: {name}',
+        requestReimbursementTitle: 'Ajukan Reimbursement',
+        attachmentViewerTitle: 'Tampilan Lampiran',
     },
     pages: {
         notifications: { title: 'Notifikasi', markAllRead: 'Tandai semua dibaca', empty: 'Anda tidak memiliki notifikasi.' },
@@ -148,7 +146,7 @@ const translations = {
         myReimbursements: { title: 'Riwayat Reimbursement Saya', workOrderId: 'ID Perintah Kerja', empty: 'Anda belum mengajukan reimbursement.' },
         customers: { title: 'Pelanggan & Klien', customerList: 'Daftar Pelanggan', clientList: 'Daftar Klien', clientsTab: 'Klien', customersTab: 'Pelanggan', importCustomers: 'Import Pelanggan' },
         customerDetail: { back: 'Kembali ke semua pelanggan', details: 'Detail Pelanggan', contracts: 'Kontrak Servis', history: 'Riwayat Servis', noContracts: 'Tidak ada kontrak.', noHistory: 'Tidak ada riwayat servis.' },
-        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK', completeWork: 'Selesaikan Pekerjaan' },
+        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK', completeWork: 'Selesaikan Pekerjaan', requestReimbursement: 'Ajukan Reimbursement' },
         spareParts: { title: 'Manajemen Suku Cadang', inventory: 'Inventaris Suku Cadang', suppliers: 'Pemasok', partName: 'Nama Part', stock: 'Stok', location: 'Lokasi', importParts: 'Import CSV', deleteSelected: 'Hapus Terpilih', downloadTemplate: 'Download Template' },
         finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi', clientReport: 'Laporan per Klien' },
         employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak', role: 'Peran', monthlyPerformance: 'Kinerja Bulanan (SPK Selesai)', attendanceStatus: 'Status Absensi Hari Ini', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clock In @ {time}', clockedOut: 'Clocked Out', absent: 'Absen', addEmployee: 'Tambah Karyawan' },
@@ -396,6 +394,81 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
 };
 
 // --- MODALS ---
+const ReimbursementModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: (description: string, amount: number, attachment: { name: string; type: string; data: string; }) => void;
+    t: Function;
+}> = ({ isOpen, onClose, onConfirm, t }) => {
+    const [description, setDescription] = useState('');
+    const [amount, setAmount] = useState('');
+    const [attachment, setAttachment] = useState<{ name: string; type: string; data: string; } | null>(null);
+    const [error, setError] = useState('');
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setAttachment({
+                    name: file.name,
+                    type: file.type,
+                    data: event.target?.result as string,
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = () => {
+        if (!description || !amount || !attachment) {
+            setError('All fields including attachment are required.');
+            return;
+        }
+        onConfirm(description, Number(amount), attachment);
+        setDescription('');
+        setAmount('');
+        setAttachment(null);
+        setError('');
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={t('modals.requestReimbursementTitle')}>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.description')}</label>
+                    <input type="text" value={description} onChange={e => setDescription(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.amount')}</label>
+                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="mt-1 w-full border rounded-md px-3 py-2 dark:bg-gray-700 dark:border-gray-600" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.attachment')} (Struk, etc.)</label>
+                    <input type="file" accept="image/*" onChange={handleFileChange} className="mt-1 w-full text-sm" />
+                    {attachment && <p className="text-xs text-green-600 mt-1">File attached: {attachment.name}</p>}
+                </div>
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                <div className="flex justify-end space-x-2 pt-4">
+                    <button onClick={onClose} className="px-4 py-2 rounded-lg border">{t('common.cancel')}</button>
+                    <button onClick={handleSubmit} className="px-4 py-2 rounded-lg bg-primary-600 text-white">{t('common.submit')}</button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+const AttachmentViewerModal: React.FC<{ isOpen: boolean; onClose: () => void; attachment: { name: string; type: string; data: string; } | null; t: Function; }> = ({ isOpen, onClose, attachment, t }) => {
+    if (!attachment) return null;
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={`${t('modals.attachmentViewerTitle')}: ${attachment.name}`} size="lg">
+            <div>
+                <img src={attachment.data} alt={attachment.name} className="max-w-full max-h-[70vh] mx-auto" />
+            </div>
+        </Modal>
+    );
+};
+
 const AddEditEmployeeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (user: User) => void; user: User | null; t: Function; }> = ({ isOpen, onClose, onSave, user, t }) => {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', role: UserRole.TECHNICIAN, status: TechnicianStatus.AVAILABLE });
 
@@ -838,7 +911,7 @@ const Dashboard: React.FC<{
 
     const monthlyRevenue = useMemo(() => 
         transactions
-            .filter(t => t.type === 'income')
+            .filter(t => t.type === 'income' && t.approved !== false)
             .reduce((sum, t) => sum + t.amount, 0), 
         [transactions]
     );
@@ -1029,10 +1102,11 @@ const WorkOrderDetailPage: React.FC<{
     onComplete: (wo: WorkOrder) => void;
     onPrint: (wo: WorkOrder, action: 'print' | 'download') => void;
     onUploadProof: (workOrderId: string, proofType: 'work' | 'payment') => void;
+    onRequestReimbursement: (wo: WorkOrder) => void;
     onChat: (wo: WorkOrder) => void;
     onNotify: (wo: WorkOrder) => void;
     t: Function;
-}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, onPrint, onUploadProof, onChat, onNotify, t }) => {
+}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, onPrint, onUploadProof, onRequestReimbursement, onChat, onNotify, t }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const workOrder = workOrders.find(wo => wo.id === id);
@@ -1097,6 +1171,7 @@ const WorkOrderDetailPage: React.FC<{
                         <div className="flex space-x-2">
                             {workOrder.status !== WorkOrderStatus.COMPLETED && <button onClick={() => onAddPart(workOrder)} className="px-4 py-2 text-sm rounded-lg border">{t('pages.workOrders.addPart')}</button>}
                             {workOrder.status !== WorkOrderStatus.COMPLETED && <button onClick={() => onAddCost(workOrder)} className="px-4 py-2 text-sm rounded-lg border">{t('pages.workOrders.addCost')}</button>}
+                            {workOrder.status !== WorkOrderStatus.COMPLETED && <button onClick={() => onRequestReimbursement(workOrder)} className="px-4 py-2 text-sm rounded-lg border">{t('pages.workOrders.requestReimbursement')}</button>}
                         </div>
                     </div>
                     <div className="space-y-6">
@@ -1135,6 +1210,96 @@ const WorkOrderDetailPage: React.FC<{
         </div>
     );
 };
+
+const ReimbursementPage: React.FC<{
+    transactions: Transaction[],
+    users: User[],
+    onApprove: (transactionId: string) => void,
+    onViewAttachment: (attachment: any) => void,
+    t: Function
+}> = ({ transactions, users, onApprove, onViewAttachment, t }) => {
+    const requests = transactions.filter(tr => tr.category === TransactionCategory.REIMBURSEMENT && tr.approved === false);
+    return (
+        <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.reimbursement.title')}</h1>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                            <tr>
+                                <th className="px-6 py-3">{t('common.date')}</th>
+                                <th className="px-6 py-3">{t('pages.reimbursement.requestedBy')}</th>
+                                <th className="px-6 py-3">{t('common.description')}</th>
+                                <th className="px-6 py-3 text-right">{t('common.amount')}</th>
+                                <th className="px-6 py-3">{t('common.actions')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {requests.length > 0 ? requests.map(req => (
+                                <tr key={req.id}>
+                                    <td className="px-6 py-4">{req.date}</td>
+                                    <td className="px-6 py-4">{users.find(u => u.id === req.requestedByUserId)?.name || 'Unknown'}</td>
+                                    <td className="px-6 py-4">{req.description} (WO: {req.workOrderId})</td>
+                                    <td className="px-6 py-4 text-right">{formatIDR(req.amount)}</td>
+                                    <td className="px-6 py-4 space-x-2">
+                                        <button onClick={() => onViewAttachment(req.attachment)} className="text-blue-600 hover:underline">{t('common.view')}</button>
+                                        <button onClick={() => onApprove(req.id)} className="text-green-600 hover:underline">{t('common.approve')}</button>
+                                    </td>
+                                </tr>
+                            )) : <tr><td colSpan={5} className="text-center py-4">{t('pages.reimbursement.empty')}</td></tr>}
+                        </tbody>
+                    </table>
+                 </div>
+            </div>
+        </div>
+    );
+};
+
+const MyReimbursementsPage: React.FC<{
+    transactions: Transaction[],
+    currentUser: User,
+    onViewAttachment: (attachment: any) => void,
+    t: Function
+}> = ({ transactions, currentUser, onViewAttachment, t }) => {
+    const myRequests = transactions.filter(tr => tr.requestedByUserId === currentUser.id && tr.category === TransactionCategory.REIMBURSEMENT);
+
+    return (
+        <div className="space-y-6">
+             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.myReimbursements.title')}</h1>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                 <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                            <tr>
+                                <th className="px-6 py-3">{t('common.date')}</th>
+                                <th className="px-6 py-3">{t('pages.myReimbursements.workOrderId')}</th>
+                                <th className="px-6 py-3">{t('common.description')}</th>
+                                <th className="px-6 py-3 text-right">{t('common.amount')}</th>
+                                <th className="px-6 py-3">{t('common.status')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {myRequests.length > 0 ? myRequests.map(req => (
+                                <tr key={req.id}>
+                                    <td className="px-6 py-4">{req.date}</td>
+                                    <td className="px-6 py-4">{req.workOrderId}</td>
+                                    <td className="px-6 py-4">{req.description}</td>
+                                    <td className="px-6 py-4 text-right">{formatIDR(req.amount)}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(req.approved ? 'Approved' : 'Pending Approval')}`}>
+                                            {t(`status.${req.approved ? 'Approved' : 'Pending Approval'}`)}
+                                        </span>
+                                    </td>
+                                </tr>
+                            )) : <tr><td colSpan={5} className="text-center py-4">{t('pages.myReimbursements.empty')}</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const EmployeesPage: React.FC<{
     users: User[];
@@ -1267,8 +1432,9 @@ const TechnicianProfilePage: React.FC<{
 const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () => void, t: Function }> = ({ transactions, onAddTransaction, t }) => {
     const navigate = useNavigate();
     const { totalIncome, totalExpense, profitLoss } = useMemo(() => {
-        const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-        const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+        const approvedTransactions = transactions.filter(t => t.approved !== false);
+        const income = approvedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+        const expense = approvedTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
         return { totalIncome: income, totalExpense: expense, profitLoss: income - expense };
     }, [transactions]);
 
@@ -1305,7 +1471,7 @@ const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () 
                                 </tr>
                             </thead>
                             <tbody>
-                                {transactions.map(tr => (
+                                {transactions.filter(t=> t.approved !== false).map(tr => (
                                     <tr key={tr.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
                                         <td className="px-6 py-4">{tr.date}</td>
                                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tr.description}</td>
@@ -1341,12 +1507,12 @@ const ClientFinancePage: React.FC<{
         return clients.map(client => {
             const clientCustomers = customers.filter(c => c.clientId === client.id).map(c => c.id);
             
-            const clientIncomeTransactions = transactions.filter(t => t.type === 'income' && (
+            const clientIncomeTransactions = transactions.filter(t => t.type === 'income' && t.approved !== false && (
                 (t.workOrderId && clientCustomers.includes(workOrders.find(wo => wo.id === t.workOrderId)?.customer.id || '')) ||
                 t.clientId === client.id
             ));
             
-            const clientExpenseTransactions = transactions.filter(t => t.type === 'expense' && t.clientId === client.id);
+            const clientExpenseTransactions = transactions.filter(t => t.type === 'expense' && t.clientId === client.id && t.approved !== false);
 
             const totalRevenue = clientIncomeTransactions.reduce((sum, t) => sum + t.amount, 0);
             const totalCost = clientExpenseTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -2006,6 +2172,7 @@ const App: React.FC = () => {
             paymentMethod: PaymentMethod.BANK_TRANSFER,
             workOrderId: wo.id,
             clientId: customer?.clientId,
+            approved: true, // Auto-approved
         };
         setTransactions(prev => [newTransaction, ...prev]);
       }
@@ -2169,6 +2336,37 @@ const App: React.FC = () => {
       setModalState({ type: null, data: null });
   };
 
+  const handleRequestReimbursement = (description: string, amount: number, attachment: any) => {
+    if (!currentUser || !modalState.data) return;
+    const workOrder = modalState.data as WorkOrder;
+    const newTransaction: Transaction = {
+        id: `trn-reim-${Date.now()}`,
+        date: new Date().toISOString().split('T')[0],
+        description: description,
+        type: 'expense',
+        amount: amount,
+        category: TransactionCategory.REIMBURSEMENT,
+        paymentMethod: PaymentMethod.CASH, 
+        attachment: attachment,
+        workOrderId: workOrder.id,
+        requestedByUserId: currentUser.id,
+        approved: false, // This is key
+    };
+    setTransactions(prev => [newTransaction, ...prev]);
+    addNotification(`${currentUser.name} requested a reimbursement of ${formatIDR(amount)}`, '/reimbursements');
+    setModalState({ type: null, data: null });
+  };
+  
+  const handleApproveReimbursement = (transactionId: string) => {
+      setTransactions(prev => prev.map(tr => {
+          if (tr.id === transactionId) {
+              addNotification(`Reimbursement request for ${formatIDR(tr.amount)} has been approved.`, '/my-reimbursements');
+              return { ...tr, approved: true };
+          }
+          return tr;
+      }));
+  };
+
   const handleImportSpareParts = (parsedParts: any[]) => {
        const newParts: SparePart[] = [];
        alert(`Import logic would run here for ${parsedParts.length} items.`);
@@ -2329,12 +2527,14 @@ const App: React.FC = () => {
                     <Routes>
                         <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} transactions={transactions} t={t} />} />
                         <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} />} />
-                        <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} onPrint={handlePrintWorkOrder} onUploadProof={handleUploadProof} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} />} />
+                        <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} onPrint={handlePrintWorkOrder} onUploadProof={handleUploadProof} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} />} />
                         <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
                         <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} onAddEmployee={() => setModalState({ type: 'add_employee', data: null })} t={t} />} />
                         <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} t={t} />} />
                         <Route path="/finance" element={<FinancePage transactions={transactions} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} t={t} />} />
                         <Route path="/finance/client-report" element={<ClientFinancePage clients={clients} customers={customers} workOrders={workOrders} transactions={transactions} t={t} />} />
+                        <Route path="/reimbursements" element={<ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(att) => setModalState({type: 'view_attachment', data: att})} t={t} />} />
+                        <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(att) => setModalState({type: 'view_attachment', data: att})} t={t} />} />
                         <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} t={t} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} spareParts={spareParts} suppliers={suppliers} clients={clients} invoices={invoices} transactions={transactions} contracts={contracts} />} />
                         <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} onImport={handleImportSpareParts} onDelete={handleDeleteSparePart} onBulkDelete={handleBulkDeleteSpareParts} t={t} />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
@@ -2343,6 +2543,10 @@ const App: React.FC = () => {
             </div>
             
             <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users, transactions }} />
+            
+            {/* All Modals */}
+            <ReimbursementModal isOpen={modalState.type === 'request_reimbursement'} onClose={() => setModalState({type: null, data: null})} onConfirm={handleRequestReimbursement} t={t} />
+            <AttachmentViewerModal isOpen={modalState.type === 'view_attachment'} onClose={() => setModalState({type: null, data: null})} attachment={modalState.data} t={t} />
 
             {modalState.type === 'create_wo' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} t={t} />}
             {modalState.type === 'assign_tech' && <AssignTechnicianModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleAssignTechnician} technicians={users.filter(u => u.role === UserRole.TECHNICIAN)} t={t} />}
