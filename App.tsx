@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus, Supplier, Client, AttendanceRecord } from './types';
-import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon, ReceiptIcon, MapPinIcon, MoreVerticalIcon, TruckIcon, BriefcaseIcon, TrashIcon } from './components/icons';
+import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon, ReceiptIcon, MapPinIcon, MoreVerticalIcon, TruckIcon, BriefcaseIcon, TrashIcon, ArrowLeftIcon } from './components/icons';
 import { generateAiSummary, getChatbotResponse } from './services/geminiService';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -50,7 +50,8 @@ const translations = {
         addSparePartTitle: 'Add New Spare Part', editSparePartTitle: 'Edit Spare Part',
         addSupplierTitle: 'Add New Supplier', editSupplierTitle: 'Edit Supplier',
         addTransactionTitle: 'Add New Transaction', editTransactionTitle: 'Edit Transaction',
-        editEmployeeTitle: 'Edit Employee: {name}',
+        addEmployeeTitle: 'Add New Employee',
+        editEmployeeTitle: 'Edit Employee',
         addContractTitle: 'Add New Service Contract', editContractTitle: 'Edit Service Contract',
         confirmPaymentTitle: 'Confirm Payment for {id}',
         requestReimbursementTitle: 'Request Reimbursement for {id}',
@@ -62,11 +63,11 @@ const translations = {
         myReimbursements: { title: 'My Reimbursement History', workOrderId: 'Work Order ID', empty: 'You have not requested any reimbursements.'},
         customers: { title: 'Customers & Clients', customerList: 'Customer List', clientList: 'Client List', clientsTab: 'Clients', customersTab: 'Customers', importCustomers: 'Import Customers' },
         customerDetail: { back: 'Back to all customers', details: 'Customer Details', contracts: 'Service Contracts', history: 'Service History', noContracts: 'No contracts found.', noHistory: 'No service history found.' },
-        workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Orders', myAssigned: 'My Assigned', available: 'Available', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job', addPart: 'Add Part', addCost: 'Add Cost', actions: 'Actions', uploadWorkProof: 'Upload Work Proof', uploadPaymentProof: 'Upload Payment Proof', generatePDF: 'Generate PDF', printWO: 'Print Work Order' },
+        workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Orders', myAssigned: 'My Assigned', available: 'Available', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job', addPart: 'Add Part', addCost: 'Add Cost', actions: 'Actions', uploadWorkProof: 'Upload Work Proof', uploadPaymentProof: 'Upload Payment Proof', generatePDF: 'Generate PDF', printWO: 'Print Work Order', completeWork: 'Complete Work' },
         spareParts: { title: 'Spare Part Management', inventory: 'Spare Part Inventory', suppliers: 'Suppliers', partName: 'Part Name', stock: 'Stock', location: 'Location', importParts: 'Import CSV', deleteSelected: 'Delete Selected', downloadTemplate: 'Download Template' },
         finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)', addTransaction: 'Add Transaction' },
-        employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact', role: 'Role', monthlyPerformance: 'Monthly Performance (Completed WO)', attendanceStatus: 'Today\'s Attendance', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clocked In @ {time}', clockedOut: 'Clocked Out', absent: 'Absent' },
-        technicianProfile: { title: 'Technician Profile', back: 'Back to all employees', personalInfo: 'Personal Information', recentActivity: 'Recent Activity' },
+        employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact', role: 'Role', monthlyPerformance: 'Monthly Performance (Completed WO)', attendanceStatus: 'Today\'s Attendance', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clocked In @ {time}', clockedOut: 'Clocked Out', absent: 'Absent', addEmployee: 'Add Employee' },
+        technicianProfile: { title: 'Technician Profile', back: 'Back to all employees', personalInfo: 'Personal Information', recentActivity: 'Recent Activity', editEmployee: 'Edit Employee' },
         settings: { 
             title: 'Settings & Data', 
             companyProfile: 'Company Profile (KOP Surat)', 
@@ -133,7 +134,8 @@ const translations = {
         addSparePartTitle: 'Tambah Suku Cadang Baru', editSparePartTitle: 'Ubah Suku Cadang',
         addSupplierTitle: 'Tambah Pemasok Baru', editSupplierTitle: 'Ubah Pemasok',
         addTransactionTitle: 'Tambah Transaksi Baru', editTransactionTitle: 'Ubah Transaksi',
-        editEmployeeTitle: 'Ubah Karyawan: {name}',
+        addEmployeeTitle: 'Tambah Karyawan Baru',
+        editEmployeeTitle: 'Ubah Karyawan',
         addContractTitle: 'Tambah Kontrak Servis Baru', editContractTitle: 'Ubah Kontrak Servis',
         confirmPaymentTitle: 'Konfirmasi Pembayaran untuk {id}',
         requestReimbursementTitle: 'Ajukan Reimbursement untuk {id}',
@@ -145,11 +147,11 @@ const translations = {
         myReimbursements: { title: 'Riwayat Reimbursement Saya', workOrderId: 'ID Perintah Kerja', empty: 'Anda belum mengajukan reimbursement.' },
         customers: { title: 'Pelanggan & Klien', customerList: 'Daftar Pelanggan', clientList: 'Daftar Klien', clientsTab: 'Klien', customersTab: 'Pelanggan', importCustomers: 'Import Pelanggan' },
         customerDetail: { back: 'Kembali ke semua pelanggan', details: 'Detail Pelanggan', contracts: 'Kontrak Servis', history: 'Riwayat Servis', noContracts: 'Tidak ada kontrak.', noHistory: 'Tidak ada riwayat servis.' },
-        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK' },
+        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK', completeWork: 'Selesaikan Pekerjaan' },
         spareParts: { title: 'Manajemen Suku Cadang', inventory: 'Inventaris Suku Cadang', suppliers: 'Pemasok', partName: 'Nama Part', stock: 'Stok', location: 'Lokasi', importParts: 'Import CSV', deleteSelected: 'Hapus Terpilih', downloadTemplate: 'Download Template' },
         finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi' },
-        employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak', role: 'Peran', monthlyPerformance: 'Kinerja Bulanan (SPK Selesai)', attendanceStatus: 'Status Absensi Hari Ini', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clock In @ {time}', clockedOut: 'Clocked Out', absent: 'Absen' },
-        technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini' },
+        employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak', role: 'Peran', monthlyPerformance: 'Kinerja Bulanan (SPK Selesai)', attendanceStatus: 'Status Absensi Hari Ini', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clock In @ {time}', clockedOut: 'Clocked Out', absent: 'Absen', addEmployee: 'Tambah Karyawan' },
+        technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini', editEmployee: 'Ubah Karyawan' },
         settings: { 
             title: 'Pengaturan & Data', 
             companyProfile: 'Profil Perusahaan (KOP Surat)', 
@@ -183,12 +185,6 @@ const translations = {
 // --- INITIAL MOCK DATA ---
 const INITIAL_USERS: User[] = [
     { id: 'admin-full', name: 'Administrator', role: UserRole.ADMINISTRATOR, email: 'administrator', password: '123' },
-    { id: 'admin', name: 'Admin', role: UserRole.ADMIN, email: 'admin', password: '123' },
-    { id: 'tech-1', name: 'Budi Santoso', role: UserRole.TECHNICIAN, email: 'budi', password: '123', status: TechnicianStatus.ON_JOB },
-    { id: 'tech-2', name: 'Agus Wijaya', role: UserRole.TECHNICIAN, email: 'agus', password: '123', status: TechnicianStatus.AVAILABLE },
-    { id: 'tech-3', name: 'Citra Lestari', role: UserRole.TECHNICIAN, email: 'citra', password: '123', status: TechnicianStatus.ON_BREAK },
-    { id: 'tech-4', name: 'Dewi Anggraini', role: UserRole.TECHNICIAN, email: 'dewi', password: '123', status: TechnicianStatus.OFFLINE },
-    { id: 'tech-5', name: 'Eko Prasetyo', role: UserRole.TECHNICIAN, email: 'eko', password: '123', status: TechnicianStatus.AVAILABLE }
 ];
 const INITIAL_CUSTOMERS: Customer[] = [];
 const INITIAL_SUPPLIERS: Supplier[] = [];
@@ -212,7 +208,8 @@ const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid' | 'Pending A
   switch (status) {
     case WorkOrderStatus.PENDING: case 'Unpaid': case 'Pending Approval': case ContractStatus.EXPIRED: case TechnicianStatus.ON_BREAK: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
     case WorkOrderStatus.IN_PROGRESS: case TechnicianStatus.ON_JOB: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'; // ON_JOB is green
-    case WorkOrderStatus.COMPLETED: case 'Paid': case 'Approved': case ContractStatus.ACTIVE: case TechnicianStatus.AVAILABLE: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'; // AVAILABLE is blue
+    case WorkOrderStatus.COMPLETED: case 'Paid': case 'Approved': case ContractStatus.ACTIVE: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    case TechnicianStatus.AVAILABLE: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'; // AVAILABLE is blue
     case WorkOrderStatus.CANCELLED: case ContractStatus.CANCELLED: return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
     case TechnicianStatus.OFFLINE: return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
@@ -307,13 +304,14 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
 
 // --- AUTHENTICATION SCREENS ---
 const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: () => void, users: User[]; t: Function }> = ({ onLogin, onSwitchToSignUp, users, t }) => {
-  const [identifier, setIdentifier] = useState('admin');
+  const [identifier, setIdentifier] = useState('administrator');
   const [password, setPassword] = useState('123');
   const [error, setError] = useState('');
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    // Bypass password check for testing
     const user = users.find(u => (u.email?.toLowerCase() === identifier.toLowerCase() || u.phone === identifier));
     if (user) onLogin(user); else setError(t('login.invalidCredentials'));
   };
@@ -324,7 +322,7 @@ const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: (
         <h1 className="text-3xl font-bold text-primary-700 dark:text-primary-400 mb-2 text-center">{t('login.logIn')}</h1>
         <p className="text-gray-600 dark:text-gray-300 mb-8 text-center">{t('login.subtitle')}</p>
         <div className="bg-yellow-50 text-yellow-800 p-3 rounded mb-4 text-xs dark:bg-yellow-900 dark:text-yellow-200">
-            <strong>Testing Mode:</strong> Default logins are 'administrator', 'admin', or technician emails.
+            <strong>Testing Mode:</strong> Password is not required. Default login is 'administrator'.
         </div>
         <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
@@ -375,7 +373,7 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
                 <h1 className="text-3xl font-bold text-primary-700 dark:text-primary-400 mb-2 text-center">{t('login.createAccount')}</h1>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required className={inputClass} />
-                    <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
+                    <input type="email" placeholder="Email (used for login)" value={email} onChange={e => setEmail(e.target.value)} required className={inputClass} />
                     <input type="tel" placeholder="Phone" value={phone} onChange={e => setPhone(e.target.value)} className={inputClass} />
                     <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className={inputClass} />
                      <select value={role} onChange={e => setRole(e.target.value as UserRole)} className={inputClass}>
@@ -397,6 +395,74 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
 };
 
 // --- MODALS ---
+const AddEditEmployeeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (user: User) => void; user: User | null; t: Function; }> = ({ isOpen, onClose, onSave, user, t }) => {
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', role: UserRole.TECHNICIAN, status: TechnicianStatus.AVAILABLE });
+
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                name: user.name,
+                email: user.email || '',
+                phone: user.phone || '',
+                password: user.password || '',
+                role: user.role,
+                status: user.status || TechnicianStatus.OFFLINE
+            });
+        } else {
+            setFormData({ name: '', email: '', phone: '', password: '', role: UserRole.TECHNICIAN, status: TechnicianStatus.AVAILABLE });
+        }
+    }, [user, isOpen]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const finalUser: User = {
+            ...user,
+            id: user?.id || `user-${Date.now()}`,
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            password: formData.password,
+            role: formData.role,
+            status: formData.role === UserRole.TECHNICIAN ? formData.status : undefined,
+        };
+        onSave(finalUser);
+    };
+
+    const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
+    const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300";
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={user ? t('modals.editEmployeeTitle') : t('modals.addEmployeeTitle')}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div><label className={labelClass}>{t('common.name')}</label><input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className={inputClass} /></div>
+                <div><label className={labelClass}>{t('common.email')} (for login)</label><input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required className={inputClass} /></div>
+                <div><label className={labelClass}>{t('common.phone')}</label><input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className={inputClass} /></div>
+                <div><label className={labelClass}>Password</label><input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required={!user} placeholder={user ? "Leave blank to keep unchanged" : ""} className={inputClass} /></div>
+                <div>
+                    <label className={labelClass}>{t('pages.employees.role')}</label>
+                    <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value as UserRole })} className={inputClass}>
+                        <option value={UserRole.TECHNICIAN}>Technician</option>
+                        <option value={UserRole.ADMIN}>Admin</option>
+                        <option value={UserRole.ADMINISTRATOR}>Administrator</option>
+                    </select>
+                </div>
+                 {formData.role === UserRole.TECHNICIAN && (
+                    <div>
+                        <label className={labelClass}>{t('common.status')}</label>
+                        <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value as TechnicianStatus })} className={inputClass}>
+                            {Object.values(TechnicianStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                )}
+                 <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white">{t('common.save')}</button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
 const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (transaction: Transaction) => void; transaction: Transaction | null; t: Function; }> = ({ isOpen, onClose, onSave, transaction, t }) => {
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
@@ -739,7 +805,7 @@ const AddEditSparePartModal: React.FC<{ isOpen: boolean; onClose: () => void; on
 };
 
 // --- PAGES ---
-const Finance: React.FC<{ transactions: Transaction[], onAddTransaction: () => void, t: Function }> = ({ transactions, onAddTransaction, t }) => {
+const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () => void, t: Function }> = ({ transactions, onAddTransaction, t }) => {
     const { totalIncome, totalExpense, profitLoss } = useMemo(() => {
         const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
         const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
@@ -1198,44 +1264,133 @@ const SettingsPage: React.FC<{
     );
 };
 
+const WorkOrderDetailPage: React.FC<{
+    workOrders: WorkOrder[];
+    users: User[];
+    spareParts: SparePart[];
+    onAddPart: (wo: WorkOrder) => void;
+    onAddCost: (wo: WorkOrder) => void;
+    onComplete: (wo: WorkOrder) => void;
+    t: Function;
+}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, t }) => {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+    const workOrder = workOrders.find(wo => wo.id === id);
+
+    if (!workOrder) {
+        return <div className="text-center text-gray-500">Work Order not found.</div>;
+    }
+
+    const { customer, description, status, technicianId, createdAt } = workOrder;
+
+    return (
+        <div className="max-w-4xl mx-auto space-y-6">
+            <button onClick={() => navigate('/work-orders')} className="flex items-center space-x-2 text-primary-600 hover:underline">
+                <ArrowLeftIcon className="h-5 w-5" />
+                <span>Back to Work Orders</span>
+            </button>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Work Order #{workOrder.id}</h1>
+                        <p className="text-sm text-gray-500">Created on {new Date(createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${getStatusColor(status)}`}>{t(`status.${status}`)}</span>
+                </div>
+                
+                <div className="mt-6 border-t dark:border-gray-700 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 className="font-semibold text-lg mb-2">Customer Details</h3>
+                        <p className="font-bold text-gray-800 dark:text-white">{customer.name}</p>
+                        <p className="text-gray-600 dark:text-gray-400">{customer.address}</p>
+                        <p className="text-gray-600 dark:text-gray-400">{customer.phone}</p>
+                         <div className="flex space-x-2 mt-2">
+                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customer.address)}`} target="_blank" rel="noopener noreferrer" className="text-primary-600 text-sm hover:underline">View on Map</a>
+                             <a href={`tel:${customer.phone}`} className="text-primary-600 text-sm hover:underline">Call Customer</a>
+                        </div>
+                    </div>
+                     <div>
+                        <h3 className="font-semibold text-lg mb-2">Job Details</h3>
+                        <p className="font-bold text-gray-800 dark:text-white">Problem Description</p>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">{description}</p>
+                        <p className="font-bold text-gray-800 dark:text-white">Assigned Technician</p>
+                        <p className="text-gray-600 dark:text-gray-400">{users.find(u => u.id === technicianId)?.name || 'Unassigned'}</p>
+                    </div>
+                </div>
+            </div>
+
+             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-semibold mb-4">Cost Breakdown</h2>
+                <div className="space-y-2">
+                    <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">Initial Service Fee</span> <span className="font-medium">{formatIDR(workOrder.initialServiceFee)}</span></div>
+                    {workOrder.additionalCosts.map((cost, i) => (
+                        <div key={i} className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">{cost.description}</span> <span className="font-medium">{formatIDR(cost.amount)}</span></div>
+                    ))}
+                    {workOrder.usedParts.map((item, i) => {
+                        const part = spareParts.find(p => p.id === item.partId);
+                        return <div key={i} className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">{part?.name} x{item.quantity}</span> <span className="font-medium">{formatIDR(item.quantity * item.sellingPrice)}</span></div>
+                    })}
+                </div>
+                 <div className="flex justify-between mt-4 pt-4 border-t dark:border-gray-700">
+                    <span className="font-bold text-lg">Total Cost</span>
+                    <span className="font-bold text-lg">{formatIDR(workOrder.totalCost)}</span>
+                </div>
+            </div>
+
+            {status === WorkOrderStatus.IN_PROGRESS && (
+                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex justify-around items-center">
+                     <button onClick={() => onAddPart(workOrder)} className="px-6 py-3 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-semibold">{t('pages.workOrders.addPart')}</button>
+                     <button onClick={() => onAddCost(workOrder)} className="px-6 py-3 rounded-lg text-white bg-purple-600 hover:bg-purple-700 font-semibold">{t('pages.workOrders.addCost')}</button>
+                     <button onClick={() => onComplete(workOrder)} className="px-6 py-3 rounded-lg text-white bg-green-600 hover:bg-green-700 font-semibold">{t('pages.workOrders.completeWork')}</button>
+                 </div>
+            )}
+        </div>
+    );
+};
+
 const WorkOrders: React.FC<{ 
     user: User; 
     workOrders: WorkOrder[]; 
     users: User[]; 
-    onCreate: () => void; 
+    onCreate: () => void;
     onAssign: (wo: WorkOrder) => void; 
-    onComplete: (wo: WorkOrder) => void; 
     onClaim: (wo: WorkOrder) => void;
     onAddPart: (wo: WorkOrder) => void;
     onAddCost: (wo: WorkOrder) => void;
-    onUploadProof: (workOrderId: string, proofType: 'work' | 'payment') => void;
-    onPrint: (workOrder: WorkOrder, action: 'print' | 'download') => void;
-    t: Function 
-}> = ({ user, workOrders, users, onCreate, onAssign, onComplete, onClaim, onAddPart, onAddCost, onUploadProof, onPrint, t }) => {
+    onComplete: (wo: WorkOrder) => void;
+    t: Function;
+}> = ({ user, workOrders, users, onCreate, onAssign, onClaim, onAddPart, onAddCost, onComplete, t }) => {
     
     const isTechnician = user.role === UserRole.TECHNICIAN;
-    const [adminFilter, setAdminFilter] = useState<'all' | 'assigned'>('all');
     const [techTab, setTechTab] = useState<'my_assigned' | 'available'>('my_assigned');
-    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setOpenDropdownId(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [dropdownRef]);
 
     const ordersToDisplay = useMemo(() => {
         if (isTechnician) {
             if (techTab === 'my_assigned') {
                 return workOrders.filter(wo => wo.technicianId === user.id);
             }
-            return workOrders.filter(wo => !wo.technicianId);
-        }
-        if (adminFilter === 'assigned') {
-             return workOrders.filter(wo => wo.technicianId === user.id);
+            return workOrders.filter(wo => !wo.technicianId && wo.status === WorkOrderStatus.PENDING);
         }
         return workOrders;
-    }, [workOrders, user, isTechnician, techTab, adminFilter]);
+    }, [workOrders, user, isTechnician, techTab]);
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.workOrders.title')}</h1>
-                {!isTechnician && (
+                 {(user.role === UserRole.ADMIN || user.role === UserRole.ADMINISTRATOR) && (
                     <button onClick={onCreate} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
                         <WorkOrderIcon className="mr-2 h-5 w-5" /> {t('common.create')} Order
                     </button>
@@ -1250,9 +1405,7 @@ const WorkOrders: React.FC<{
                                 <button onClick={() => setTechTab('available')} className={`py-4 px-1 border-b-2 font-medium text-sm ${techTab === 'available' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.workOrders.available')}</button>
                             </>
                         ) : (
-                            <>
-                                <button onClick={() => setAdminFilter('all')} className={`py-4 px-1 border-b-2 font-medium text-sm ${adminFilter === 'all' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.workOrders.allOrders')}</button>
-                            </>
+                            <button className={`py-4 px-1 border-b-2 font-medium text-sm border-primary-500 text-primary-600 dark:text-primary-400`}>{t('pages.workOrders.allOrders')}</button>
                         )}
                     </nav>
                 </div>
@@ -1260,8 +1413,7 @@ const WorkOrders: React.FC<{
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
                             <tr>
-                                <th className="px-6 py-3">ID</th>
-                                <th className="px-6 py-3">{t('common.description')}</th>
+                                <th className="px-6 py-3">ID / Job</th>
                                 <th className="px-6 py-3">Customer</th>
                                 <th className="px-6 py-3">{t('common.status')}</th>
                                 <th className="px-6 py-3">{t('pages.workOrders.technician')}</th>
@@ -1272,46 +1424,41 @@ const WorkOrders: React.FC<{
                         <tbody>
                             {ordersToDisplay.length > 0 ? ordersToDisplay.map(wo => (
                                 <tr key={wo.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                    <td className="px-6 py-4 font-mono text-xs">{wo.id}</td>
-                                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{wo.description}</td>
+                                    <td className="px-6 py-4">
+                                        <Link to={`/work-orders/${wo.id}`} className="font-medium text-primary-600 hover:underline dark:text-primary-400">{wo.id}</Link>
+                                        <p className="text-xs text-gray-500 truncate max-w-xs">{wo.description}</p>
+                                    </td>
                                     <td className="px-6 py-4">{wo.customer.name}</td>
                                     <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span></td>
                                     <td className="px-6 py-4">{users.find(u => u.id === wo.technicianId)?.name || <span className="text-gray-400 italic">{t('pages.workOrders.unassigned')}</span>}</td>
                                     <td className="px-6 py-4 font-semibold">{formatIDR(wo.totalCost)}</td>
-                                    <td className="px-6 py-4 space-x-2">
-                                        <div className="flex items-center space-x-2">
+                                    <td className="px-6 py-4">
+                                        <div className="relative" ref={dropdownRef}>
                                             {!isTechnician && wo.status === WorkOrderStatus.PENDING && (
                                                 <button onClick={() => onAssign(wo)} className="text-primary-600 hover:underline dark:text-primary-400">Assign</button>
                                             )}
                                             {isTechnician && techTab === 'available' && (
                                                 <button onClick={() => onClaim(wo)} className="text-blue-600 hover:underline dark:text-blue-400">{t('pages.workOrders.claimJob')}</button>
                                             )}
-                                            {wo.status === WorkOrderStatus.IN_PROGRESS && (wo.technicianId === user.id || !isTechnician) && (
-                                                <>
-                                                    <button onClick={() => onAddPart(wo)} className="text-indigo-600 hover:underline dark:text-indigo-400">{t('pages.workOrders.addPart')}</button>
-                                                    <button onClick={() => onAddCost(wo)} className="text-purple-600 hover:underline dark:text-purple-400">{t('pages.workOrders.addCost')}</button>
-                                                    <button onClick={() => onComplete(wo)} className="text-green-600 hover:underline dark:text-green-400">Complete</button>
-                                                </>
+                                            {(isTechnician && techTab === 'my_assigned' && wo.status === WorkOrderStatus.IN_PROGRESS) && (
+                                                <button onClick={() => setOpenDropdownId(openDropdownId === wo.id ? null : wo.id)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
+                                                    <MoreVerticalIcon className="h-5 w-5" />
+                                                </button>
                                             )}
-                                            {wo.status === WorkOrderStatus.COMPLETED && (
-                                                <div className="relative">
-                                                    <button onClick={() => setOpenDropdown(openDropdown === wo.id ? null : wo.id)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
-                                                        <MoreVerticalIcon className="h-5 w-5" />
-                                                    </button>
-                                                    {openDropdown === wo.id && (
-                                                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border dark:border-gray-700">
-                                                            <button onClick={() => onUploadProof(wo.id, 'work')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.uploadWorkProof')}</button>
-                                                            <button onClick={() => onUploadProof(wo.id, 'payment')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.uploadPaymentProof')}</button>
-                                                            <button onClick={() => onPrint(wo, 'download')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.generatePDF')}</button>
-                                                            <button onClick={() => onPrint(wo, 'print')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.printWO')}</button>
-                                                        </div>
-                                                    )}
+                                            
+                                            {openDropdownId === wo.id && (
+                                                <div className="absolute right-0 top-6 z-10 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700">
+                                                    <ul className="py-1">
+                                                        <li><button onClick={() => { onAddPart(wo); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addPart')}</button></li>
+                                                        <li><button onClick={() => { onAddCost(wo); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addCost')}</button></li>
+                                                        <li><button onClick={() => { onComplete(wo); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.completeWork')}</button></li>
+                                                    </ul>
                                                 </div>
                                             )}
                                         </div>
                                     </td>
                                 </tr>
-                            )) : (<tr><td colSpan={7} className="px-6 py-4 text-center">No work orders found.</td></tr>)}
+                            )) : (<tr><td colSpan={6} className="px-6 py-4 text-center">No work orders found.</td></tr>)}
                         </tbody>
                     </table>
                 </div>
@@ -1320,7 +1467,7 @@ const WorkOrders: React.FC<{
     );
 };
 
-const EmployeesPage: React.FC<{ users: User[], workOrders: WorkOrder[], attendance: AttendanceRecord[], t: Function }> = ({ users, workOrders, attendance, t }) => {
+const EmployeesPage: React.FC<{ users: User[], workOrders: WorkOrder[], attendance: AttendanceRecord[], onAddEmployee: () => void, t: Function }> = ({ users, workOrders, attendance, onAddEmployee, t }) => {
     const today = new Date().toISOString().split('T')[0];
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -1350,7 +1497,12 @@ const EmployeesPage: React.FC<{ users: User[], workOrders: WorkOrder[], attendan
 
     return (
          <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.employees.title')}</h1>
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.employees.title')}</h1>
+                <button onClick={onAddEmployee} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
+                    <UsersIcon className="mr-2 h-5 w-5" /> {t('pages.employees.addEmployee')}
+                </button>
+            </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
@@ -1366,7 +1518,9 @@ const EmployeesPage: React.FC<{ users: User[], workOrders: WorkOrder[], attendan
                         <tbody>
                             {users.map(user => (
                                 <tr key={user.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{user.name}</td>
+                                    <td className="px-6 py-4 font-medium">
+                                        <Link to={`/employees/${user.id}`} className="text-primary-600 hover:underline dark:text-primary-400">{user.name}</Link>
+                                    </td>
                                     <td className="px-6 py-4 capitalize">{user.role}</td>
                                     <td className="px-6 py-4">{user.email || user.phone || 'N/A'}</td>
                                     <td className="px-6 py-4 text-center font-semibold">{user.role === UserRole.TECHNICIAN ? getMonthlyPerformance(user.id) : '-'}</td>
@@ -1376,6 +1530,60 @@ const EmployeesPage: React.FC<{ users: User[], workOrders: WorkOrder[], attendan
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const TechnicianProfilePage: React.FC<{ users: User[], workOrders: WorkOrder[], onEdit: (user: User) => void, t: Function }> = ({ users, workOrders, onEdit, t }) => {
+    const { employeeId } = useParams();
+    const navigate = useNavigate();
+    const user = users.find(u => u.id === employeeId);
+
+    if (!user) {
+        return <div className="text-center text-gray-500">Employee not found.</div>;
+    }
+
+    const recentWork = workOrders.filter(wo => wo.technicianId === user.id).slice(0, 5);
+
+    return (
+        <div className="max-w-4xl mx-auto space-y-6">
+            <button onClick={() => navigate('/employees')} className="flex items-center space-x-2 text-primary-600 hover:underline">
+                <ArrowLeftIcon className="h-5 w-5" />
+                <span>{t('pages.technicianProfile.back')}</span>
+            </button>
+             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{user.name}</h1>
+                        <p className="text-sm text-gray-500 capitalize">{user.role}</p>
+                    </div>
+                    <button onClick={() => onEdit(user)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
+                        {t('pages.technicianProfile.editEmployee')}
+                    </button>
+                </div>
+                <div className="mt-6 border-t dark:border-gray-700 pt-6">
+                    <h3 className="font-semibold text-lg mb-2">{t('pages.technicianProfile.personalInfo')}</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div><p className="text-gray-500">Email</p><p className="font-medium">{user.email || 'N/A'}</p></div>
+                        <div><p className="text-gray-500">Phone</p><p className="font-medium">{user.phone || 'N/A'}</p></div>
+                        <div><p className="text-gray-500">Status</p><span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(user.status!)}`}>{t(`status.${user.status!}`)}</span></div>
+                    </div>
+                </div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                 <h3 className="font-semibold text-lg mb-2">{t('pages.technicianProfile.recentActivity')}</h3>
+                 <div className="space-y-3">
+                     {recentWork.length > 0 ? recentWork.map(wo => (
+                         <div key={wo.id} className="flex justify-between items-center border-b dark:border-gray-700 pb-2 last:border-0">
+                             <div>
+                                 <p className="font-medium">{wo.description}</p>
+                                 <p className="text-xs text-gray-500">WO #{wo.id} for {wo.customer.name}</p>
+                             </div>
+                             <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span>
+                         </div>
+                     )) : <p className="text-sm text-gray-500">No recent work orders found.</p>}
+                 </div>
             </div>
         </div>
     );
@@ -1694,6 +1902,16 @@ const App: React.FC = () => {
   const handleSaveCustomer = (c: Customer) => { setCustomers(prev => { const ex = prev.find(x => x.id === c.id); return ex ? prev.map(x => x.id === c.id ? c : x) : [...prev, c]; }); setModalState({type:null, data:null}); };
   const handleSaveClient = (c: Client) => { setClients(prev => { const ex = prev.find(x => x.id === c.id); return ex ? prev.map(x => x.id === c.id ? c : x) : [c, ...prev]; }); setModalState({type:null, data:null}); };
   
+  const handleSaveEmployee = (user: User) => {
+    const exists = users.some(u => u.id === user.id);
+    if (exists) {
+        setUsers(prev => prev.map(u => u.id === user.id ? user : u));
+    } else {
+        setUsers(prev => [...prev, user]);
+    }
+    setModalState({type: null, data: null});
+  };
+
   // Work Order Handlers
   const handleCreateWorkOrder = (data: Partial<WorkOrder>) => {
       const serviceFee = data.initialServiceFee || 0;
@@ -2050,10 +2268,12 @@ const App: React.FC = () => {
                 <main className="flex-1 overflow-y-auto p-6">
                     <Routes>
                         <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} transactions={transactions} t={t} />} />
-                        <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onComplete={handleCompleteWorkOrder} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onUploadProof={handleUploadProof} onPrint={handlePrintWorkOrder} t={t} />} />
+                        <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} />} />
+                        <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} />} />
                         <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
-                        <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} t={t} />} />
-                        <Route path="/finance" element={<Finance transactions={transactions} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} t={t} />} />
+                        <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} onAddEmployee={() => setModalState({ type: 'add_employee', data: null })} t={t} />} />
+                        <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} t={t} />} />
+                        <Route path="/finance" element={<FinancePage transactions={transactions} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} t={t} />} />
                         <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} t={t} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} spareParts={spareParts} suppliers={suppliers} clients={clients} invoices={invoices} transactions={transactions} contracts={contracts} />} />
                         <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} onImport={handleImportSpareParts} onDelete={handleDeleteSparePart} onBulkDelete={handleBulkDeleteSpareParts} t={t} />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
@@ -2070,7 +2290,8 @@ const App: React.FC = () => {
             {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
             {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} onDelete={handleDeleteSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
             {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} t={t} />}
-            
+            {modalState.type === 'add_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={null} t={t} />}
+            {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={modalState.data} t={t} />}
             {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} t={t} />}
             {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} t={t} />}
             {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} t={t} />}
