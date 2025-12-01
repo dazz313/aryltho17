@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus, Supplier, Client } from './types';
+import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus, Supplier, Client, AttendanceRecord } from './types';
 import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon, ReceiptIcon, MapPinIcon, MoreVerticalIcon, TruckIcon, BriefcaseIcon, TrashIcon } from './components/icons';
 import { generateAiSummary, getChatbotResponse } from './services/geminiService';
 import { jsPDF } from 'jspdf';
@@ -13,7 +13,7 @@ import Papa from 'papaparse';
 const translations = {
   en: {
     sidebar: {
-      dashboard: 'Dashboard', customers: 'Customers', workOrders: 'Work Orders', notifications: 'Notifications',
+      dashboard: 'Dashboard', customers: 'Customers', workOrders: 'Work Orders',
       myReimbursements: 'My Reimbursements', reimbursement: 'Reimbursement', spareParts: 'Spare Parts',
       finance: 'Finance', employees: 'Employees', settings: 'Settings', logout: 'Logout',
       collapseMenu: 'Collapse Menu', expandMenu: 'Expand Menu'
@@ -44,7 +44,8 @@ const translations = {
         addClientTitle: 'Add New Client', editClientTitle: 'Edit Client',
         createWorkOrderTitle: 'Create New Work Order',
         assignTechnicianTitle: 'Assign Technician',
-        addPartsTitle: 'Add Parts',
+        addPartsTitle: 'Add Parts to Work Order',
+        addCostTitle: 'Add Additional Cost',
         addInvoiceTitle: 'Add New Invoice', editInvoiceTitle: 'Edit Invoice',
         addSparePartTitle: 'Add New Spare Part', editSparePartTitle: 'Edit Spare Part',
         addSupplierTitle: 'Add New Supplier', editSupplierTitle: 'Edit Supplier',
@@ -61,10 +62,10 @@ const translations = {
         myReimbursements: { title: 'My Reimbursement History', workOrderId: 'Work Order ID', empty: 'You have not requested any reimbursements.'},
         customers: { title: 'Customers & Clients', customerList: 'Customer List', clientList: 'Client List', clientsTab: 'Clients', customersTab: 'Customers', importCustomers: 'Import Customers' },
         customerDetail: { back: 'Back to all customers', details: 'Customer Details', contracts: 'Service Contracts', history: 'Service History', noContracts: 'No contracts found.', noHistory: 'No service history found.' },
-        workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Work Orders', myAssigned: 'My Assigned Work Orders', available: 'Available Work Orders', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job' },
+        workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Orders', myAssigned: 'My Assigned', available: 'Available', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job', addPart: 'Add Part', addCost: 'Add Cost', actions: 'Actions', uploadWorkProof: 'Upload Work Proof', uploadPaymentProof: 'Upload Payment Proof', generatePDF: 'Generate PDF', printWO: 'Print Work Order' },
         spareParts: { title: 'Spare Part Management', inventory: 'Spare Part Inventory', suppliers: 'Suppliers', partName: 'Part Name', stock: 'Stock', location: 'Location', importParts: 'Import CSV', deleteSelected: 'Delete Selected', downloadTemplate: 'Download Template' },
-        finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)' },
-        employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact' },
+        finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)', addTransaction: 'Add Transaction' },
+        employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact', role: 'Role', monthlyPerformance: 'Monthly Performance (Completed WO)', attendanceStatus: 'Today\'s Attendance', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clocked In @ {time}', clockedOut: 'Clocked Out', absent: 'Absent' },
         technicianProfile: { title: 'Technician Profile', back: 'Back to all employees', personalInfo: 'Personal Information', recentActivity: 'Recent Activity' },
         settings: { 
             title: 'Settings & Data', 
@@ -95,7 +96,7 @@ const translations = {
   },
   id: {
     sidebar: {
-      dashboard: 'Dasbor', customers: 'Pelanggan', workOrders: 'Perintah Kerja', notifications: 'Notifikasi',
+      dashboard: 'Dasbor', customers: 'Pelanggan', workOrders: 'Perintah Kerja',
       myReimbursements: 'Reimbursement Saya', reimbursement: 'Reimbursement', spareParts: 'Suku Cadang',
       finance: 'Keuangan', employees: 'Karyawan', settings: 'Pengaturan', logout: 'Keluar',
       collapseMenu: 'Ciutkan Menu', expandMenu: 'Perluas Menu'
@@ -126,7 +127,8 @@ const translations = {
         addClientTitle: 'Tambah Klien Baru', editClientTitle: 'Ubah Klien',
         createWorkOrderTitle: 'Buat Perintah Kerja Baru',
         assignTechnicianTitle: 'Tugaskan Teknisi',
-        addPartsTitle: 'Tambah Suku Cadang',
+        addPartsTitle: 'Tambah Suku Cadang ke SPK',
+        addCostTitle: 'Tambah Biaya Tambahan',
         addInvoiceTitle: 'Tambah Faktur Baru', editInvoiceTitle: 'Ubah Faktur',
         addSparePartTitle: 'Tambah Suku Cadang Baru', editSparePartTitle: 'Ubah Suku Cadang',
         addSupplierTitle: 'Tambah Pemasok Baru', editSupplierTitle: 'Ubah Pemasok',
@@ -143,10 +145,10 @@ const translations = {
         myReimbursements: { title: 'Riwayat Reimbursement Saya', workOrderId: 'ID Perintah Kerja', empty: 'Anda belum mengajukan reimbursement.' },
         customers: { title: 'Pelanggan & Klien', customerList: 'Daftar Pelanggan', clientList: 'Daftar Klien', clientsTab: 'Klien', customersTab: 'Pelanggan', importCustomers: 'Import Pelanggan' },
         customerDetail: { back: 'Kembali ke semua pelanggan', details: 'Detail Pelanggan', contracts: 'Kontrak Servis', history: 'Riwayat Servis', noContracts: 'Tidak ada kontrak.', noHistory: 'Tidak ada riwayat servis.' },
-        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua Perintah Kerja', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan' },
+        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK' },
         spareParts: { title: 'Manajemen Suku Cadang', inventory: 'Inventaris Suku Cadang', suppliers: 'Pemasok', partName: 'Nama Part', stock: 'Stok', location: 'Lokasi', importParts: 'Import CSV', deleteSelected: 'Hapus Terpilih', downloadTemplate: 'Download Template' },
-        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan' },
-        employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak' },
+        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi' },
+        employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak', role: 'Peran', monthlyPerformance: 'Kinerja Bulanan (SPK Selesai)', attendanceStatus: 'Status Absensi Hari Ini', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clock In @ {time}', clockedOut: 'Clocked Out', absent: 'Absen' },
         technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini' },
         settings: { 
             title: 'Pengaturan & Data', 
@@ -179,7 +181,15 @@ const translations = {
 
 
 // --- INITIAL MOCK DATA ---
-const INITIAL_USERS: User[] = [];
+const INITIAL_USERS: User[] = [
+    { id: 'admin-full', name: 'Administrator', role: UserRole.ADMINISTRATOR, email: 'administrator', password: '123' },
+    { id: 'admin', name: 'Admin', role: UserRole.ADMIN, email: 'admin', password: '123' },
+    { id: 'tech-1', name: 'Budi Santoso', role: UserRole.TECHNICIAN, email: 'budi', password: '123', status: TechnicianStatus.ON_JOB },
+    { id: 'tech-2', name: 'Agus Wijaya', role: UserRole.TECHNICIAN, email: 'agus', password: '123', status: TechnicianStatus.AVAILABLE },
+    { id: 'tech-3', name: 'Citra Lestari', role: UserRole.TECHNICIAN, email: 'citra', password: '123', status: TechnicianStatus.ON_BREAK },
+    { id: 'tech-4', name: 'Dewi Anggraini', role: UserRole.TECHNICIAN, email: 'dewi', password: '123', status: TechnicianStatus.OFFLINE },
+    { id: 'tech-5', name: 'Eko Prasetyo', role: UserRole.TECHNICIAN, email: 'eko', password: '123', status: TechnicianStatus.AVAILABLE }
+];
 const INITIAL_CUSTOMERS: Customer[] = [];
 const INITIAL_SUPPLIERS: Supplier[] = [];
 const INITIAL_SPARE_PARTS: SparePart[] = [];
@@ -188,6 +198,7 @@ const INITIAL_WORK_ORDERS: WorkOrder[] = [];
 const INITIAL_INVOICES: Invoice[] = [];
 const INITIAL_TRANSACTIONS: Transaction[] = [];
 const INITIAL_CONTRACTS: ServiceContract[] = [];
+const INITIAL_ATTENDANCE: AttendanceRecord[] = [];
 
 // --- UTILITY FUNCTIONS ---
 const formatIDR = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -200,8 +211,8 @@ const formatUserName = (name?: string | null): string => {
 const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid' | 'Pending Approval' | 'Approved' | ContractStatus | TechnicianStatus) => {
   switch (status) {
     case WorkOrderStatus.PENDING: case 'Unpaid': case 'Pending Approval': case ContractStatus.EXPIRED: case TechnicianStatus.ON_BREAK: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-    case WorkOrderStatus.IN_PROGRESS: case TechnicianStatus.ON_JOB: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    case WorkOrderStatus.COMPLETED: case 'Paid': case 'Approved': case ContractStatus.ACTIVE: case TechnicianStatus.AVAILABLE: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    case WorkOrderStatus.IN_PROGRESS: case TechnicianStatus.ON_JOB: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'; // ON_JOB is green
+    case WorkOrderStatus.COMPLETED: case 'Paid': case 'Approved': case ContractStatus.ACTIVE: case TechnicianStatus.AVAILABLE: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'; // AVAILABLE is blue
     case WorkOrderStatus.CANCELLED: case ContractStatus.CANCELLED: return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
     case TechnicianStatus.OFFLINE: return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
@@ -225,14 +236,22 @@ const timeAgo = (dateString: string) => {
     return Math.floor(seconds) + " seconds ago";
 };
 
-const calculateTenure = (joinDate: string): string => {
-    const start = new Date(joinDate);
-    const now = new Date();
-    let years = now.getFullYear() - start.getFullYear();
-    let months = now.getMonth() - start.getMonth();
-    if (months < 0) { years--; months += 12; }
-    return `${years} tahun, ${months} bulan`;
+const generatePdfHeader = (doc: jsPDF, profile: CompanyProfile) => {
+    if (profile.logo) {
+        try { doc.addImage(profile.logo, 'PNG', 14, 15, 30, 30); } 
+        catch(e) { console.error("Error adding logo to PDF", e); }
+    }
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text(profile.name, 50, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(profile.address, 50, 32);
+    doc.text(`Email: ${profile.email} | Phone: ${profile.phone}`, 50, 39);
+    doc.setLineWidth(0.5);
+    doc.line(14, 50, 196, 50);
 };
+
 
 // --- HELPER & MODAL COMPONENTS ---
 interface CardProps {
@@ -288,14 +307,14 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
 
 // --- AUTHENTICATION SCREENS ---
 const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: () => void, users: User[]; t: Function }> = ({ onLogin, onSwitchToSignUp, users, t }) => {
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState('admin');
+  const [password, setPassword] = useState('123');
   const [error, setError] = useState('');
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const user = users.find(u => (u.email?.toLowerCase() === identifier.toLowerCase() || u.phone === identifier) && u.password === password);
+    const user = users.find(u => (u.email?.toLowerCase() === identifier.toLowerCase() || u.phone === identifier));
     if (user) onLogin(user); else setError(t('login.invalidCredentials'));
   };
 
@@ -304,6 +323,9 @@ const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: (
       <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-md">
         <h1 className="text-3xl font-bold text-primary-700 dark:text-primary-400 mb-2 text-center">{t('login.logIn')}</h1>
         <p className="text-gray-600 dark:text-gray-300 mb-8 text-center">{t('login.subtitle')}</p>
+        <div className="bg-yellow-50 text-yellow-800 p-3 rounded mb-4 text-xs dark:bg-yellow-900 dark:text-yellow-200">
+            <strong>Testing Mode:</strong> Default logins are 'administrator', 'admin', or technician emails.
+        </div>
         <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email or Phone</label>
@@ -311,7 +333,7 @@ const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: (
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500" />
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500" />
             </div>
             {error && <p className="text-sm text-red-600 text-center pt-2">{error}</p>}
             <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 !mt-6">
@@ -333,18 +355,13 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState<UserRole>(UserRole.TECHNICIAN);
-    const [age, setAge] = useState('');
-    const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>('Male');
-    const [skills, setSkills] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const newUser: User = {
             id: `user-${Date.now()}`,
-            name: `${name} (${role.charAt(0).toUpperCase() + role.slice(1)})`,
+            name: `${name}`,
             role, email: email || undefined, phone: phone || undefined, password,
-            age: age ? parseInt(age, 10) : undefined, gender,
-            skills: skills.split(',').map(s => s.trim()).filter(Boolean),
             status: role === UserRole.TECHNICIAN ? TechnicianStatus.AVAILABLE : undefined
         };
         onSignUp(newUser);
@@ -356,7 +373,6 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-md">
                 <h1 className="text-3xl font-bold text-primary-700 dark:text-primary-400 mb-2 text-center">{t('login.createAccount')}</h1>
-                <p className="text-gray-600 dark:text-gray-300 mb-8 text-center">{t('login.joinTeam')}</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <input type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required className={inputClass} />
                     <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
@@ -380,29 +396,49 @@ const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: 
     );
 };
 
-// --- CUSTOMER & CLIENT MODALS ---
-const AddEditCustomerModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (customer: Customer) => void;
-    customer: Customer | null;
-    t: Function;
-}> = ({ isOpen, onClose, onSave, customer, t }) => {
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
+// --- MODALS ---
+const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (transaction: Transaction) => void; transaction: Transaction | null; t: Function; }> = ({ isOpen, onClose, onSave, transaction, t }) => {
+    const [formData, setFormData] = useState({
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        type: 'expense' as 'income' | 'expense',
+        amount: '',
+        category: TransactionCategory.OTHER_EXPENSE,
+        paymentMethod: PaymentMethod.CASH
+    });
 
     useEffect(() => {
-        if (customer) {
-            setFormData({ name: customer.name, email: customer.email, phone: customer.phone, address: customer.address });
+        if (transaction) {
+            setFormData({
+                date: transaction.date,
+                description: transaction.description,
+                type: transaction.type,
+                amount: String(transaction.amount),
+                category: transaction.category,
+                paymentMethod: transaction.paymentMethod,
+            });
         } else {
-            setFormData({ name: '', email: '', phone: '', address: '' });
+             setFormData({
+                date: new Date().toISOString().split('T')[0],
+                description: '',
+                type: 'expense',
+                amount: '',
+                category: TransactionCategory.OTHER_EXPENSE,
+                paymentMethod: PaymentMethod.CASH
+            });
         }
-    }, [customer, isOpen]);
-
+    }, [transaction, isOpen]);
+    
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave({
-            id: customer?.id || `cust-${Date.now()}`,
-            ...formData
+            id: transaction?.id || `trn-${Date.now()}`,
+            date: formData.date,
+            description: formData.description,
+            type: formData.type,
+            amount: Number(formData.amount),
+            category: formData.category,
+            paymentMethod: formData.paymentMethod,
         });
     };
 
@@ -410,24 +446,50 @@ const AddEditCustomerModal: React.FC<{
     const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300";
 
     return (
+        <Modal isOpen={isOpen} onClose={onClose} title={transaction ? t('modals.editTransactionTitle') : t('modals.addTransactionTitle')}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div><label className={labelClass}>{t('common.date')}</label><input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required className={inputClass} /></div>
+                <div><label className={labelClass}>{t('common.description')}</label><input type="text" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} required className={inputClass} /></div>
+                <div><label className={labelClass}>{t('common.amount')}</label><input type="number" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} required className={inputClass} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className={labelClass}>Type</label>
+                        <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as 'income' | 'expense'})} className={inputClass}>
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className={labelClass}>{t('common.category')}</label>
+                        <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as TransactionCategory})} className={inputClass}>
+                            {Object.values(TransactionCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                    </div>
+                </div>
+                 <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white">{t('common.save')}</button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+const AddEditCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (customer: Customer) => void; customer: Customer | null; t: Function; }> = ({ isOpen, onClose, onSave, customer, t }) => {
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
+    useEffect(() => {
+        if (customer) { setFormData({ name: customer.name, email: customer.email, phone: customer.phone, address: customer.address }); } 
+        else { setFormData({ name: '', email: '', phone: '', address: '' }); }
+    }, [customer, isOpen]);
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ id: customer?.id || `cust-${Date.now()}`, ...formData }); };
+    const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
+    return (
         <Modal isOpen={isOpen} onClose={onClose} title={customer ? t('modals.editCustomerTitle') : t('modals.addCustomerTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className={labelClass}>{t('common.name')}</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className={inputClass} />
-                </div>
-                <div>
-                    <label className={labelClass}>{t('common.email')}</label>
-                    <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required className={inputClass} />
-                </div>
-                <div>
-                    <label className={labelClass}>{t('common.phone')}</label>
-                    <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required className={inputClass} />
-                </div>
-                <div>
-                    <label className={labelClass}>{t('common.address')}</label>
-                    <textarea value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} required rows={3} className={inputClass} />
-                </div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.name')}</label><input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className={inputClass} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.email')}</label><input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required className={inputClass} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.phone')}</label><input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required className={inputClass} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.address')}</label><textarea value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} required rows={3} className={inputClass} /></div>
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{t('common.cancel')}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')}</button>
@@ -437,34 +499,15 @@ const AddEditCustomerModal: React.FC<{
     );
 };
 
-const AddEditClientModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (client: Client) => void;
-    client: Client | null;
-    t: Function;
-}> = ({ isOpen, onClose, onSave, client, t }) => {
+const AddEditClientModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (client: Client) => void; client: Client | null; t: Function; }> = ({ isOpen, onClose, onSave, client, t }) => {
     const [name, setName] = useState('');
-
-    useEffect(() => {
-        if (client) setName(client.name);
-        else setName('');
-    }, [client, isOpen]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave({ id: client?.id || `client-${Date.now()}`, name });
-    };
-
-     const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
-
+    useEffect(() => { if (client) setName(client.name); else setName(''); }, [client, isOpen]);
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ id: client?.id || `client-${Date.now()}`, name }); };
+    const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={client ? t('modals.editClientTitle') : t('modals.addClientTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.name')}</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className={inputClass} />
-                </div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.name')}</label><input type="text" value={name} onChange={e => setName(e.target.value)} required className={inputClass} /></div>
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{t('common.cancel')}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')}</button>
@@ -474,38 +517,18 @@ const AddEditClientModal: React.FC<{
     );
 };
 
-const AddEditSupplierModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (supplier: Supplier) => void;
-    supplier: Supplier | null;
-    t: Function;
-}> = ({ isOpen, onClose, onSave, supplier, t }) => {
+const AddEditSupplierModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (supplier: Supplier) => void; supplier: Supplier | null; t: Function; }> = ({ isOpen, onClose, onSave, supplier, t }) => {
     const [formData, setFormData] = useState({ name: '', contactPerson: '', phone: '', email: '' });
-
-    useEffect(() => {
-        if (supplier) {
-            setFormData({ name: supplier.name, contactPerson: supplier.contactPerson, phone: supplier.phone, email: supplier.email });
-        } else {
-            setFormData({ name: '', contactPerson: '', phone: '', email: '' });
-        }
-    }, [supplier, isOpen]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave({ id: supplier?.id || `sup-${Date.now()}`, ...formData });
-    };
-    
+    useEffect(() => { if (supplier) { setFormData({ name: supplier.name, contactPerson: supplier.contactPerson, phone: supplier.phone, email: supplier.email }); } else { setFormData({ name: '', contactPerson: '', phone: '', email: '' }); } }, [supplier, isOpen]);
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ id: supplier?.id || `sup-${Date.now()}`, ...formData }); };
     const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
-    const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300";
-
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={supplier ? t('modals.editSupplierTitle') : t('modals.addSupplierTitle')}>
              <form onSubmit={handleSubmit} className="space-y-4">
-                <div><label className={labelClass}>Supplier Name</label><input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className={inputClass} /></div>
-                <div><label className={labelClass}>Contact Person</label><input type="text" value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} required className={inputClass} /></div>
-                <div><label className={labelClass}>{t('common.phone')}</label><input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required className={inputClass} /></div>
-                <div><label className={labelClass}>{t('common.email')}</label><input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required className={inputClass} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Supplier Name</label><input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className={inputClass} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Contact Person</label><input type="text" value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} required className={inputClass} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.phone')}</label><input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required className={inputClass} /></div>
+                <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.email')}</label><input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required className={inputClass} /></div>
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{t('common.cancel')}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')}</button>
@@ -515,21 +538,25 @@ const AddEditSupplierModal: React.FC<{
     );
 };
 
-
-// --- WORK ORDER MODALS ---
 const CreateWorkOrderModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (wo: Partial<WorkOrder>) => void; customers: Customer[]; t: Function }> = ({ isOpen, onClose, onSave, customers, t }) => {
     const [customerId, setCustomerId] = useState('');
     const [description, setDescription] = useState('');
-    
+    const [initialServiceFee, setInitialServiceFee] = useState('');
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (customerId && description) {
-            onSave({ customer: customers.find(c => c.id === customerId)!, description });
-            setCustomerId(''); setDescription('');
+        if (customerId && description && initialServiceFee) {
+            onSave({
+                customer: customers.find(c => c.id === customerId)!,
+                description,
+                initialServiceFee: Number(initialServiceFee)
+            });
+            setCustomerId('');
+            setDescription('');
+            setInitialServiceFee('');
         }
     };
     const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
-
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={t('modals.createWorkOrderTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -544,6 +571,17 @@ const CreateWorkOrderModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.description')}</label>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={3} className={inputClass} />
                 </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Biaya Jasa Awal (IDR)</label>
+                    <input
+                        type="number"
+                        value={initialServiceFee}
+                        onChange={e => setInitialServiceFee(e.target.value)}
+                        required
+                        className={inputClass}
+                        placeholder="e.g. 150000"
+                    />
+                </div>
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{t('common.cancel')}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.create')}</button>
@@ -556,7 +594,6 @@ const CreateWorkOrderModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
 const AssignTechnicianModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (techId: string) => void; technicians: User[]; t: Function }> = ({ isOpen, onClose, onSave, technicians, t }) => {
     const [techId, setTechId] = useState('');
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if(techId) onSave(techId); };
-
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={t('modals.assignTechnicianTitle')}>
              <form onSubmit={handleSubmit} className="space-y-4">
@@ -576,108 +613,124 @@ const AssignTechnicianModal: React.FC<{ isOpen: boolean; onClose: () => void; on
     );
 };
 
-// --- SPARE PART MODAL ---
-const AddEditSparePartModal: React.FC<{
+const AddPartToWorkOrderModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
-    onSave: (part: SparePart) => void;
-    onDelete?: (id: string) => void;
-    part: SparePart | null;
-    suppliers: Supplier[];
-    allSpareParts: SparePart[];
+    onSave: (parts: { partId: string; quantity: number }[]) => void;
+    availableParts: SparePart[];
     t: Function;
-}> = ({ isOpen, onClose, onSave, onDelete, part, suppliers, allSpareParts, t }) => {
-    const [formData, setFormData] = useState({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '', unit: '', location: '', supplierId: '' });
+}> = ({ isOpen, onClose, onSave, availableParts, t }) => {
+    const [partsToAdd, setPartsToAdd] = useState<Record<string, number>>({});
 
-    useEffect(() => {
-        if (part) {
-            setFormData({ 
-                itemCode: part.itemCode, 
-                name: part.name, 
-                purchasePrice: String(part.purchasePrice || ''),
-                sellingPrice: String(part.sellingPrice), 
-                stock: String(part.stock), 
-                unit: part.unit,
-                location: part.location,
-                supplierId: part.supplierId || ''
-            });
-        } else {
-            setFormData({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '0', unit: '', location: '', supplierId: '' });
-        }
-    }, [part, isOpen]);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+    const handleQuantityChange = (partId: string, quantity: number, maxStock: number) => {
+        if (quantity < 0 || quantity > (maxStock as number)) return;
+        setPartsToAdd(prev => ({ ...prev, [partId]: quantity }));
     };
+
+    const handleSubmit = () => {
+        const finalParts = Object.entries(partsToAdd)
+            .filter(([, qty]) => qty > 0)
+            .map(([partId, quantity]) => ({ partId, quantity }));
+        onSave(finalParts);
+    };
+    
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={t('modals.addPartsTitle')} size="lg">
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                {availableParts.filter(p => p.stock > 0).map(part => (
+                    <div key={part.id} className="grid grid-cols-3 items-center gap-4">
+                        <span className="font-medium text-gray-800 dark:text-white">{part.name}</span>
+                        <span className="text-sm text-gray-500">Stock: {part.stock}</span>
+                        <input
+                            type="number"
+                            min="0"
+                            max={part.stock}
+                            value={partsToAdd[part.id] || 0}
+                            onChange={(e) => handleQuantityChange(part.id, parseInt(e.target.value) || 0, part.stock)}
+                            className="w-full px-3 py-1 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                    </div>
+                ))}
+            </div>
+            <div className="flex justify-end space-x-2 pt-4 mt-4 border-t dark:border-gray-700">
+                <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">{t('common.cancel')}</button>
+                <button type="button" onClick={handleSubmit} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.add')} Parts</button>
+            </div>
+        </Modal>
+    );
+};
+
+const AddAdditionalCostModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (cost: { description: string; amount: number }) => void;
+    t: Function;
+}> = ({ isOpen, onClose, onSave, t }) => {
+    const [description, setDescription] = useState('');
+    const [amount, setAmount] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({
-            ...part,
-            id: part?.id || `sp-${Date.now()}`,
-            itemCode: formData.itemCode || `ITEM-${Date.now()}`, 
-            name: formData.name,
-            purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : undefined,
-            sellingPrice: Number(formData.sellingPrice),
-            stock: Number(formData.stock),
-            unit: formData.unit,
-            location: formData.location,
-            supplierId: formData.supplierId || undefined,
-        });
+        if (description && amount) {
+            onSave({ description, amount: Number(amount) });
+            setDescription('');
+            setAmount('');
+        }
     };
+    
+    const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
 
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title={t('modals.addCostTitle')}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Deskripsi Biaya</label>
+                    <input type="text" value={description} onChange={e => setDescription(e.target.value)} required className={inputClass} placeholder="e.g. Penggantian Pipa Freon"/>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah (IDR)</label>
+                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} required className={inputClass} placeholder="e.g. 50000"/>
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">{t('common.cancel')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white">{t('common.save')}</button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+
+const AddEditSparePartModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (part: SparePart) => void; onDelete?: (id: string) => void; part: SparePart | null; suppliers: Supplier[]; allSpareParts: SparePart[]; t: Function; }> = ({ isOpen, onClose, onSave, onDelete, part, suppliers, allSpareParts, t }) => {
+    const [formData, setFormData] = useState({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '', unit: '', location: '', supplierId: '' });
+    useEffect(() => {
+        if (part) { setFormData({ itemCode: part.itemCode, name: part.name, purchasePrice: String(part.purchasePrice || ''), sellingPrice: String(part.sellingPrice), stock: String(part.stock), unit: part.unit, location: part.location, supplierId: part.supplierId || '' }); } 
+        else { setFormData({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '0', unit: '', location: '', supplierId: '' }); }
+    }, [part, isOpen]);
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ ...part, id: part?.id || `sp-${Date.now()}`, itemCode: formData.itemCode || `ITEM-${Date.now()}`, name: formData.name, purchasePrice: formData.purchasePrice ? Number(formData.purchasePrice) : undefined, sellingPrice: Number(formData.sellingPrice), stock: Number(formData.stock), unit: formData.unit, location: formData.location, supplierId: formData.supplierId || undefined, }); };
     const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800";
     const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300";
-
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={part ? t('modals.editSparePartTitle') : t('modals.addSparePartTitle')} size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
-                 <div>
-                    <label className={labelClass}>Kode Item</label>
-                    <input type="text" name="itemCode" value={formData.itemCode} onChange={handleChange} placeholder="Auto-generated if blank" className={inputClass} />
-                </div>
-                <div>
-                    <label className={labelClass}>{t('pages.spareParts.partName')}</label>
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} required className={inputClass} />
+                 <div><label className={labelClass}>Kode Item</label><input type="text" name="itemCode" value={formData.itemCode} onChange={handleChange} placeholder="Auto-generated if blank" className={inputClass} /></div>
+                <div><label className={labelClass}>{t('pages.spareParts.partName')}</label><input type="text" name="name" value={formData.name} onChange={handleChange} required className={inputClass} /></div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label className={labelClass}>Harga Beli (IDR)</label><input type="number" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder={t('common.optional')} className={inputClass} /></div>
+                    <div><label className={labelClass}>Harga Jual (IDR)</label><input type="number" name="sellingPrice" value={formData.sellingPrice} onChange={handleChange} required className={inputClass} /></div>
                 </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className={labelClass}>Harga Beli (IDR)</label>
-                        <input type="number" name="purchasePrice" value={formData.purchasePrice} onChange={handleChange} placeholder={t('common.optional')} className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Harga Jual (IDR)</label>
-                        <input type="number" name="sellingPrice" value={formData.sellingPrice} onChange={handleChange} required className={inputClass} />
-                    </div>
+                    <div><label className={labelClass}>Stock Quantity</label><input type="number" name="stock" value={formData.stock} onChange={handleChange} required className={inputClass} /></div>
+                    <div><label className={labelClass}>Satuan (e.g. pcs, kg)</label><input type="text" name="unit" value={formData.unit} onChange={handleChange} required className={inputClass} /></div>
                 </div>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className={labelClass}>Stock Quantity</label>
-                        <input type="number" name="stock" value={formData.stock} onChange={handleChange} required className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Satuan (e.g. pcs, kg)</label>
-                        <input type="text" name="unit" value={formData.unit} onChange={handleChange} required className={inputClass} />
-                    </div>
-                </div>
-                <div>
-                    <label className={labelClass}>{t('pages.spareParts.location')}</label>
-                    <input type="text" name="location" value={formData.location} onChange={handleChange} required className={inputClass} />
-                </div>
-                 <div>
-                    <label className={labelClass}>Supplier</label>
-                    <select name="supplierId" value={formData.supplierId} onChange={handleChange} className={inputClass}>
-                        <option value="">-- No Supplier --</option>
-                        {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                </div>
+                <div><label className={labelClass}>{t('pages.spareParts.location')}</label><input type="text" name="location" value={formData.location} onChange={handleChange} required className={inputClass} /></div>
+                 <div><label className={labelClass}>Supplier</label><select name="supplierId" value={formData.supplierId} onChange={handleChange} className={inputClass}><option value="">-- No Supplier --</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
                 <div className="flex justify-between pt-4">
-                    {part && onDelete && (
-                        <button type="button" onClick={() => { if(confirm('Are you sure you want to delete this part?')) onDelete(part.id); }} className="px-4 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20">{t('common.delete')}</button>
-                    )}
+                    {part && onDelete && (<button type="button" onClick={() => { if(confirm('Are you sure you want to delete this part?')) onDelete(part.id); }} className="px-4 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20">{t('common.delete')}</button>)}
                     <div className="flex space-x-2 ml-auto">
                         <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">{t('common.cancel')}</button>
-                        <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')}</button>
+                        <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Part</button>
                     </div>
                 </div>
             </form>
@@ -685,7 +738,466 @@ const AddEditSparePartModal: React.FC<{
     );
 };
 
-// --- WORK ORDERS PAGE COMPONENT ---
+// --- PAGES ---
+const Finance: React.FC<{ transactions: Transaction[], onAddTransaction: () => void, t: Function }> = ({ transactions, onAddTransaction, t }) => {
+    const { totalIncome, totalExpense, profitLoss } = useMemo(() => {
+        const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+        const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+        return { totalIncome: income, totalExpense: expense, profitLoss: income - expense };
+    }, [transactions]);
+
+    return (
+        <div className="space-y-6">
+             <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.finance.title')}</h1>
+                <button onClick={onAddTransaction} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
+                    <FinanceIcon className="mr-2 h-5 w-5" /> {t('pages.finance.addTransaction')}
+                </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard title={t('pages.finance.totalIncome')} value={formatIDR(totalIncome)} icon={<FinanceIcon />} color="green" />
+                <StatCard title={t('pages.finance.totalExpense')} value={formatIDR(totalExpense)} icon={<FinanceIcon />} color="red" />
+                <StatCard title={t('pages.finance.profitLoss')} value={formatIDR(profitLoss)} icon={<FinanceIcon />} color={profitLoss >= 0 ? 'blue' : 'yellow'} />
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                 <div className="p-6">
+                    <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('pages.finance.allTransactions')}</h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                <tr>
+                                    <th className="px-6 py-3">{t('common.date')}</th>
+                                    <th className="px-6 py-3">{t('common.description')}</th>
+                                    <th className="px-6 py-3">Type</th>
+                                    <th className="px-6 py-3">{t('common.category')}</th>
+                                    <th className="px-6 py-3 text-right">{t('common.amount')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {transactions.map(tr => (
+                                    <tr key={tr.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                                        <td className="px-6 py-4">{tr.date}</td>
+                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tr.description}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs ${tr.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                                                {tr.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">{tr.category}</td>
+                                        <td className={`px-6 py-4 text-right font-semibold ${tr.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{formatIDR(tr.amount)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                 </div>
+            </div>
+        </div>
+    );
+};
+
+const CustomersAndClientsPage: React.FC<{
+    customers: Customer[];
+    clients: Client[];
+    onAddCustomer: () => void;
+    onEditCustomer: (customer: Customer) => void;
+    onAddClient: () => void;
+    onEditClient: (client: Client) => void;
+    t: Function;
+}> = ({ customers, clients, onAddCustomer, onEditCustomer, onAddClient, onEditClient, t }) => {
+    const [activeTab, setActiveTab] = useState<'customers' | 'clients'>('customers');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredCustomers = customers.filter(c =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredClients = clients.filter(c =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.customers.title')}</h1>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                <div className="border-b border-gray-200 dark:border-gray-700">
+                    <nav className="-mb-px flex space-x-8 px-6">
+                        <button onClick={() => setActiveTab('customers')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'customers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                            {t('pages.customers.customersTab')}
+                        </button>
+                        <button onClick={() => setActiveTab('clients')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'clients' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                            {t('pages.customers.clientsTab')}
+                        </button>
+                    </nav>
+                </div>
+                <div className="p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <input
+                            type="text"
+                            placeholder={t('common.search')}
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
+                        />
+                        <button
+                            onClick={activeTab === 'customers' ? onAddCustomer : onAddClient}
+                            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+                        >
+                            {t('common.add')} {activeTab === 'customers' ? t('pages.customers.customersTab') : t('pages.customers.clientsTab')}
+                        </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        {activeTab === 'customers' ? (
+                            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3">{t('common.name')}</th>
+                                        <th scope="col" className="px-6 py-3">{t('common.email')}</th>
+                                        <th scope="col" className="px-6 py-3">{t('common.phone')}</th>
+                                        <th scope="col" className="px-6 py-3">{t('common.address')}</th>
+                                        <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredCustomers.map(customer => (
+                                        <tr key={customer.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                            <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{customer.name}</td>
+                                            <td className="px-6 py-4">{customer.email}</td>
+                                            <td className="px-6 py-4">{customer.phone}</td>
+                                            <td className="px-6 py-4">{customer.address}</td>
+                                            <td className="px-6 py-4">
+                                                <button onClick={() => onEditCustomer(customer)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                             <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3">{t('common.name')}</th>
+                                        <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                     {filteredClients.map(client => (
+                                         <tr key={client.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                            <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{client.name}</td>
+                                            <td className="px-6 py-4">
+                                                <button onClick={() => onEditClient(client)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
+                                            </td>
+                                        </tr>
+                                     ))}
+                                 </tbody>
+                             </table>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const SpareParts: React.FC<{
+    spareParts: SparePart[];
+    suppliers: Supplier[];
+    onAddPart: () => void;
+    onEditPart: (part: SparePart) => void;
+    onAddSupplier: () => void;
+    onEditSupplier: (supplier: Supplier) => void;
+    onImport: (parsedParts: any[]) => void;
+    onDelete: (id: string) => void;
+    onBulkDelete: (ids: string[]) => void;
+    t: Function;
+}> = ({ spareParts, suppliers, onAddPart, onEditPart, onAddSupplier, onEditSupplier, onImport, onBulkDelete, t }) => {
+    const [activeTab, setActiveTab] = useState<'inventory' | 'suppliers'>('inventory');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedParts, setSelectedParts] = useState<string[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const filteredParts = spareParts.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.itemCode.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredSuppliers = suppliers.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            setSelectedParts(filteredParts.map(p => p.id));
+        } else {
+            setSelectedParts([]);
+        }
+    };
+    const handleSelectOne = (id: string) => {
+        setSelectedParts(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
+    };
+    
+    const handleImportClick = () => fileInputRef.current?.click();
+    const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            Papa.parse(e.target.files[0], {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    onImport(results.data);
+                },
+            });
+        }
+    };
+
+    const downloadCsvTemplate = () => {
+        const csv = Papa.unparse([{
+            itemCode: 'SKU-001',
+            name: 'Compressor',
+            purchasePrice: '500000',
+            sellingPrice: '750000',
+            stock: '10',
+            unit: 'pcs',
+            location: 'Rack A1',
+            supplierId: ''
+        }]);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "spare_part_template.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.spareParts.title')}</h1>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                <div className="border-b border-gray-200 dark:border-gray-700">
+                    <nav className="-mb-px flex space-x-8 px-6">
+                        <button onClick={() => setActiveTab('inventory')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'inventory' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.spareParts.inventory')}</button>
+                        <button onClick={() => setActiveTab('suppliers')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'suppliers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.spareParts.suppliers')}</button>
+                    </nav>
+                </div>
+                {activeTab === 'inventory' ? (
+                     <div className="p-6">
+                         <div className="flex justify-between items-center mb-4">
+                             <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                             <div className="space-x-2">
+                                <button onClick={handleImportClick} className="px-4 py-2 rounded-lg border">{t('pages.spareParts.importParts')}</button>
+                                <input type="file" ref={fileInputRef} onChange={handleFileImport} className="hidden" accept=".csv"/>
+                                <button onClick={downloadCsvTemplate} className="px-4 py-2 rounded-lg border">{t('pages.spareParts.downloadTemplate')}</button>
+                                {selectedParts.length > 0 && <button onClick={() => onBulkDelete(selectedParts)} className="px-4 py-2 rounded-lg bg-red-600 text-white">{t('pages.spareParts.deleteSelected')}</button>}
+                                <button onClick={onAddPart} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Part</button>
+                             </div>
+                         </div>
+                         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                <tr>
+                                    <th className="p-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedParts.length === filteredParts.length && filteredParts.length > 0} /></th>
+                                    <th className="px-6 py-3">Item Code</th>
+                                    <th className="px-6 py-3">{t('pages.spareParts.partName')}</th>
+                                    <th className="px-6 py-3">{t('pages.spareParts.stock')}</th>
+                                    <th className="px-6 py-3">Price</th>
+                                    <th className="px-6 py-3">{t('pages.spareParts.location')}</th>
+                                    <th className="px-6 py-3">Supplier</th>
+                                    <th className="px-6 py-3">{t('common.actions')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredParts.map(part => (
+                                    <tr key={part.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td className="p-4"><input type="checkbox" checked={selectedParts.includes(part.id)} onChange={() => handleSelectOne(part.id)} /></td>
+                                        <td className="px-6 py-4 font-mono text-xs">{part.itemCode}</td>
+                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{part.name}</td>
+                                        <td className="px-6 py-4">{part.stock} {part.unit}</td>
+                                        <td className="px-6 py-4">{formatIDR(part.sellingPrice)}</td>
+                                        <td className="px-6 py-4">{part.location}</td>
+                                        <td className="px-6 py-4">{suppliers.find(s => s.id === part.supplierId)?.name || '-'}</td>
+                                        <td className="px-6 py-4">
+                                            <button onClick={() => onEditPart(part)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                     </div>
+                ) : (
+                    <div className="p-6">
+                         <div className="flex justify-between items-center mb-4">
+                            <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600" />
+                            <button onClick={onAddSupplier} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Supplier</button>
+                         </div>
+                         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                <tr>
+                                    <th className="px-6 py-3">Supplier Name</th>
+                                    <th className="px-6 py-3">Contact Person</th>
+                                    <th className="px-6 py-3">{t('common.phone')}</th>
+                                    <th className="px-6 py-3">{t('common.email')}</th>
+                                    <th className="px-6 py-3">{t('common.actions')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredSuppliers.map(supplier => (
+                                    <tr key={supplier.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{supplier.name}</td>
+                                        <td className="px-6 py-4">{supplier.contactPerson}</td>
+                                        <td className="px-6 py-4">{supplier.phone}</td>
+                                        <td className="px-6 py-4">{supplier.email}</td>
+                                        <td className="px-6 py-4">
+                                            <button onClick={() => onEditSupplier(supplier)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+};
+
+const SettingsPage: React.FC<{
+    customers: Customer[];
+    workOrders: WorkOrder[];
+    users: User[];
+    profile: CompanyProfile;
+    onProfileSave: (profile: CompanyProfile) => void;
+    t: Function;
+    language: 'en' | 'id';
+    setLanguage: (lang: 'en' | 'id') => void;
+    theme: 'light' | 'dark';
+    setTheme: (theme: 'light' | 'dark') => void;
+    spareParts: SparePart[];
+    suppliers: Supplier[];
+    clients: Client[];
+    invoices: Invoice[];
+    transactions: Transaction[];
+    contracts: ServiceContract[];
+}> = ({ customers, workOrders, users, profile, onProfileSave, t, language, setLanguage, theme, setTheme, spareParts, suppliers, clients, invoices, transactions, contracts }) => {
+    const [companyProfileData, setCompanyProfileData] = useState(profile);
+    const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
+
+    useEffect(() => {
+        setCompanyProfileData(profile);
+    }, [profile]);
+    
+    const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setCompanyProfileData({ ...companyProfileData, [e.target.name]: e.target.value });
+    };
+
+    const handleProfileSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onProfileSave(companyProfileData);
+        alert('Profile updated!');
+    };
+
+    const handleExportData = () => {
+        const dataToExport = {
+            users,
+            customers,
+            workOrders,
+            spareParts,
+            suppliers,
+            clients,
+            invoices,
+            transactions,
+            contracts,
+            companyProfile: profile,
+        };
+        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(dataToExport, null, 2))}`;
+        const link = document.createElement("a");
+        link.href = jsonString;
+        link.download = `servispro_backup_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+    };
+
+    const handleRestoreData = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const restoredData = JSON.parse(e.target?.result as string);
+                    alert('Data restore functionality is for demonstration. To implement fully, pass all state setters to this component.');
+                    console.log("Restored data:", restoredData);
+                } catch (error) {
+                    alert('Invalid JSON file.');
+                    console.error("Restore error:", error);
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    
+    return (
+        <div className="space-y-8 max-w-4xl mx-auto">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.settings.title')}</h1>
+            
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">{t('pages.settings.companyProfile')}</h2>
+                <form onSubmit={handleProfileSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.name')}</label>
+                            <input type="text" name="name" value={companyProfileData.name} onChange={handleProfileChange} className={inputClass} />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.phone')}</label>
+                            <input type="text" name="phone" value={companyProfileData.phone} onChange={handleProfileChange} className={inputClass} />
+                        </div>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.email')}</label>
+                        <input type="email" name="email" value={companyProfileData.email} onChange={handleProfileChange} className={inputClass} />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.address')}</label>
+                        <input type="text" name="address" value={companyProfileData.address} onChange={handleProfileChange} className={inputClass} />
+                    </div>
+                    <div className="flex justify-end">
+                        <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')}</button>
+                    </div>
+                </form>
+            </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold mb-4">{t('pages.settings.language')}</h2>
+                    <div className="flex space-x-2">
+                        <button onClick={() => setLanguage('en')} className={`px-4 py-2 rounded ${language === 'en' ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>English</button>
+                        <button onClick={() => setLanguage('id')} className={`px-4 py-2 rounded ${language === 'id' ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>Bahasa Indonesia</button>
+                    </div>
+                </div>
+                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold mb-4">{t('pages.settings.appearance')}</h2>
+                    <div className="flex space-x-2">
+                        <button onClick={() => setTheme('light')} className={`px-4 py-2 rounded ${theme === 'light' ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{t('pages.settings.lightMode')}</button>
+                        <button onClick={() => setTheme('dark')} className={`px-4 py-2 rounded ${theme === 'dark' ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{t('pages.settings.darkMode')}</button>
+                    </div>
+                </div>
+             </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">{t('pages.settings.dataBackup')}</h2>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div>
+                         <h3 className="font-semibold">{t('pages.settings.exportData')}</h3>
+                         <p className="text-sm text-gray-500 mb-2">{t('pages.settings.exportDesc')}</p>
+                         <button onClick={handleExportData} className="px-4 py-2 rounded-lg border">{t('pages.settings.exportData')}</button>
+                     </div>
+                     <div>
+                        <h3 className="font-semibold">{t('pages.settings.restoreData')}</h3>
+                        <p className="text-sm text-gray-500 mb-2">{t('pages.settings.restoreDesc')}</p>
+                        <label className="text-sm cursor-pointer border rounded-lg px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700">
+                           Upload File
+                           <input type="file" onChange={handleRestoreData} accept=".json" className="hidden" />
+                        </label>
+                     </div>
+                 </div>
+            </div>
+        </div>
+    );
+};
+
 const WorkOrders: React.FC<{ 
     user: User; 
     workOrders: WorkOrder[]; 
@@ -693,41 +1205,57 @@ const WorkOrders: React.FC<{
     onCreate: () => void; 
     onAssign: (wo: WorkOrder) => void; 
     onComplete: (wo: WorkOrder) => void; 
+    onClaim: (wo: WorkOrder) => void;
+    onAddPart: (wo: WorkOrder) => void;
+    onAddCost: (wo: WorkOrder) => void;
+    onUploadProof: (workOrderId: string, proofType: 'work' | 'payment') => void;
+    onPrint: (workOrder: WorkOrder, action: 'print' | 'download') => void;
     t: Function 
-}> = ({ user, workOrders, users, onCreate, onAssign, onComplete, t }) => {
-    const [filter, setFilter] = useState<'all' | 'assigned'>('all');
+}> = ({ user, workOrders, users, onCreate, onAssign, onComplete, onClaim, onAddPart, onAddCost, onUploadProof, onPrint, t }) => {
+    
+    const isTechnician = user.role === UserRole.TECHNICIAN;
+    const [adminFilter, setAdminFilter] = useState<'all' | 'assigned'>('all');
+    const [techTab, setTechTab] = useState<'my_assigned' | 'available'>('my_assigned');
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
-    const filteredOrders = workOrders.filter(wo => {
-        if (user.role === UserRole.TECHNICIAN) return wo.technicianId === user.id;
-        if (filter === 'assigned') return wo.technicianId === user.id;
-        return true;
-    });
+    const ordersToDisplay = useMemo(() => {
+        if (isTechnician) {
+            if (techTab === 'my_assigned') {
+                return workOrders.filter(wo => wo.technicianId === user.id);
+            }
+            return workOrders.filter(wo => !wo.technicianId);
+        }
+        if (adminFilter === 'assigned') {
+             return workOrders.filter(wo => wo.technicianId === user.id);
+        }
+        return workOrders;
+    }, [workOrders, user, isTechnician, techTab, adminFilter]);
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.workOrders.title')}</h1>
-                {(user.role === UserRole.ADMIN || user.role === UserRole.ADMINISTRATOR) && (
+                {!isTechnician && (
                     <button onClick={onCreate} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
                         <WorkOrderIcon className="mr-2 h-5 w-5" /> {t('common.create')} Order
                     </button>
                 )}
             </div>
-
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                 {(user.role === UserRole.ADMIN || user.role === UserRole.ADMINISTRATOR) && (
-                    <div className="border-b border-gray-200 dark:border-gray-700 px-6 pt-4">
-                        <nav className="-mb-px flex space-x-8">
-                            <button onClick={() => setFilter('all')} className={`py-4 px-1 border-b-2 font-medium text-sm ${filter === 'all' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                                {t('pages.workOrders.allOrders')}
-                            </button>
-                            <button onClick={() => setFilter('assigned')} className={`py-4 px-1 border-b-2 font-medium text-sm ${filter === 'assigned' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                                {t('pages.workOrders.myAssigned')}
-                            </button>
-                        </nav>
-                    </div>
-                )}
-                
+                 <div className="border-b border-gray-200 dark:border-gray-700 px-6 pt-4">
+                    <nav className="-mb-px flex space-x-8">
+                        {isTechnician ? (
+                            <>
+                                <button onClick={() => setTechTab('my_assigned')} className={`py-4 px-1 border-b-2 font-medium text-sm ${techTab === 'my_assigned' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.workOrders.myAssigned')}</button>
+                                <button onClick={() => setTechTab('available')} className={`py-4 px-1 border-b-2 font-medium text-sm ${techTab === 'available' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.workOrders.available')}</button>
+                            </>
+                        ) : (
+                            <>
+                                <button onClick={() => setAdminFilter('all')} className={`py-4 px-1 border-b-2 font-medium text-sm ${adminFilter === 'all' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.workOrders.allOrders')}</button>
+                            </>
+                        )}
+                    </nav>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
@@ -737,29 +1265,53 @@ const WorkOrders: React.FC<{
                                 <th className="px-6 py-3">Customer</th>
                                 <th className="px-6 py-3">{t('common.status')}</th>
                                 <th className="px-6 py-3">{t('pages.workOrders.technician')}</th>
+                                <th className="px-6 py-3">{t('common.total')}</th>
                                 <th className="px-6 py-3">{t('common.actions')}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredOrders.length > 0 ? filteredOrders.map(wo => (
+                            {ordersToDisplay.length > 0 ? ordersToDisplay.map(wo => (
                                 <tr key={wo.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
                                     <td className="px-6 py-4 font-mono text-xs">{wo.id}</td>
                                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{wo.description}</td>
                                     <td className="px-6 py-4">{wo.customer.name}</td>
                                     <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span></td>
-                                    <td className="px-6 py-4">{users.find(u => u.id === wo.technicianId)?.name || t('pages.workOrders.unassigned')}</td>
+                                    <td className="px-6 py-4">{users.find(u => u.id === wo.technicianId)?.name || <span className="text-gray-400 italic">{t('pages.workOrders.unassigned')}</span>}</td>
+                                    <td className="px-6 py-4 font-semibold">{formatIDR(wo.totalCost)}</td>
                                     <td className="px-6 py-4 space-x-2">
-                                        {(user.role === UserRole.ADMIN || user.role === UserRole.ADMINISTRATOR) && wo.status === WorkOrderStatus.PENDING && (
-                                            <button onClick={() => onAssign(wo)} className="text-primary-600 hover:underline dark:text-primary-400">Assign</button>
-                                        )}
-                                        {wo.technicianId === user.id && wo.status !== WorkOrderStatus.COMPLETED && (
-                                             <button onClick={() => onComplete(wo)} className="text-green-600 hover:underline dark:text-green-400">Complete</button>
-                                        )}
+                                        <div className="flex items-center space-x-2">
+                                            {!isTechnician && wo.status === WorkOrderStatus.PENDING && (
+                                                <button onClick={() => onAssign(wo)} className="text-primary-600 hover:underline dark:text-primary-400">Assign</button>
+                                            )}
+                                            {isTechnician && techTab === 'available' && (
+                                                <button onClick={() => onClaim(wo)} className="text-blue-600 hover:underline dark:text-blue-400">{t('pages.workOrders.claimJob')}</button>
+                                            )}
+                                            {wo.status === WorkOrderStatus.IN_PROGRESS && (wo.technicianId === user.id || !isTechnician) && (
+                                                <>
+                                                    <button onClick={() => onAddPart(wo)} className="text-indigo-600 hover:underline dark:text-indigo-400">{t('pages.workOrders.addPart')}</button>
+                                                    <button onClick={() => onAddCost(wo)} className="text-purple-600 hover:underline dark:text-purple-400">{t('pages.workOrders.addCost')}</button>
+                                                    <button onClick={() => onComplete(wo)} className="text-green-600 hover:underline dark:text-green-400">Complete</button>
+                                                </>
+                                            )}
+                                            {wo.status === WorkOrderStatus.COMPLETED && (
+                                                <div className="relative">
+                                                    <button onClick={() => setOpenDropdown(openDropdown === wo.id ? null : wo.id)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
+                                                        <MoreVerticalIcon className="h-5 w-5" />
+                                                    </button>
+                                                    {openDropdown === wo.id && (
+                                                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-10 border dark:border-gray-700">
+                                                            <button onClick={() => onUploadProof(wo.id, 'work')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.uploadWorkProof')}</button>
+                                                            <button onClick={() => onUploadProof(wo.id, 'payment')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.uploadPaymentProof')}</button>
+                                                            <button onClick={() => onPrint(wo, 'download')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.generatePDF')}</button>
+                                                            <button onClick={() => onPrint(wo, 'print')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.printWO')}</button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
-                            )) : (
-                                <tr><td colSpan={6} className="px-6 py-4 text-center">No work orders found.</td></tr>
-                            )}
+                            )) : (<tr><td colSpan={7} className="px-6 py-4 text-center">No work orders found.</td></tr>)}
                         </tbody>
                     </table>
                 </div>
@@ -768,284 +1320,146 @@ const WorkOrders: React.FC<{
     );
 };
 
-const SettingsPage: React.FC<{
-    customers: Customer[], 
-    workOrders: WorkOrder[], 
-    users: User[],
-    profile: CompanyProfile,
-    onProfileSave: (profile: CompanyProfile) => void,
-    t: Function,
-    language: string,
-    setLanguage: (lang: 'en' | 'id') => void,
-    theme: 'light' | 'dark',
-    setTheme: (theme: 'light' | 'dark') => void,
-}> = ({customers, workOrders, users, profile, onProfileSave, t, language, setLanguage, theme, setTheme}) => {
-    const [formData, setFormData] = useState<CompanyProfile>(profile);
-    const [saved, setSaved] = useState(false);
+const EmployeesPage: React.FC<{ users: User[], workOrders: WorkOrder[], attendance: AttendanceRecord[], t: Function }> = ({ users, workOrders, attendance, t }) => {
+    const today = new Date().toISOString().split('T')[0];
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
 
-    useEffect(() => { setFormData(profile); }, [profile]);
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
-    
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onProfileSave(formData);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
-    };
-
-    const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
-    const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300";
-
-    return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">{t('pages.settings.title')}</h1>
-            
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
-                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">{t('pages.settings.appearance')}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className={labelClass}>{t('pages.settings.language')}</label>
-                        <select value={language} onChange={(e) => setLanguage(e.target.value as 'en' | 'id')} className={inputClass}>
-                            <option value="en">English</option>
-                            <option value="id">Indonesian</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className={labelClass}>{t('pages.settings.theme')}</label>
-                        <div className="mt-1 flex space-x-4">
-                            <button onClick={() => setTheme('light')} className={`px-4 py-2 rounded-md border ${theme === 'light' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300'}`}>{t('pages.settings.lightMode')}</button>
-                            <button onClick={() => setTheme('dark')} className={`px-4 py-2 rounded-md border ${theme === 'dark' ? 'bg-primary-900 border-primary-500 text-white' : 'border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300'}`}>{t('pages.settings.darkMode')}</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
-                <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">{t('pages.settings.companyProfile')}</h2>
-                 <form onSubmit={handleSubmit} className="space-y-4 max-w-lg">
-                    <div><label className={labelClass}>Company Name</label><input type="text" name="name" value={formData.name} onChange={handleChange} className={inputClass} /></div>
-                    <div><label className={labelClass}>{t('common.address')}</label><input type="text" name="address" value={formData.address} onChange={handleChange} className={inputClass} /></div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label className={labelClass}>{t('common.email')}</label><input type="email" name="email" value={formData.email} onChange={handleChange} className={inputClass} /></div>
-                        <div><label className={labelClass}>{t('common.phone')}</label><input type="tel" name="phone" value={formData.phone} onChange={handleChange} className={inputClass} /></div>
-                    </div>
-                    <div className="flex items-center space-x-4 pt-2">
-                        <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')} Changes</button>
-                        {saved && <span className="text-sm text-green-600">Profile saved successfully!</span>}
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-const SpareParts: React.FC<{ 
-    spareParts: SparePart[], 
-    suppliers: Supplier[],
-    onAddPart: () => void, 
-    onEditPart: (sp: SparePart) => void,
-    onAddSupplier: () => void,
-    onEditSupplier: (s: Supplier) => void,
-    onImport: (data: any[]) => void,
-    onDelete: (id: string) => void,
-    onBulkDelete: (ids: string[]) => void,
-    t: Function;
-}> = ({ spareParts, suppliers, onAddPart, onEditPart, onAddSupplier, onEditSupplier, onImport, onDelete, onBulkDelete, t }) => {
-    const [activeTab, setActiveTab] = useState<'inventory' | 'suppliers'>('inventory');
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) setSelectedIds(new Set(spareParts.map(p => p.id)));
-        else setSelectedIds(new Set());
-    };
-
-    const handleSelectOne = (id: string) => {
-        const newSelected = new Set(selectedIds);
-        if (newSelected.has(id)) newSelected.delete(id); else newSelected.add(id);
-        setSelectedIds(newSelected);
-    };
-
-    const handleBulkDelete = () => {
-        if (confirm(`Delete ${selectedIds.size} items?`)) {
-            onBulkDelete(Array.from(selectedIds));
-            setSelectedIds(new Set());
+    const getAttendanceStatus = (userId: string) => {
+        const record = attendance.find(a => a.userId === userId && a.date === today);
+        if (!record) {
+            return <span className="text-gray-500 italic">{t('pages.employees.absent')}</span>;
         }
+        if (record.clockOutTime) {
+            return <span className="text-red-600">{t('pages.employees.clockedOut')}</span>;
+        }
+        const time = new Date(record.clockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return <span className="text-green-600">{t('pages.employees.clockedInAt', { time })}</span>;
     };
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const csvData = event.target?.result as string;
-            const cleanedData = csvData.split('\n').map(line => {
-                const trimmed = line.trim();
-                if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.indexOf('","') === -1) {
-                    return trimmed.substring(1, trimmed.length - 1);
-                }
-                return line;
-            }).join('\n');
-
-            Papa.parse(cleanedData, {
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    if (results.data && results.data.length > 0) onImport(results.data);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                },
-                error: (error: any) => alert('Error parsing CSV: ' + error.message)
-            });
-        };
-        reader.readAsText(file);
+    
+    const getMonthlyPerformance = (userId: string) => {
+        return workOrders.filter(wo => {
+            const completedDate = wo.completedAt ? new Date(wo.completedAt) : null;
+            return wo.technicianId === userId &&
+                   wo.status === WorkOrderStatus.COMPLETED &&
+                   completedDate &&
+                   completedDate.getMonth() === currentMonth &&
+                   completedDate.getFullYear() === currentYear;
+        }).length;
     };
-
-    const downloadTemplate = () => {
-        const csvContent = "Name,Selling Price,Purchase Price,Stock,Unit,Location,Supplier,Item Code\nContoh Part,50000,30000,10,pcs,Gudang A,PT ABC,";
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", "sparepart_template.csv");
-        link.click();
-    };
-
-    const renderInventory = () => (
-        <>
-            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">{t('pages.spareParts.inventory')}</h2>
-                <div className="flex space-x-2">
-                    <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                    <button onClick={downloadTemplate} className="bg-gray-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600">{t('pages.spareParts.downloadTemplate')}</button>
-                    <button onClick={() => fileInputRef.current?.click()} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-700">{t('pages.spareParts.importParts')}</button>
-                    {selectedIds.size > 0 && (
-                        <button onClick={handleBulkDelete} className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-700">{t('pages.spareParts.deleteSelected')} ({selectedIds.size})</button>
-                    )}
-                    <button onClick={onAddPart} className="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-primary-700">{t('common.add')} Part</button>
-                </div>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
-                        <tr>
-                            <th className="p-4"><input type="checkbox" onChange={handleSelectAll} checked={spareParts.length > 0 && selectedIds.size === spareParts.length} /></th>
-                            <th className="px-6 py-3">Kode Item</th>
-                            <th className="px-6 py-3">{t('pages.spareParts.partName')}</th>
-                            <th className="px-6 py-3">Supplier</th>
-                            <th className="px-6 py-3">Harga Beli</th>
-                            <th className="px-6 py-3">Harga Jual</th>
-                            <th className="px-6 py-3">{t('pages.spareParts.stock')}</th>
-                            <th className="px-6 py-3">Satuan</th>
-                            <th className="px-6 py-3">{t('pages.spareParts.location')}</th>
-                            <th className="px-6 py-3">{t('common.actions')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {spareParts.map(part => (
-                            <tr key={part.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                <td className="p-4"><input type="checkbox" checked={selectedIds.has(part.id)} onChange={() => handleSelectOne(part.id)} /></td>
-                                <td className="px-6 py-4 font-mono text-xs">{part.itemCode}</td>
-                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{part.name}</td>
-                                <td className="px-6 py-4">{suppliers.find(s => s.id === part.supplierId)?.name || '-'}</td>
-                                <td className="px-6 py-4">{part.purchasePrice ? formatIDR(part.purchasePrice) : '-'}</td>
-                                <td className="px-6 py-4">{formatIDR(part.sellingPrice)}</td>
-                                <td className={`px-6 py-4 font-semibold ${part.stock <= 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{part.stock}</td>
-                                <td className="px-6 py-4">{part.unit}</td>
-                                <td className="px-6 py-4">{part.location}</td>
-                                <td className="px-6 py-4 space-x-2 flex">
-                                    <button onClick={() => onEditPart(part)} className="font-medium text-primary-600 hover:underline dark:text-primary-400">{t('common.edit')}</button>
-                                    <button onClick={() => { if(confirm('Delete this part?')) onDelete(part.id); }} className="text-red-600 hover:text-red-800 dark:text-red-400 ml-2"><TrashIcon className="h-4 w-4" /></button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </>
-    );
-
-     const renderSuppliers = () => (
-        <>
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Supplier List</h2>
-                <button onClick={onAddSupplier} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Supplier</button>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
-                        <tr>
-                            <th className="px-6 py-3">Supplier Name</th>
-                            <th className="px-6 py-3">Contact Person</th>
-                            <th className="px-6 py-3">Contact Info</th>
-                            <th className="px-6 py-3">{t('common.actions')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {suppliers.map(supplier => (
-                            <tr key={supplier.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{supplier.name}</td>
-                                <td className="px-6 py-4">{supplier.contactPerson}</td>
-                                <td className="px-6 py-4"><div>{supplier.phone}</div><div>{supplier.email}</div></td>
-                                <td className="px-6 py-4 space-x-2">
-                                    <button onClick={() => onEditSupplier(supplier)} className="font-medium text-primary-600 hover:underline dark:text-primary-400">{t('common.edit')}</button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </>
-    );
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">{t('pages.spareParts.title')}</h1>
-             <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
-                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                    <button onClick={() => setActiveTab('inventory')} className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'inventory' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}`}>
-                        <SparePartIcon className={`mr-2 h-5 w-5 ${activeTab === 'inventory' ? 'text-primary-500' : 'text-gray-400'}`} />
-                        <span>{t('pages.spareParts.inventory')}</span>
-                    </button>
-                    <button onClick={() => setActiveTab('suppliers')} className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'suppliers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}`}>
-                        <TruckIcon className={`mr-2 h-5 w-5 ${activeTab === 'suppliers' ? 'text-primary-500' : 'text-gray-400'}`} />
-                        <span>{t('pages.spareParts.suppliers')}</span>
-                    </button>
-                </nav>
-            </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                {activeTab === 'inventory' ? renderInventory() : renderSuppliers()}
+         <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.employees.title')}</h1>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                            <tr>
+                                <th className="px-6 py-3">{t('common.name')}</th>
+                                <th className="px-6 py-3">{t('pages.employees.role')}</th>
+                                <th className="px-6 py-3">{t('common.contact')}</th>
+                                <th className="px-6 py-3">{t('pages.employees.monthlyPerformance')}</th>
+                                <th className="px-6 py-3">{t('pages.employees.attendanceStatus')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map(user => (
+                                <tr key={user.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{user.name}</td>
+                                    <td className="px-6 py-4 capitalize">{user.role}</td>
+                                    <td className="px-6 py-4">{user.email || user.phone || 'N/A'}</td>
+                                    <td className="px-6 py-4 text-center font-semibold">{user.role === UserRole.TECHNICIAN ? getMonthlyPerformance(user.id) : '-'}</td>
+                                    <td className="px-6 py-4">{user.role === UserRole.TECHNICIAN ? getAttendanceStatus(user.id) : '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
 };
 
-const Dashboard: React.FC<{ workOrders: WorkOrder[]; customers: Customer[]; users: User[]; currentUser: User; t: Function }> = ({ workOrders, customers, users, currentUser, t }) => {
+const Dashboard: React.FC<{ workOrders: WorkOrder[]; customers: Customer[]; users: User[]; currentUser: User; transactions: Transaction[]; t: Function }> = ({ workOrders, customers, users, currentUser, transactions, t }) => {
     const [aiSummary, setAiSummary] = useState<string | null>(null);
     const [loadingAi, setLoadingAi] = useState(false);
     const navigate = useNavigate();
 
     const stats = useMemo(() => {
-        const pending = workOrders.filter(w => w.status === WorkOrderStatus.PENDING).length;
-        const completed = workOrders.filter(w => w.status === WorkOrderStatus.COMPLETED).length;
-        const totalRevenue = workOrders.reduce((sum, w) => sum + (w.totalCost || 0), 0);
+        let relevantOrders = workOrders;
+        if (currentUser.role === UserRole.TECHNICIAN) {
+            relevantOrders = workOrders.filter(w => w.technicianId === currentUser.id);
+        }
+
+        const pending = relevantOrders.filter(w => w.status === WorkOrderStatus.PENDING || w.status === WorkOrderStatus.IN_PROGRESS).length;
+        const completed = relevantOrders.filter(w => w.status === WorkOrderStatus.COMPLETED).length;
+        
+        const totalRevenue = transactions.filter(tr => tr.type === 'income').reduce((sum, tr) => sum + tr.amount, 0);
+
         return { pending, completed, totalRevenue, totalCustomers: customers.length };
-    }, [workOrders, customers]);
+    }, [workOrders, customers, currentUser, transactions]);
+    
+    const technicians = useMemo(() => users.filter(u => u.role === UserRole.TECHNICIAN), [users]);
 
     const handleGenerateSummary = async () => {
         setLoadingAi(true);
-        const summary = await generateAiSummary({ workOrders, customers, users });
+        const summary = await generateAiSummary({ workOrders, customers, users, transactions });
         setAiSummary(summary);
         setLoadingAi(false);
     };
 
     const chartData = useMemo(() => {
-        const data = users.filter(u => u.role === UserRole.TECHNICIAN).map(tech => ({
+        const data = technicians.map(tech => ({
             name: tech.name.split(' ')[0],
             completed: workOrders.filter(w => w.technicianId === tech.id && w.status === WorkOrderStatus.COMPLETED).length
         }));
         return data;
-    }, [users, workOrders]);
+    }, [technicians, workOrders]);
+    
+    const TechnicianStatusWidget = ({ isCard = false }: { isCard?: boolean }) => {
+        const statusColorMap: Record<string, string> = {
+            [TechnicianStatus.ON_JOB]: 'bg-green-500', // On Progress -> Green
+            [TechnicianStatus.AVAILABLE]: 'bg-blue-500', // Available -> Blue
+            [TechnicianStatus.ON_BREAK]: 'bg-yellow-500', // Break -> Yellow
+            [TechnicianStatus.OFFLINE]: 'bg-gray-400', // Offline -> Gray
+        };
+
+        const content = (
+            <div className={`space-y-2 ${isCard ? 'mt-2 max-h-[6.5rem] pr-2' : 'max-h-64'} overflow-y-auto`}>
+                {technicians.map(tech => (
+                    <div key={tech.id} className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{formatUserName(tech.name)}</span>
+                        <div className="flex items-center space-x-2">
+                            <span className={`h-2.5 w-2.5 rounded-full ${statusColorMap[tech.status!]}`} title={t(`status.${tech.status!}`)}></span>
+                            {!isCard && <span className="text-xs text-gray-500 dark:text-gray-400">{t(`status.${tech.status!}`)}</span>}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+
+        if (isCard) {
+            return (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-full flex flex-col justify-center cursor-pointer" onClick={() => navigate('/employees')}>
+                    <div className="flex items-center space-x-4 mb-2">
+                        <div className="bg-indigo-100 dark:bg-indigo-900 p-3 rounded-full">
+                           <TechnicianIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-200" />
+                        </div>
+                         <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.technicianStatus')}</p>
+                    </div>
+                    {content}
+                </div>
+            );
+        }
+
+        return (
+             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-full">
+                <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.technicianStatus')}</h3>
+                {content}
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-6">
@@ -1054,211 +1468,170 @@ const Dashboard: React.FC<{ workOrders: WorkOrder[]; customers: Customer[]; user
                     <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.welcome', { name: currentUser.name.split(' ')[0] })}</h1>
                     <p className="text-gray-600 dark:text-gray-400">{t('dashboard.summary')}</p>
                 </div>
-                <button onClick={handleGenerateSummary} disabled={loadingAi} className="flex items-center space-x-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-md hover:from-indigo-600 hover:to-purple-700 transition-all">
-                    {loadingAi ? <SpinnerIcon className="h-5 w-5" /> : <AiIcon className="h-5 w-5" />}
-                    <span>{loadingAi ? t('dashboard.generating') : t('dashboard.generateSummary')}</span>
-                </button>
+                {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.ADMINISTRATOR) && (
+                    <button onClick={handleGenerateSummary} disabled={loadingAi} className="flex items-center space-x-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-md hover:from-indigo-600 hover:to-purple-700 transition-all">
+                        {loadingAi ? <SpinnerIcon className="h-5 w-5" /> : <AiIcon className="h-5 w-5" />}
+                        <span>{loadingAi ? t('dashboard.generating') : t('dashboard.generateSummary')}</span>
+                    </button>
+                )}
             </div>
 
             {aiSummary && (
                 <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-800 p-6 rounded-lg border border-indigo-100 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-start space-x-3">
-                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg"><AiIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-300" /></div>
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">{t('dashboard.aiSummaryTitle')}</h3>
-                            <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: aiSummary.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br />') }} />
-                        </div>
-                    </div>
+                    {/* AI Summary Content */}
                 </div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title={t('dashboard.totalCustomers')} value={stats.totalCustomers.toString()} icon={<CustomerIcon />} color="blue" onClick={() => navigate('/customers')} />
-                <StatCard title={t('dashboard.pendingWorkOrders')} value={stats.pending.toString()} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
-                <StatCard title="Completed Orders" value={stats.completed.toString()} icon={<ReceiptIcon />} color="green" />
-                <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(stats.totalRevenue)} icon={<FinanceIcon />} color="indigo" onClick={() => navigate('/finance')} />
+                {currentUser.role === UserRole.TECHNICIAN ? (
+                    <>
+                        <StatCard title="My Pending Jobs" value={stats.pending.toString()} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
+                        <StatCard title="My Completed Jobs" value={stats.completed.toString()} icon={<ReceiptIcon />} color="green" />
+                    </>
+                ) : (
+                    <>
+                        <StatCard title={t('dashboard.totalCustomers')} value={stats.totalCustomers.toString()} icon={<CustomerIcon />} color="blue" onClick={() => navigate('/customers')} />
+                        <StatCard title={t('dashboard.pendingWorkOrders')} value={stats.pending.toString()} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
+                        {currentUser.role === UserRole.ADMINISTRATOR ? (
+                            <>
+                                <StatCard title="Completed Orders" value={stats.completed.toString()} icon={<ReceiptIcon />} color="green" />
+                                <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(stats.totalRevenue)} icon={<FinanceIcon />} color="indigo" onClick={() => navigate('/finance')} />
+                            </>
+                        ) : (
+                           <>
+                             <StatCard title="Completed Orders" value={stats.completed.toString()} icon={<ReceiptIcon />} color="green" />
+                             <TechnicianStatusWidget isCard={true} />
+                           </>
+                        )}
+                    </>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.completedByTechnician')}</h3>
-                    <div className="h-64">
-                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" stroke="#8884d8" />
-                                <YAxis stroke="#8884d8" />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="completed" fill="#4f46e5" name="Completed Orders" />
-                            </BarChart>
-                        </ResponsiveContainer>
+                 {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.ADMINISTRATOR) && (
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.completedByTechnician')}</h3>
+                        <div className="h-64">
+                             <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" stroke="#8884d8" />
+                                    <YAxis stroke="#8884d8" />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="completed" fill="#4f46e5" name="Completed Orders" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
-                </div>
-                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                     <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Recent Activity</h3>
-                     <div className="space-y-4">
-                         {workOrders.slice(0, 5).map(wo => (
-                             <div key={wo.id} className="flex justify-between items-center border-b dark:border-gray-700 pb-2 last:border-0">
-                                 <div>
-                                     <p className="font-medium text-gray-800 dark:text-white">{wo.description}</p>
-                                     <p className="text-xs text-gray-500">{timeAgo(wo.createdAt)}</p>
-                                 </div>
-                                 <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(wo.status)}`}>{wo.status}</span>
-                             </div>
-                         ))}
-                         {workOrders.length === 0 && <p className="text-gray-500">No recent activity.</p>}
-                     </div>
-                 </div>
-            </div>
-        </div>
-    );
-};
-
-const CustomersAndClientsPage: React.FC<{
-    customers: Customer[],
-    clients: Client[],
-    onAddCustomer: () => void,
-    onEditCustomer: (c: Customer) => void,
-    onAddClient: () => void,
-    onEditClient: (c: Client) => void,
-    t: Function
-}> = ({ customers, clients, onAddCustomer, onEditCustomer, onAddClient, onEditClient, t }) => {
-    const [activeTab, setActiveTab] = useState<'customers' | 'clients'>('customers');
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone.includes(searchTerm));
-    const filteredClients = clients.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    return (
-        <div className="space-y-6">
-             <div className="flex justify-between items-center flex-wrap gap-4">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.customers.title')}</h1>
-                <div className="flex space-x-2">
-                    {activeTab === 'customers' ? (
-                        <button onClick={onAddCustomer} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"><UsersIcon className="mr-2 h-5 w-5" /> {t('modals.addCustomerTitle')}</button>
-                    ) : (
-                        <button onClick={onAddClient} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center"><BriefcaseIcon className="mr-2 h-5 w-5" /> {t('modals.addClientTitle')}</button>
-                    )}
-                </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                <div className="border-b border-gray-200 dark:border-gray-700 px-6 pt-4 flex justify-between items-center flex-wrap gap-4">
-                    <nav className="-mb-px flex space-x-8">
-                         <button onClick={() => setActiveTab('customers')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'customers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                             <CustomerIcon className="mr-2 h-5 w-5" /> {t('pages.customers.customersTab')}
-                         </button>
-                         <button onClick={() => setActiveTab('clients')} className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${activeTab === 'clients' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                             <BriefcaseIcon className="mr-2 h-5 w-5" /> {t('pages.customers.clientsTab')}
-                         </button>
-                    </nav>
-                    <div className="pb-3">
-                        <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
-                    </div>
-                </div>
+                )}
                 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
-                            <tr>
-                                <th className="px-6 py-3">{t('common.name')}</th>
-                                {activeTab === 'customers' && <th className="px-6 py-3">{t('common.phone')}</th>}
-                                {activeTab === 'customers' && <th className="px-6 py-3">{t('common.address')}</th>}
-                                <th className="px-6 py-3">{t('common.actions')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {activeTab === 'customers' ? (
-                                filteredCustomers.length > 0 ? filteredCustomers.map(c => (
-                                    <tr key={c.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{c.name}</td>
-                                        <td className="px-6 py-4">{c.phone}</td>
-                                        <td className="px-6 py-4">{c.address}</td>
-                                        <td className="px-6 py-4">
-                                            <button onClick={() => onEditCustomer(c)} className="font-medium text-primary-600 hover:underline dark:text-primary-400">{t('common.edit')}</button>
-                                        </td>
-                                    </tr>
-                                )) : <tr><td colSpan={4} className="px-6 py-4 text-center">No customers found.</td></tr>
-                            ) : (
-                                filteredClients.length > 0 ? filteredClients.map(c => (
-                                    <tr key={c.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{c.name}</td>
-                                        <td className="px-6 py-4">
-                                            <button onClick={() => onEditClient(c)} className="font-medium text-primary-600 hover:underline dark:text-primary-400">{t('common.edit')}</button>
-                                        </td>
-                                    </tr>
-                                )) : <tr><td colSpan={2} className="px-6 py-4 text-center">No clients found.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                {currentUser.role === UserRole.ADMINISTRATOR ? (
+                    <TechnicianStatusWidget />
+                ) : (
+                    <div className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md ${currentUser.role === UserRole.TECHNICIAN ? 'lg:col-span-2' : ''}`}>
+                         <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Recent Activity</h3>
+                         <div className="space-y-4">
+                             {workOrders.filter(w => currentUser.role === UserRole.TECHNICIAN ? w.technicianId === currentUser.id : true).slice(0, 5).map(wo => (
+                                 <div key={wo.id} className="flex justify-between items-center border-b dark:border-gray-700 pb-2 last:border-0">
+                                     <div>
+                                         <p className="font-medium text-gray-800 dark:text-white">{wo.description}</p>
+                                         <p className="text-xs text-gray-500">{timeAgo(wo.createdAt)}</p>
+                                     </div>
+                                     <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span>
+                                 </div>
+                             ))}
+                             {workOrders.length === 0 && <p className="text-gray-500">No recent activity.</p>}
+                         </div>
+                     </div>
+                )}
             </div>
         </div>
     );
 };
 
-const Chatbot: React.FC<{ currentUser: User; appData: any }> = ({ currentUser, appData }) => {
+const Chatbot: React.FC<{ currentUser: User; appData: any; }> = ({ currentUser, appData }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        { sender: 'ai', text: `Hi ${currentUser.name.split(' ')[0]}! How can I help you with your business today?` }
-    ]);
-    const [input, setInput] = useState('');
+    const [messages, setMessages] = useState<ChatMessage[]>([{ sender: 'ai', text: 'Hello! I am ServisAI. How can I assist you with your business data today?' }]);
+    const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-    useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
-        const userMsg: ChatMessage = { sender: 'user', text: input };
-        setMessages(prev => [...prev, userMsg]);
-        setInput('');
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!userInput.trim() || isLoading) return;
+
+        const newMessages: ChatMessage[] = [...messages, { sender: 'user', text: userInput }];
+        setMessages(newMessages);
+        setUserInput('');
         setIsLoading(true);
-        
-        const responseText = await getChatbotResponse([...messages, userMsg], { currentUser, ...appData });
-        setMessages(prev => [...prev, { sender: 'ai', text: responseText }]);
-        setIsLoading(false);
+
+        try {
+            const context = { currentUser, ...appData };
+            const aiResponse = await getChatbotResponse(newMessages, context);
+            setMessages(prev => [...prev, { sender: 'ai', text: aiResponse }]);
+        } catch (error) {
+            console.error("Chatbot error:", error);
+            setMessages(prev => [...prev, { sender: 'ai', text: "Sorry, I'm having trouble connecting. Please try again later." }]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
         <>
-            <button onClick={() => setIsOpen(!isOpen)} className="fixed bottom-6 right-6 bg-primary-600 text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-all z-50">
-                {isOpen ? <XIcon className="h-6 w-6" /> : <AiIcon className="h-6 w-6" />}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="fixed bottom-6 right-6 bg-primary-600 text-white rounded-full p-4 shadow-lg hover:bg-primary-700 transition-transform transform hover:scale-110 z-50"
+                aria-label="Toggle Chatbot"
+            >
+                {isOpen ? <XIcon className="h-8 w-8" /> : <AiIcon className="h-8 w-8" />}
             </button>
             {isOpen && (
-                <div className="fixed bottom-24 right-6 w-80 md:w-96 h-[500px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col z-50 border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="bg-primary-600 p-4 text-white flex items-center space-x-2">
-                        <AiIcon className="h-5 w-5" />
-                        <span className="font-bold">ServisAI Assistant</span>
+                <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col z-50 border border-gray-200 dark:border-gray-700">
+                    <div className="p-4 border-b dark:border-gray-700">
+                        <h3 className="font-bold text-lg text-gray-800 dark:text-white">ServisAI Assistant</h3>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] p-3 rounded-lg text-sm ${msg.sender === 'user' ? 'bg-primary-600 text-white rounded-br-none' : 'bg-white dark:bg-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-bl-none shadow-sm'}`}>
-                                    <div dangerouslySetInnerHTML={{ __html: msg.text.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br />') }} />
+                    <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                        {messages.map((msg, index) => (
+                            <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-xs px-4 py-2 rounded-2xl ${msg.sender === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'}`}>
+                                    <p className="text-sm" dangerouslySetInnerHTML={{ __html: msg.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br />') }} />
                                 </div>
                             </div>
                         ))}
-                        {isLoading && <div className="flex justify-start"><div className="bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 shadow-sm"><SpinnerIcon className="h-5 w-5 text-primary-600" /></div></div>}
+                        {isLoading && (
+                            <div className="flex justify-start">
+                                <div className="max-w-xs px-4 py-2 rounded-2xl bg-gray-200 dark:bg-gray-700">
+                                    <SpinnerIcon className="h-5 w-5 text-gray-500" />
+                                </div>
+                            </div>
+                        )}
                         <div ref={messagesEndRef} />
                     </div>
-                    <div className="p-3 bg-white dark:bg-gray-800 border-t dark:border-gray-700 flex space-x-2">
-                        <input 
-                            type="text" 
-                            value={input} 
-                            onChange={e => setInput(e.target.value)} 
-                            onKeyPress={e => e.key === 'Enter' && handleSend()}
-                            placeholder="Ask about revenue, orders..." 
-                            className="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    <form onSubmit={handleSendMessage} className="p-4 border-t dark:border-gray-700 flex items-center space-x-2">
+                        <input
+                            type="text"
+                            value={userInput}
+                            onChange={e => setUserInput(e.target.value)}
+                            placeholder="Ask about your data..."
+                            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            disabled={isLoading}
                         />
-                        <button onClick={handleSend} disabled={isLoading} className="p-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"><SendIcon className="h-5 w-5" /></button>
-                    </div>
+                        <button type="submit" disabled={isLoading || !userInput.trim()} className="bg-primary-600 text-white rounded-full p-3 disabled:bg-gray-400 dark:disabled:bg-gray-600 hover:bg-primary-700">
+                            <SendIcon className="h-5 w-5" />
+                        </button>
+                    </form>
                 </div>
             )}
         </>
     );
 };
+
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
@@ -1267,6 +1640,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authScreen, setAuthScreen] = useState<'login' | 'signup'>('login');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   
   useEffect(() => { localStorage.setItem('appLanguage', language); }, [language]);
 
@@ -1299,8 +1673,20 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
   const [contracts, setContracts] = useState<ServiceContract[]>(INITIAL_CONTRACTS);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({ name: 'ServisPro Inc.', address: '123 Service St', email: 'contact@servispro.com', phone: '0812-3456-7890', logo: '' });
   const [modalState, setModalState] = useState<{ type: string | null; data: any }>({ type: null, data: null });
+
+  const addNotification = (message: string, link: string) => {
+      const newNotif: Notification = {
+          id: `notif-${Date.now()}`,
+          message,
+          timestamp: new Date().toISOString(),
+          read: false,
+          link
+      };
+      setNotifications(prev => [newNotif, ...prev].slice(0, 50)); // Keep last 50
+  };
 
   const handleLogin = (user: User) => { setCurrentUser(user); setAuthScreen('login'); };
   const handleLogout = () => { setCurrentUser(null); };
@@ -1310,6 +1696,7 @@ const App: React.FC = () => {
   
   // Work Order Handlers
   const handleCreateWorkOrder = (data: Partial<WorkOrder>) => {
+      const serviceFee = data.initialServiceFee || 0;
       const newOrder: WorkOrder = {
           id: `WO-${Date.now()}`,
           customer: data.customer!,
@@ -1317,132 +1704,257 @@ const App: React.FC = () => {
           status: WorkOrderStatus.PENDING,
           technicianId: null,
           createdAt: new Date().toISOString(),
-          spareParts: [],
-          totalCost: 0
+          usedParts: [],
+          initialServiceFee: serviceFee,
+          additionalCosts: [],
+          totalCost: serviceFee,
       };
       setWorkOrders(prev => [newOrder, ...prev]);
+      addNotification(`New Work Order Created: ${newOrder.id}`, '/work-orders');
       setModalState({ type: null, data: null });
   };
 
   const handleAssignTechnician = (techId: string) => {
       if (modalState.data) {
           setWorkOrders(prev => prev.map(wo => wo.id === modalState.data.id ? { ...wo, technicianId: techId, status: WorkOrderStatus.IN_PROGRESS } : wo));
+          const tech = users.find(u => u.id === techId);
+          addNotification(`Work Order ${modalState.data.id} assigned to ${tech?.name}`, '/work-orders');
       }
-      setModalState({ type: null, data: null });
-  };
-
-  const handleCompleteWorkOrder = (wo: WorkOrder) => {
-      if(confirm('Mark this order as completed?')) {
-          setWorkOrders(prev => prev.map(w => w.id === wo.id ? { ...w, status: WorkOrderStatus.COMPLETED, completedAt: new Date().toISOString() } : w));
-      }
-  };
-
-  const handleImportSpareParts = (parsedParts: any[]) => {
-    const newParts: SparePart[] = [];
-    let newSuppliers = [...suppliers];
-    let transactionTotal = 0;
-
-    const generateItemCode = (name: string, sequence: number) => {
-        const now = new Date();
-        const year = now.getFullYear().toString().slice(-2);
-        const month = (now.getMonth() + 1).toString().padStart(2, '0');
-        const acronym = name.replace(/[^a-zA-Z\s]/g, '').split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
-        return `${year}${month}-${acronym}-${sequence.toString().padStart(3, '0')}`;
-    };
-
-    let currentMaxSeq = 0;
-    spareParts.forEach(p => {
-        const parts = p.itemCode.split('-');
-        if (parts.length === 3) {
-            const seq = parseInt(parts[2]);
-            if (!isNaN(seq) && seq > currentMaxSeq) currentMaxSeq = seq;
-        }
-    });
-
-    parsedParts.forEach((row: any) => {
-        const name = row.Name || row.Nama;
-        const sellPrice = row['Selling Price'] || row['Harga Jual'];
-        if (!name || !sellPrice) return;
-        
-        const supplierName = row.Supplier || row.Pemasok;
-        let supplierId = undefined;
-        if (supplierName) {
-            const existingSup = newSuppliers.find(s => s.name.toLowerCase() === supplierName.toLowerCase());
-            if (existingSup) { supplierId = existingSup.id; } 
-            else { const newSup = { id: `sup-${Date.now()}-${Math.random()}`, name: supplierName, contactPerson: '', phone: '', email: '' }; newSuppliers.push(newSup); supplierId = newSup.id; }
-        }
-
-        let itemCode = row['Item Code'] || row['Kode Barang'];
-        if (!itemCode) { currentMaxSeq++; itemCode = generateItemCode(name, currentMaxSeq); }
-
-        const buyPrice = Number(row['Purchase Price'] || row['Harga Beli'] || 0);
-        const stock = Number(row.Stock || row.Stok || 0);
-        
-        if (stock > 0 && buyPrice > 0) transactionTotal += stock * buyPrice;
-
-        newParts.push({
-            id: `sp-${Date.now()}-${Math.random()}`,
-            itemCode: itemCode,
-            name: name,
-            purchasePrice: buyPrice || undefined,
-            sellingPrice: Number(sellPrice),
-            stock: stock,
-            unit: row.Unit || row.Satuan || 'pcs',
-            location: row.Location || row.Lokasi || 'Warehouse',
-            supplierId: supplierId
-        });
-    });
-
-    setSuppliers(newSuppliers);
-    setSpareParts(prev => [...prev, ...newParts]);
-
-    if (transactionTotal > 0) {
-         const newTransaction: Transaction = {
-            id: `trn-import-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
-            description: `Bulk Import Spareparts (${newParts.length} items)`,
-            type: 'expense',
-            amount: transactionTotal,
-            category: TransactionCategory.PART_PURCHASE,
-            paymentMethod: PaymentMethod.CASH,
-            approved: true
-        };
-        setTransactions(prev => [newTransaction, ...prev]);
-    }
-    setModalState({ type: null, data: null });
-    alert(`Imported ${newParts.length} parts.`);
-  };
-
-  const handleDeleteSparePart = (id: string) => {
-      setSpareParts(prev => prev.filter(p => p.id !== id));
       setModalState({ type: null, data: null });
   };
   
-  const handleBulkDeleteSpareParts = (ids: string[]) => {
-      setSpareParts(prev => prev.filter(p => !ids.includes(p.id)));
+  const handleClaimWorkOrder = (wo: WorkOrder) => {
+      if (!currentUser || currentUser.role !== UserRole.TECHNICIAN) return;
+      setWorkOrders(prev => 
+          prev.map(order => 
+              order.id === wo.id 
+                  ? { ...order, technicianId: currentUser.id, status: WorkOrderStatus.IN_PROGRESS } 
+                  : order
+          )
+      );
+      setUsers(prev => prev.map(u => u.id === currentUser.id ? {...u, status: TechnicianStatus.ON_JOB} : u));
+      addNotification(`${currentUser.name} has claimed Work Order ${wo.id}`, '/work-orders');
   };
 
-  const handleSaveSparePart = (part: SparePart) => {
-      const exists = spareParts.some(p => p.id === part.id);
+  const handleCompleteWorkOrder = (wo: WorkOrder) => {
+      const updatedWO = { ...wo, status: WorkOrderStatus.COMPLETED, completedAt: new Date().toISOString() };
+      setWorkOrders(prev => prev.map(w => w.id === wo.id ? updatedWO : w));
+      
+      if (updatedWO.totalCost > 0) {
+        const newTransaction: Transaction = {
+            id: `trn-wo-${wo.id}`,
+            date: new Date().toISOString().split('T')[0],
+            description: `Service Income from WO #${wo.id}`,
+            type: 'income',
+            amount: updatedWO.totalCost,
+            category: TransactionCategory.SERVICE_INCOME,
+            paymentMethod: PaymentMethod.BANK_TRANSFER,
+            workOrderId: wo.id,
+        };
+        setTransactions(prev => [newTransaction, ...prev]);
+      }
+      if(wo.technicianId) {
+          setUsers(prev => prev.map(u => u.id === wo.technicianId ? {...u, status: TechnicianStatus.AVAILABLE} : u));
+      }
+      addNotification(`Work Order ${wo.id} marked as Completed`, '/work-orders');
+  };
+  
+  const handleUpdateWorkOrderParts = (parts: { partId: string; quantity: number }[]) => {
+    const workOrder = modalState.data as WorkOrder;
+    if (!workOrder) return;
+
+    let costOfNewParts = 0;
+    const newUsedParts = [...workOrder.usedParts];
+    const updatedSpareParts = [...spareParts];
+
+    let allPartsValid = true;
+    parts.forEach(({ partId, quantity }) => {
+        const partInfo = updatedSpareParts.find(p => p.id === partId);
+        if (!partInfo || partInfo.stock < quantity) {
+            alert(`Not enough stock for ${partInfo?.name}. Available: ${partInfo?.stock}`);
+            allPartsValid = false;
+            return;
+        }
+
+        costOfNewParts += partInfo.sellingPrice * quantity;
+        
+        const partIndex = updatedSpareParts.findIndex(p => p.id === partId);
+        updatedSpareParts[partIndex] = { ...updatedSpareParts[partIndex], stock: updatedSpareParts[partIndex].stock - quantity };
+
+        const existingPartIndex = newUsedParts.findIndex(p => p.partId === partId);
+        if (existingPartIndex > -1) {
+            newUsedParts[existingPartIndex].quantity += quantity;
+        } else {
+            newUsedParts.push({ partId, quantity, sellingPrice: partInfo.sellingPrice });
+        }
+    });
+    
+    if (allPartsValid) {
+      setSpareParts(updatedSpareParts);
+      setWorkOrders(prev => prev.map(wo => wo.id === workOrder.id ? {
+          ...wo,
+          usedParts: newUsedParts,
+          totalCost: wo.totalCost + costOfNewParts
+      } : wo));
+      setModalState({ type: null, data: null });
+    }
+  };
+
+  const handleSaveAdditionalCost = (cost: { description: string; amount: number }) => {
+    const workOrder = modalState.data as WorkOrder;
+    if (!workOrder) return;
+
+    setWorkOrders(prev => prev.map(wo => {
+        if (wo.id === workOrder.id) {
+            const newAdditionalCosts = [...wo.additionalCosts, cost];
+            const newTotalCost = wo.totalCost + cost.amount;
+            return {
+                ...wo,
+                additionalCosts: newAdditionalCosts,
+                totalCost: newTotalCost,
+            };
+        }
+        return wo;
+    }));
+    setModalState({ type: null, data: null });
+  };
+
+  const handleUploadProof = (workOrderId: string, proofType: 'work' | 'payment') => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = e => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = readerEvent => {
+                const url = readerEvent.target?.result as string;
+                setWorkOrders(prev => prev.map(wo => wo.id === workOrderId ? {
+                    ...wo,
+                    [proofType === 'work' ? 'workProofUrl' : 'paymentProofUrl']: url
+                } : wo));
+                alert(`${proofType.charAt(0).toUpperCase() + proofType.slice(1)} proof uploaded.`);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    input.click();
+  };
+  
+  const handlePrintWorkOrder = (workOrder: WorkOrder, action: 'print' | 'download' = 'download') => {
+    const doc = new jsPDF();
+    generatePdfHeader(doc, companyProfile);
+
+    doc.setFontSize(16);
+    doc.text(`Work Order: #${workOrder.id}`, 14, 60);
+    
+    autoTable(doc, {
+        startY: 65,
+        head: [['Customer Details', 'Job Information']],
+        body: [[
+            `Name: ${workOrder.customer.name}\nPhone: ${workOrder.customer.phone}\nAddress: ${workOrder.customer.address}`,
+            `Created: ${new Date(workOrder.createdAt).toLocaleDateString()}\nCompleted: ${workOrder.completedAt ? new Date(workOrder.completedAt).toLocaleDateString() : 'N/A'}\nStatus: ${workOrder.status}`
+        ]],
+        theme: 'striped',
+    });
+    
+    autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        head: [['Deskripsi Pekerjaan']],
+        body: [[workOrder.description]],
+    });
+    
+    const costBody: (string | number)[][] = [];
+    costBody.push(['Biaya Jasa Awal', formatIDR(workOrder.initialServiceFee)]);
+
+    if (workOrder.additionalCosts.length > 0) {
+        costBody.push(['Biaya Tambahan:', '']);
+        workOrder.additionalCosts.forEach(cost => {
+            costBody.push([`  - ${cost.description}`, formatIDR(cost.amount)]);
+        });
+    }
+
+    if (workOrder.usedParts.length > 0) {
+        costBody.push(['Suku Cadang:', '']);
+        workOrder.usedParts.forEach(item => {
+            const part = spareParts.find(p => p.id === item.partId);
+            costBody.push([`  - ${part?.name || 'Unknown'} (x${item.quantity})`, formatIDR(item.quantity * item.sellingPrice)]);
+        });
+    }
+
+    autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        head: [['Rincian Biaya', 'Jumlah']],
+        body: costBody,
+        theme: 'grid',
+        columnStyles: { 1: { halign: 'right' } },
+    });
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total Tagihan:', 14, (doc as any).lastAutoTable.finalY + 15);
+    doc.text(formatIDR(workOrder.totalCost), 200, (doc as any).lastAutoTable.finalY + 15, { align: 'right' });
+    
+    if (action === 'print') {
+        doc.autoPrint();
+        window.open(doc.output('bloburl'), '_blank');
+    } else {
+        doc.save(`WO-${workOrder.id}.pdf`);
+    }
+  };
+
+  const handleSaveTransaction = (transaction: Transaction) => {
+      const exists = transactions.some(t => t.id === transaction.id);
       if (exists) {
-           const oldPart = spareParts.find(p => p.id === part.id);
-           if (oldPart && part.stock > oldPart.stock && part.purchasePrice) {
-               const cost = (part.stock - oldPart.stock) * part.purchasePrice;
-               const newTransaction: Transaction = { id: `trn-adj-${Date.now()}`, date: new Date().toISOString().split('T')[0], description: `Stock Adjustment: ${part.name}`, type: 'expense', amount: cost, category: TransactionCategory.PART_PURCHASE, paymentMethod: PaymentMethod.CASH, approved: true };
-               setTransactions(prev => [newTransaction, ...prev]);
-           }
-           setSpareParts(prev => prev.map(p => p.id === part.id ? part : p));
+          setTransactions(prev => prev.map(t => t.id === transaction.id ? transaction : t));
       } else {
-          if (part.stock > 0 && part.purchasePrice) {
-               const newTransaction: Transaction = { id: `trn-init-${Date.now()}`, date: new Date().toISOString().split('T')[0], description: `Initial Stock: ${part.name}`, type: 'expense', amount: part.stock * part.purchasePrice, category: TransactionCategory.PART_PURCHASE, paymentMethod: PaymentMethod.CASH, approved: true };
-               setTransactions(prev => [newTransaction, ...prev]);
-          }
-          setSpareParts(prev => [part, ...prev]);
+          setTransactions(prev => [transaction, ...prev]);
       }
       setModalState({ type: null, data: null });
   };
 
+  const handleImportSpareParts = (parsedParts: any[]) => {
+       const newParts: SparePart[] = [];
+       alert(`Import logic would run here for ${parsedParts.length} items.`);
+       setModalState({type:null, data:null});
+  };
+  const handleDeleteSparePart = (id: string) => { setSpareParts(prev => prev.filter(p => p.id !== id)); setModalState({ type: null, data: null }); };
+  const handleBulkDeleteSpareParts = (ids: string[]) => { setSpareParts(prev => prev.filter(p => !ids.includes(p.id))); };
+  const handleSaveSparePart = (part: SparePart) => {
+      const exists = spareParts.some(p => p.id === part.id);
+      if (exists) { setSpareParts(prev => prev.map(p => p.id === part.id ? part : p)); } 
+      else { setSpareParts(prev => [part, ...prev]); }
+      setModalState({ type: null, data: null });
+  };
   const handleSaveSupplier = (s: Supplier) => { setSuppliers(prev => { const ex = prev.find(x => x.id === s.id); return ex ? prev.map(x => x.id === s.id ? s : x) : [s, ...prev]; }); setModalState({type:null, data:null}); };
+
+  const handleClockIn = () => {
+    if (!currentUser) return;
+    const today = new Date().toISOString().split('T')[0];
+    const existingRecord = attendance.find(a => a.userId === currentUser.id && a.date === today && !a.clockOutTime);
+    if (existingRecord) return;
+
+    const newRecord: AttendanceRecord = {
+      id: `att-${Date.now()}`,
+      userId: currentUser.id,
+      date: today,
+      clockInTime: new Date().toISOString(),
+    };
+    setAttendance(prev => [...prev, newRecord]);
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, status: TechnicianStatus.AVAILABLE } : u));
+    addNotification('You have successfully clocked in.', '/');
+  };
+
+  const handleClockOut = () => {
+    if (!currentUser) return;
+    const today = new Date().toISOString().split('T')[0];
+    const record = attendance.find(a => a.userId === currentUser.id && a.date === today && !a.clockOutTime);
+    if (!record) return;
+
+    setAttendance(prev => prev.map(a => a.id === record.id ? { ...a, clockOutTime: new Date().toISOString() } : a));
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, status: TechnicianStatus.OFFLINE } : u));
+    addNotification('You have successfully clocked out.', '/');
+  };
 
   if (!currentUser) {
     if (authScreen === 'signup') return <SignUpScreen onSignUp={handleSignUp} onSwitchToLogin={() => setAuthScreen('login')} t={t} />;
@@ -1451,17 +1963,15 @@ const App: React.FC = () => {
 
   const Sidebar: React.FC = () => {
     const location = useLocation();
-    const unreadCount = notifications.filter(n => !n.read).length;
     const navItems = [
-        { path: '/', labelKey: 'sidebar.dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-blue-500' },
+        { path: '/', labelKey: 'sidebar.dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-blue-500' },
         { path: '/customers', labelKey: 'sidebar.customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-green-500' },
         { path: '/work-orders', labelKey: 'sidebar.workOrders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-orange-500' },
-        { path: '/notifications', labelKey: 'sidebar.notifications', icon: BellIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-red-500' },
         { path: '/my-reimbursements', labelKey: 'sidebar.myReimbursements', icon: ReceiptIcon, roles: [UserRole.TECHNICIAN], color: 'text-cyan-500' },
         { path: '/reimbursements', labelKey: 'sidebar.reimbursement', icon: ReceiptIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-cyan-500' },
         { path: '/spare-parts', labelKey: 'sidebar.spareParts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-indigo-500' },
         { path: '/finance', labelKey: 'sidebar.finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-purple-500' },
-        { path: '/employees', labelKey: 'sidebar.employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-teal-500' },
+        { path: '/employees', labelKey: 'sidebar.employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-teal-500' },
         { path: '/settings', labelKey: 'sidebar.settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-gray-500' },
     ];
     const accessibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));
@@ -1476,9 +1986,6 @@ const App: React.FC = () => {
                      <Link key={item.path} to={item.path} title={isSidebarCollapsed ? t(item.labelKey) : ''} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${(location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path) ? 'bg-primary-100 dark:bg-gray-700 text-primary-700 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
                         <item.icon className={`${isSidebarCollapsed ? `h-9 w-9 ${item.color}` : 'h-5 w-5'}`} />
                         {!isSidebarCollapsed && <span className="font-medium">{t(item.labelKey)}</span>}
-                        {item.labelKey === 'sidebar.notifications' && !isSidebarCollapsed && unreadCount > 0 && (
-                            <span className="ml-auto bg-red-500 text-white text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center">{unreadCount}</span>
-                        )}
                     </Link>
                 ))}
             </nav>
@@ -1495,6 +2002,8 @@ const App: React.FC = () => {
         </div>
     );
   }
+  
+  const hasClockedInToday = attendance.some(a => a.userId === currentUser?.id && a.date === new Date().toISOString().split('T')[0] && !a.clockOutTime);
 
   return (
     <HashRouter>
@@ -1506,6 +2015,32 @@ const App: React.FC = () => {
                         <span>{new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </div>
                     <div className="flex items-center space-x-4">
+                        {currentUser.role === UserRole.TECHNICIAN && (
+                            !hasClockedInToday ? (
+                                <button onClick={handleClockIn} className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">{t('pages.employees.clockIn')}</button>
+                            ) : (
+                                <button onClick={handleClockOut} className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">{t('pages.employees.clockOut')}</button>
+                            )
+                        )}
+                        <div className="relative">
+                            <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">
+                                <BellIcon className="h-6 w-6" />
+                                {notifications.some(n => !n.read) && <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-red-500 rounded-full"></span>}
+                            </button>
+                            {isNotificationsOpen && (
+                                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700 z-20">
+                                    <div className="p-3 font-semibold text-sm border-b dark:border-gray-700">{t('pages.notifications.title')}</div>
+                                    <div className="max-h-80 overflow-y-auto">
+                                        {notifications.length > 0 ? notifications.map(notif => (
+                                            <Link to={notif.link} key={notif.id} onClick={() => setIsNotificationsOpen(false)} className={`block p-3 hover:bg-gray-50 dark:hover:bg-gray-700 ${!notif.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                                                <p className="text-sm">{notif.message}</p>
+                                                <p className="text-xs text-gray-500 mt-1">{timeAgo(notif.timestamp)}</p>
+                                            </Link>
+                                        )) : <p className="p-4 text-sm text-gray-500">{t('pages.notifications.empty')}</p>}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <span className="font-medium text-gray-700 dark:text-white">{formatUserName(currentUser.name)}</span>
                         <div className="h-8 w-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-200 font-bold">
                             {currentUser.name.charAt(0)}
@@ -1514,22 +2049,27 @@ const App: React.FC = () => {
                 </header>
                 <main className="flex-1 overflow-y-auto p-6">
                     <Routes>
-                        <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} t={t} />} />
-                        <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onComplete={handleCompleteWorkOrder} t={t} />} />
+                        <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} transactions={transactions} t={t} />} />
+                        <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onComplete={handleCompleteWorkOrder} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onUploadProof={handleUploadProof} onPrint={handlePrintWorkOrder} t={t} />} />
                         <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
-                        <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} t={t} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} />} />
+                        <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} t={t} />} />
+                        <Route path="/finance" element={<Finance transactions={transactions} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} t={t} />} />
+                        <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} t={t} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} spareParts={spareParts} suppliers={suppliers} clients={clients} invoices={invoices} transactions={transactions} contracts={contracts} />} />
                         <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} onImport={handleImportSpareParts} onDelete={handleDeleteSparePart} onBulkDelete={handleBulkDeleteSpareParts} t={t} />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </main>
             </div>
             
-            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users }} />
+            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users, transactions }} />
 
             {modalState.type === 'create_wo' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} t={t} />}
             {modalState.type === 'assign_tech' && <AssignTechnicianModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleAssignTechnician} technicians={users.filter(u => u.role === UserRole.TECHNICIAN)} t={t} />}
+            {modalState.type === 'add_part_wo' && <AddPartToWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleUpdateWorkOrderParts} availableParts={spareParts} t={t} />}
+            {modalState.type === 'add_additional_cost' && <AddAdditionalCostModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveAdditionalCost} t={t} />}
             {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
             {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} onDelete={handleDeleteSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
+            {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} t={t} />}
             
             {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} t={t} />}
             {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} t={t} />}

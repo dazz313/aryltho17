@@ -1,7 +1,8 @@
+
 export enum UserRole {
   ADMINISTRATOR = 'administrator',
   ADMIN = 'admin',
-  TECHNICIAN = 'technisi'
+  TECHNICIAN = 'technician'
 }
 
 export enum TechnicianStatus {
@@ -49,7 +50,7 @@ export interface Client {
 export enum WorkOrderStatus {
   PENDING = 'Pending',
   IN_PROGRESS = 'In Progress',
-  COMPLETED = 'Selesai',
+  COMPLETED = 'Completed',
   CANCELLED = 'Cancelled'
 }
 
@@ -81,10 +82,21 @@ export interface WorkOrder {
   technicianId: string | null;
   createdAt: string;
   completedAt?: string;
-  spareParts: SparePart[];
+  usedParts: {
+    partId: string;
+    quantity: number;
+    sellingPrice: number; // Price at the time of use
+  }[];
+  initialServiceFee: number;
+  additionalCosts: {
+    description: string;
+    amount: number;
+  }[];
   totalCost: number;
   coordinates?: { lat: number; lng: number; };
   clientId?: string;
+  workProofUrl?: string; // Base64 data URL
+  paymentProofUrl?: string; // Base64 data URL
 }
 
 export interface Invoice {
@@ -151,7 +163,6 @@ export interface ServiceContract {
   renewalDate?: string;
 }
 
-
 export interface Notification {
   id: string;
   message: string;
@@ -172,4 +183,12 @@ export interface CompanyProfile {
   email: string;
   phone: string;
   logo?: string; // Base64 encoded image
+}
+
+export interface AttendanceRecord {
+  id: string;
+  userId: string;
+  date: string; // YYYY-MM-DD
+  clockInTime: string; // ISO string
+  clockOutTime?: string; // ISO string
 }
