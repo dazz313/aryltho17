@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -805,6 +804,450 @@ const AddEditSparePartModal: React.FC<{ isOpen: boolean; onClose: () => void; on
 };
 
 // --- PAGES ---
+{/* FIX: Define missing page components */}
+const Dashboard: React.FC<{
+    workOrders: WorkOrder[];
+    customers: Customer[];
+    users: User[];
+    currentUser: User;
+    transactions: Transaction[];
+    t: Function;
+}> = ({ workOrders, customers, users, currentUser, transactions, t }) => {
+    const [aiSummary, setAiSummary] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleGenerateSummary = async () => {
+        setIsGenerating(true);
+        const summaryData = {
+            workOrders,
+            transactions,
+            technicians: users.filter(u => u.role === UserRole.TECHNICIAN)
+        };
+        const summary = await generateAiSummary(summaryData);
+        setAiSummary(summary);
+        setIsGenerating(false);
+    };
+
+    const pendingWorkOrders = workOrders.filter(wo => wo.status === WorkOrderStatus.PENDING).length;
+    const technicians = users.filter(u => u.role === UserRole.TECHNICIAN);
+    
+    const technicianStatusData = technicians.reduce((acc, tech) => {
+        const status = tech.status || TechnicianStatus.OFFLINE;
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+    }, {} as Record<TechnicianStatus, number>);
+
+    const workOrderStatusData = workOrders.reduce((acc, wo) => {
+        acc[wo.status] = (acc[wo.status] || 0) + 1;
+        return acc;
+    }, {} as Record<WorkOrderStatus, number>);
+
+    const workOrderPieData = Object.entries(workOrderStatusData).map(([name, value]) => ({ name, value }));
+    
+    const completedOrdersByTechnician = workOrders
+        .filter(wo => wo.status === WorkOrderStatus.COMPLETED && wo.technicianId)
+        .reduce((acc, wo) => {
+            const techName = users.find(u => u.id === wo.technicianId)?.name || 'Unknown';
+            acc[techName] = (acc[techName] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
+    
+    const technicianChartData = Object.entries(completedOrdersByTechnician).map(([name, count]) => ({ name, 'Completed Orders': count }));
+    
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+    return (
+        <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.welcome', { name: formatUserName(currentUser.name) })}</h1>
+            <p className="text-gray-600 dark:text-gray-400">{t('dashboard.summary')}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard title={t('dashboard.totalCustomers')} value={String(customers.length)} icon={<CustomerIcon />} color="blue" />
+                <StatCard title={t('dashboard.pendingWorkOrders')} value={String(pendingWorkOrders)} icon={<WorkOrderIcon />} color="yellow" />
+                <StatCard title={t('dashboard.technicianStatus')} value={`${technicians.filter(t => t.status === TechnicianStatus.AVAILABLE).length} / ${technicians.length}`} icon={<TechnicianIcon />} color="green" />
+                <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0))} icon={<FinanceIcon />} color="indigo" />
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('dashboard.aiSummaryTitle')}</h2>
+                {isGenerating && (
+                    <div className="flex items-center space-x-2 text-gray-500">
+                        <SpinnerIcon className="h-5 w-5" />
+                        <span>{t('dashboard.generatingInsights')}</span>
+                    </div>
+                )}
+                {aiSummary ? (
+                     <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: aiSummary.replace(/\n/g, '<br/>') }} />
+                ) : !isGenerating && (
+                    <p className="text-gray-500 dark:text-gray-400">{t('dashboard.aiPrompt')}</p>
+                )}
+                <div className="mt-4">
+                    <button onClick={handleGenerateSummary} disabled={isGenerating} className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-400">
+                        {isGenerating ? t('dashboard.generating') : t('dashboard.generateSummary')}
+                    </button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <h3 className="font-semibold mb-4">{t('dashboard.workOrderStatus')}</h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                            <Pie data={workOrderPieData} cx="50%" cy="50%" labelLine={false} outerRadius={80} fill="#8884d8" dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                                {workOrderPieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <h3 className="font-semibold mb-4">{t('dashboard.completedByTechnician')}</h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={technicianChartData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="Completed Orders" fill="#82ca9d" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const WorkOrders: React.FC<{
+    user: User;
+    workOrders: WorkOrder[];
+    users: User[];
+    onCreate: () => void;
+    onAssign: (wo: WorkOrder) => void;
+    onClaim: (wo: WorkOrder) => void;
+    onAddPart: (wo: WorkOrder) => void;
+    onAddCost: (wo: WorkOrder) => void;
+    onComplete: (wo: WorkOrder) => void;
+    t: Function;
+}> = ({ user, workOrders, users, onCreate, onAssign, onClaim, onAddPart, onAddCost, onComplete, t }) => {
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState(user.role === UserRole.TECHNICIAN ? 'my_assigned' : 'all');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const getTechnicianName = (id: string | null) => users.find(u => u.id === id)?.name || <span className="text-gray-400">{t('pages.workOrders.unassigned')}</span>;
+
+    const filteredWorkOrders = useMemo(() => {
+        let orders = workOrders;
+        if (activeTab === 'my_assigned' && user) {
+            orders = workOrders.filter(wo => wo.technicianId === user.id);
+        } else if (activeTab === 'available') {
+            orders = workOrders.filter(wo => !wo.technicianId && wo.status === WorkOrderStatus.PENDING);
+        }
+        
+        return orders.filter(wo => 
+            wo.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            wo.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            wo.description.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [workOrders, activeTab, user, searchTerm]);
+    
+    const isAdmin = user.role === UserRole.ADMINISTRATOR || user.role === UserRole.ADMIN;
+    
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.workOrders.title')}</h1>
+                {isAdmin && (
+                    <button onClick={onCreate} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
+                        <WorkOrderIcon className="mr-2 h-5 w-5" /> {t('modals.createWorkOrderTitle')}
+                    </button>
+                )}
+            </div>
+            
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                <div className="border-b border-gray-200 dark:border-gray-700">
+                    <nav className="-mb-px flex space-x-8 px-6">
+                        {isAdmin && <button onClick={() => setActiveTab('all')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.workOrders.allOrders')}</button>}
+                        {user.role === UserRole.TECHNICIAN && <button onClick={() => setActiveTab('my_assigned')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'my_assigned' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.workOrders.myAssigned')}</button>}
+                        {user.role === UserRole.TECHNICIAN && <button onClick={() => setActiveTab('available')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'available' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.workOrders.available')}</button>}
+                    </nav>
+                </div>
+                <div className="p-6">
+                     <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 mb-4" />
+                     <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                <tr>
+                                    <th className="px-6 py-3">WO ID</th>
+                                    <th className="px-6 py-3">Customer</th>
+                                    <th className="px-6 py-3">{t('common.description')}</th>
+                                    <th className="px-6 py-3">{t('common.status')}</th>
+                                    <th className="px-6 py-3">{t('pages.workOrders.technician')}</th>
+                                    <th className="px-6 py-3">{t('common.total')}</th>
+                                    <th className="px-6 py-3">{t('common.actions')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredWorkOrders.map(wo => (
+                                    <tr key={wo.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                                        <td className="px-6 py-4 font-mono text-xs cursor-pointer hover:underline" onClick={() => navigate(`/work-orders/${wo.id}`)}>{wo.id}</td>
+                                        <td className="px-6 py-4">{wo.customer.name}</td>
+                                        <td className="px-6 py-4 truncate max-w-xs">{wo.description}</td>
+                                        <td className="px-6 py-4"><span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span></td>
+                                        <td className="px-6 py-4">{getTechnicianName(wo.technicianId)}</td>
+                                        <td className="px-6 py-4">{formatIDR(wo.totalCost)}</td>
+                                        <td className="px-6 py-4 space-x-2 whitespace-nowrap">
+                                            <button onClick={() => navigate(`/work-orders/${wo.id}`)} className="text-blue-600 hover:underline">{t('common.view')}</button>
+                                            {isAdmin && !wo.technicianId && <button onClick={() => onAssign(wo)} className="text-green-600 hover:underline">Assign</button>}
+                                            {user.role === UserRole.TECHNICIAN && !wo.technicianId && wo.status === WorkOrderStatus.PENDING && <button onClick={() => onClaim(wo)} className="text-green-600 hover:underline">{t('pages.workOrders.claimJob')}</button>}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const WorkOrderDetailPage: React.FC<{
+    workOrders: WorkOrder[];
+    users: User[];
+    spareParts: SparePart[];
+    onAddPart: (wo: WorkOrder) => void;
+    onAddCost: (wo: WorkOrder) => void;
+    onComplete: (wo: WorkOrder) => void;
+    onPrint: (wo: WorkOrder, action: 'print' | 'download') => void;
+    onUploadProof: (workOrderId: string, proofType: 'work' | 'payment') => void;
+    t: Function;
+}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, onPrint, onUploadProof, t }) => {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+    const workOrder = workOrders.find(wo => wo.id === id);
+
+    if (!workOrder) {
+        return <div className="text-center p-8">Work Order not found.</div>;
+    }
+
+    const technician = users.find(u => u.id === workOrder.technicianId);
+
+    return (
+        <div className="space-y-6">
+            <button onClick={() => navigate('/work-orders')} className="flex items-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                <ArrowLeftIcon className="h-4 w-4 mr-2" /> {t('common.back')} to all work orders
+            </button>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Work Order #{workOrder.id}</h1>
+                        <p className="text-gray-500">{t('common.date')}: {new Date(workOrder.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <span className={`px-3 py-1 text-sm rounded-full font-semibold ${getStatusColor(workOrder.status)}`}>{t(`status.${workOrder.status}`)}</span>
+                        <div className="relative group">
+                            <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <MoreVerticalIcon className="h-5 w-5"/>
+                            </button>
+                            <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700 hidden group-hover:block z-10">
+                                <button onClick={() => onPrint(workOrder, 'download')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.generatePDF')}</button>
+                                <button onClick={() => onPrint(workOrder, 'print')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.printWO')}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2 space-y-6">
+                        <div>
+                            <h3 className="font-semibold text-lg mb-2">{t('common.description')}</h3>
+                            <p className="text-gray-600 dark:text-gray-300">{workOrder.description}</p>
+                        </div>
+                        <div className="border-t dark:border-gray-700 pt-6">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="font-semibold text-lg">Rincian Biaya</h3>
+                            </div>
+                            <table className="w-full text-sm">
+                                <tbody>
+                                    <tr className="border-b dark:border-gray-700"><td className="py-2">Biaya Jasa Awal</td><td className="text-right">{formatIDR(workOrder.initialServiceFee)}</td></tr>
+                                    {workOrder.usedParts.map((item, i) => {
+                                        const part = spareParts.find(p => p.id === item.partId);
+                                        return <tr key={`part-${i}`} className="border-b dark:border-gray-700"><td className="py-2">{part?.name} x{item.quantity}</td><td className="text-right">{formatIDR(item.sellingPrice * item.quantity)}</td></tr>
+                                    })}
+                                    {workOrder.additionalCosts.map((item, i) => (
+                                        <tr key={`cost-${i}`} className="border-b dark:border-gray-700"><td className="py-2">{item.description}</td><td className="text-right">{formatIDR(item.amount)}</td></tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr className="font-bold"><td className="py-3 text-lg">Total</td><td className="text-right text-lg">{formatIDR(workOrder.totalCost)}</td></tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <div className="flex space-x-2">
+                            {workOrder.status !== WorkOrderStatus.COMPLETED && <button onClick={() => onAddPart(workOrder)} className="px-4 py-2 text-sm rounded-lg border">{t('pages.workOrders.addPart')}</button>}
+                            {workOrder.status !== WorkOrderStatus.COMPLETED && <button onClick={() => onAddCost(workOrder)} className="px-4 py-2 text-sm rounded-lg border">{t('pages.workOrders.addCost')}</button>}
+                        </div>
+                    </div>
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="font-semibold text-lg mb-2">{t('pages.customers.customersTab')}</h3>
+                            <p className="font-bold">{workOrder.customer.name}</p>
+                            <p className="text-sm text-gray-500">{workOrder.customer.phone}</p>
+                            <p className="text-sm text-gray-500">{workOrder.customer.address}</p>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-lg mb-2">{t('pages.workOrders.technician')}</h3>
+                            {technician ? <p>{technician.name}</p> : <p className="text-gray-500">{t('pages.workOrders.unassigned')}</p>}
+                        </div>
+                         <div>
+                            <h3 className="font-semibold text-lg mb-2">Proofs</h3>
+                             <div className="space-y-2">
+                                <button onClick={() => onUploadProof(workOrder.id, 'work')} className="text-sm text-blue-600 hover:underline w-full text-left">{t('pages.workOrders.uploadWorkProof')}</button>
+                                {workOrder.workProofUrl && <a href={workOrder.workProofUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600">View Work Proof</a>}
+                                <button onClick={() => onUploadProof(workOrder.id, 'payment')} className="text-sm text-blue-600 hover:underline w-full text-left">{t('pages.workOrders.uploadPaymentProof')}</button>
+                                {workOrder.paymentProofUrl && <a href={workOrder.paymentProofUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600">View Payment Proof</a>}
+                            </div>
+                        </div>
+                        {workOrder.status === WorkOrderStatus.IN_PROGRESS && (
+                            <button onClick={() => onComplete(workOrder)} className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">{t('pages.workOrders.completeWork')}</button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const EmployeesPage: React.FC<{
+    users: User[];
+    workOrders: WorkOrder[];
+    attendance: AttendanceRecord[];
+    onAddEmployee: () => void;
+    t: Function;
+}> = ({ users, workOrders, attendance, onAddEmployee, t }) => {
+    const navigate = useNavigate();
+    const today = new Date().toISOString().split('T')[0];
+
+    const performanceData = useMemo(() => {
+        return users
+            .filter(u => u.role === UserRole.TECHNICIAN)
+            .map(tech => ({
+                id: tech.id,
+                name: tech.name,
+                completed: workOrders.filter(wo => wo.technicianId === tech.id && wo.status === WorkOrderStatus.COMPLETED).length
+            }));
+    }, [users, workOrders]);
+    
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.employees.title')}</h1>
+                <button onClick={onAddEmployee} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('pages.employees.addEmployee')}</button>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('pages.employees.allEmployees')}</h2>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                            <tr>
+                                <th className="px-6 py-3">{t('common.name')}</th>
+                                <th className="px-6 py-3">{t('pages.employees.role')}</th>
+                                <th className="px-6 py-3">{t('pages.employees.contact')}</th>
+                                <th className="px-6 py-3">{t('common.status')} / Attendance</th>
+                                <th className="px-6 py-3">{t('pages.employees.monthlyPerformance')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map(user => {
+                                const attendanceRecord = attendance.find(a => a.userId === user.id && a.date === today);
+                                const attendanceStatus = attendanceRecord 
+                                    ? (attendanceRecord.clockOutTime ? t('pages.employees.clockedOut') : `${t('pages.employees.clockedInAt', { time: new Date(attendanceRecord.clockInTime).toLocaleTimeString() })}`)
+                                    : t('pages.employees.absent');
+                                
+                                return (
+                                    <tr key={user.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 cursor-pointer" onClick={() => navigate(`/employees/${user.id}`)}>
+                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{user.name}</td>
+                                        <td className="px-6 py-4">{user.role}</td>
+                                        <td className="px-6 py-4">{user.email}<br/>{user.phone}</td>
+                                        <td className="px-6 py-4">
+                                            {user.role === UserRole.TECHNICIAN ? (
+                                                <>
+                                                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(user.status || TechnicianStatus.OFFLINE)}`}>{t(`status.${user.status || TechnicianStatus.OFFLINE}`)}</span>
+                                                    <div className="text-xs mt-1 text-gray-500">{attendanceStatus}</div>
+                                                </>
+                                            ) : '-'}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">{performanceData.find(p => p.id === user.id)?.completed || 0}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TechnicianProfilePage: React.FC<{
+    users: User[];
+    workOrders: WorkOrder[];
+    onEdit: (user: User) => void;
+    t: Function;
+}> = ({ users, workOrders, onEdit, t }) => {
+    const { employeeId } = useParams<{ employeeId: string }>();
+    const navigate = useNavigate();
+    const user = users.find(u => u.id === employeeId);
+    
+    const recentWorkOrders = useMemo(() => {
+        return workOrders.filter(wo => wo.technicianId === employeeId).slice(0, 10);
+    }, [workOrders, employeeId]);
+    
+    if (!user) {
+        return <div>Employee not found</div>;
+    }
+
+    return (
+        <div className="space-y-6">
+             <button onClick={() => navigate('/employees')} className="flex items-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                <ArrowLeftIcon className="h-4 w-4 mr-2" /> {t('technicianProfile.back')}
+            </button>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                 <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{user.name}</h1>
+                        <p className="text-gray-500">{user.role}</p>
+                    </div>
+                    <button onClick={() => onEdit(user)} className="px-4 py-2 text-sm rounded-lg border">{t('technicianProfile.editEmployee')}</button>
+                </div>
+                 <div className="mt-6 border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 className="font-semibold text-lg mb-2">{t('technicianProfile.personalInfo')}</h3>
+                         <div className="space-y-2 text-sm">
+                            <p><strong>{t('common.email')}:</strong> {user.email || '-'}</p>
+                            <p><strong>{t('common.phone')}:</strong> {user.phone || '-'}</p>
+                            <p><strong>{t('common.status')}:</strong> <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(user.status || TechnicianStatus.OFFLINE)}`}>{t(`status.${user.status || TechnicianStatus.OFFLINE}`)}</span></p>
+                         </div>
+                    </div>
+                     <div>
+                        <h3 className="font-semibold text-lg mb-2">{t('technicianProfile.recentActivity')}</h3>
+                        <ul className="space-y-2 text-sm">
+                            {recentWorkOrders.length > 0 ? recentWorkOrders.map(wo => (
+                                <li key={wo.id} className="flex justify-between p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <Link to={`/work-orders/${wo.id}`} className="hover:underline">{wo.id}: {wo.description}</Link>
+                                    <span className={`text-xs ${getStatusColor(wo.status)} px-2 py-0.5 rounded-full`}>{t(`status.${wo.status}`)}</span>
+                                </li>
+                            )) : <p className="text-gray-500">No recent activity.</p>}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () => void, t: Function }> = ({ transactions, onAddTransaction, t }) => {
     const { totalIncome, totalExpense, profitLoss } = useMemo(() => {
         const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
@@ -1264,500 +1707,6 @@ const SettingsPage: React.FC<{
     );
 };
 
-const WorkOrderDetailPage: React.FC<{
-    workOrders: WorkOrder[];
-    users: User[];
-    spareParts: SparePart[];
-    onAddPart: (wo: WorkOrder) => void;
-    onAddCost: (wo: WorkOrder) => void;
-    onComplete: (wo: WorkOrder) => void;
-    t: Function;
-}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, t }) => {
-    const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const workOrder = workOrders.find(wo => wo.id === id);
-
-    if (!workOrder) {
-        return <div className="text-center text-gray-500">Work Order not found.</div>;
-    }
-
-    const { customer, description, status, technicianId, createdAt } = workOrder;
-
-    return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <button onClick={() => navigate('/work-orders')} className="flex items-center space-x-2 text-primary-600 hover:underline">
-                <ArrowLeftIcon className="h-5 w-5" />
-                <span>Back to Work Orders</span>
-            </button>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Work Order #{workOrder.id}</h1>
-                        <p className="text-sm text-gray-500">Created on {new Date(createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${getStatusColor(status)}`}>{t(`status.${status}`)}</span>
-                </div>
-                
-                <div className="mt-6 border-t dark:border-gray-700 pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 className="font-semibold text-lg mb-2">Customer Details</h3>
-                        <p className="font-bold text-gray-800 dark:text-white">{customer.name}</p>
-                        <p className="text-gray-600 dark:text-gray-400">{customer.address}</p>
-                        <p className="text-gray-600 dark:text-gray-400">{customer.phone}</p>
-                         <div className="flex space-x-2 mt-2">
-                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customer.address)}`} target="_blank" rel="noopener noreferrer" className="text-primary-600 text-sm hover:underline">View on Map</a>
-                             <a href={`tel:${customer.phone}`} className="text-primary-600 text-sm hover:underline">Call Customer</a>
-                        </div>
-                    </div>
-                     <div>
-                        <h3 className="font-semibold text-lg mb-2">Job Details</h3>
-                        <p className="font-bold text-gray-800 dark:text-white">Problem Description</p>
-                        <p className="text-gray-600 dark:text-gray-400 mb-4">{description}</p>
-                        <p className="font-bold text-gray-800 dark:text-white">Assigned Technician</p>
-                        <p className="text-gray-600 dark:text-gray-400">{users.find(u => u.id === technicianId)?.name || 'Unassigned'}</p>
-                    </div>
-                </div>
-            </div>
-
-             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-4">Cost Breakdown</h2>
-                <div className="space-y-2">
-                    <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">Initial Service Fee</span> <span className="font-medium">{formatIDR(workOrder.initialServiceFee)}</span></div>
-                    {workOrder.additionalCosts.map((cost, i) => (
-                        <div key={i} className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">{cost.description}</span> <span className="font-medium">{formatIDR(cost.amount)}</span></div>
-                    ))}
-                    {workOrder.usedParts.map((item, i) => {
-                        const part = spareParts.find(p => p.id === item.partId);
-                        return <div key={i} className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">{part?.name} x{item.quantity}</span> <span className="font-medium">{formatIDR(item.quantity * item.sellingPrice)}</span></div>
-                    })}
-                </div>
-                 <div className="flex justify-between mt-4 pt-4 border-t dark:border-gray-700">
-                    <span className="font-bold text-lg">Total Cost</span>
-                    <span className="font-bold text-lg">{formatIDR(workOrder.totalCost)}</span>
-                </div>
-            </div>
-
-            {status === WorkOrderStatus.IN_PROGRESS && (
-                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex justify-around items-center">
-                     <button onClick={() => onAddPart(workOrder)} className="px-6 py-3 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 font-semibold">{t('pages.workOrders.addPart')}</button>
-                     <button onClick={() => onAddCost(workOrder)} className="px-6 py-3 rounded-lg text-white bg-purple-600 hover:bg-purple-700 font-semibold">{t('pages.workOrders.addCost')}</button>
-                     <button onClick={() => onComplete(workOrder)} className="px-6 py-3 rounded-lg text-white bg-green-600 hover:bg-green-700 font-semibold">{t('pages.workOrders.completeWork')}</button>
-                 </div>
-            )}
-        </div>
-    );
-};
-
-const WorkOrders: React.FC<{ 
-    user: User; 
-    workOrders: WorkOrder[]; 
-    users: User[]; 
-    onCreate: () => void;
-    onAssign: (wo: WorkOrder) => void; 
-    onClaim: (wo: WorkOrder) => void;
-    onAddPart: (wo: WorkOrder) => void;
-    onAddCost: (wo: WorkOrder) => void;
-    onComplete: (wo: WorkOrder) => void;
-    t: Function;
-}> = ({ user, workOrders, users, onCreate, onAssign, onClaim, onAddPart, onAddCost, onComplete, t }) => {
-    
-    const isTechnician = user.role === UserRole.TECHNICIAN;
-    const [techTab, setTechTab] = useState<'my_assigned' | 'available'>('my_assigned');
-    const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setOpenDropdownId(null);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [dropdownRef]);
-
-    const ordersToDisplay = useMemo(() => {
-        if (isTechnician) {
-            if (techTab === 'my_assigned') {
-                return workOrders.filter(wo => wo.technicianId === user.id);
-            }
-            return workOrders.filter(wo => !wo.technicianId && wo.status === WorkOrderStatus.PENDING);
-        }
-        return workOrders;
-    }, [workOrders, user, isTechnician, techTab]);
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.workOrders.title')}</h1>
-                 {(user.role === UserRole.ADMIN || user.role === UserRole.ADMINISTRATOR) && (
-                    <button onClick={onCreate} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
-                        <WorkOrderIcon className="mr-2 h-5 w-5" /> {t('common.create')} Order
-                    </button>
-                )}
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                 <div className="border-b border-gray-200 dark:border-gray-700 px-6 pt-4">
-                    <nav className="-mb-px flex space-x-8">
-                        {isTechnician ? (
-                            <>
-                                <button onClick={() => setTechTab('my_assigned')} className={`py-4 px-1 border-b-2 font-medium text-sm ${techTab === 'my_assigned' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.workOrders.myAssigned')}</button>
-                                <button onClick={() => setTechTab('available')} className={`py-4 px-1 border-b-2 font-medium text-sm ${techTab === 'available' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.workOrders.available')}</button>
-                            </>
-                        ) : (
-                            <button className={`py-4 px-1 border-b-2 font-medium text-sm border-primary-500 text-primary-600 dark:text-primary-400`}>{t('pages.workOrders.allOrders')}</button>
-                        )}
-                    </nav>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
-                            <tr>
-                                <th className="px-6 py-3">ID / Job</th>
-                                <th className="px-6 py-3">Customer</th>
-                                <th className="px-6 py-3">{t('common.status')}</th>
-                                <th className="px-6 py-3">{t('pages.workOrders.technician')}</th>
-                                <th className="px-6 py-3">{t('common.total')}</th>
-                                <th className="px-6 py-3">{t('common.actions')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ordersToDisplay.length > 0 ? ordersToDisplay.map(wo => (
-                                <tr key={wo.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                    <td className="px-6 py-4">
-                                        <Link to={`/work-orders/${wo.id}`} className="font-medium text-primary-600 hover:underline dark:text-primary-400">{wo.id}</Link>
-                                        <p className="text-xs text-gray-500 truncate max-w-xs">{wo.description}</p>
-                                    </td>
-                                    <td className="px-6 py-4">{wo.customer.name}</td>
-                                    <td className="px-6 py-4"><span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span></td>
-                                    <td className="px-6 py-4">{users.find(u => u.id === wo.technicianId)?.name || <span className="text-gray-400 italic">{t('pages.workOrders.unassigned')}</span>}</td>
-                                    <td className="px-6 py-4 font-semibold">{formatIDR(wo.totalCost)}</td>
-                                    <td className="px-6 py-4">
-                                        <div className="relative" ref={dropdownRef}>
-                                            {!isTechnician && wo.status === WorkOrderStatus.PENDING && (
-                                                <button onClick={() => onAssign(wo)} className="text-primary-600 hover:underline dark:text-primary-400">Assign</button>
-                                            )}
-                                            {isTechnician && techTab === 'available' && (
-                                                <button onClick={() => onClaim(wo)} className="text-blue-600 hover:underline dark:text-blue-400">{t('pages.workOrders.claimJob')}</button>
-                                            )}
-                                            {(isTechnician && techTab === 'my_assigned' && wo.status === WorkOrderStatus.IN_PROGRESS) && (
-                                                <button onClick={() => setOpenDropdownId(openDropdownId === wo.id ? null : wo.id)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white">
-                                                    <MoreVerticalIcon className="h-5 w-5" />
-                                                </button>
-                                            )}
-                                            
-                                            {openDropdownId === wo.id && (
-                                                <div className="absolute right-0 top-6 z-10 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700">
-                                                    <ul className="py-1">
-                                                        <li><button onClick={() => { onAddPart(wo); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addPart')}</button></li>
-                                                        <li><button onClick={() => { onAddCost(wo); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addCost')}</button></li>
-                                                        <li><button onClick={() => { onComplete(wo); setOpenDropdownId(null); }} className="block w-full text-left px-4 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.completeWork')}</button></li>
-                                                    </ul>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            )) : (<tr><td colSpan={6} className="px-6 py-4 text-center">No work orders found.</td></tr>)}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const EmployeesPage: React.FC<{ users: User[], workOrders: WorkOrder[], attendance: AttendanceRecord[], onAddEmployee: () => void, t: Function }> = ({ users, workOrders, attendance, onAddEmployee, t }) => {
-    const today = new Date().toISOString().split('T')[0];
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
-    const getAttendanceStatus = (userId: string) => {
-        const record = attendance.find(a => a.userId === userId && a.date === today);
-        if (!record) {
-            return <span className="text-gray-500 italic">{t('pages.employees.absent')}</span>;
-        }
-        if (record.clockOutTime) {
-            return <span className="text-red-600">{t('pages.employees.clockedOut')}</span>;
-        }
-        const time = new Date(record.clockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return <span className="text-green-600">{t('pages.employees.clockedInAt', { time })}</span>;
-    };
-    
-    const getMonthlyPerformance = (userId: string) => {
-        return workOrders.filter(wo => {
-            const completedDate = wo.completedAt ? new Date(wo.completedAt) : null;
-            return wo.technicianId === userId &&
-                   wo.status === WorkOrderStatus.COMPLETED &&
-                   completedDate &&
-                   completedDate.getMonth() === currentMonth &&
-                   completedDate.getFullYear() === currentYear;
-        }).length;
-    };
-
-    return (
-         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.employees.title')}</h1>
-                <button onClick={onAddEmployee} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
-                    <UsersIcon className="mr-2 h-5 w-5" /> {t('pages.employees.addEmployee')}
-                </button>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
-                            <tr>
-                                <th className="px-6 py-3">{t('common.name')}</th>
-                                <th className="px-6 py-3">{t('pages.employees.role')}</th>
-                                <th className="px-6 py-3">{t('common.contact')}</th>
-                                <th className="px-6 py-3">{t('pages.employees.monthlyPerformance')}</th>
-                                <th className="px-6 py-3">{t('pages.employees.attendanceStatus')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.map(user => (
-                                <tr key={user.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                    <td className="px-6 py-4 font-medium">
-                                        <Link to={`/employees/${user.id}`} className="text-primary-600 hover:underline dark:text-primary-400">{user.name}</Link>
-                                    </td>
-                                    <td className="px-6 py-4 capitalize">{user.role}</td>
-                                    <td className="px-6 py-4">{user.email || user.phone || 'N/A'}</td>
-                                    <td className="px-6 py-4 text-center font-semibold">{user.role === UserRole.TECHNICIAN ? getMonthlyPerformance(user.id) : '-'}</td>
-                                    <td className="px-6 py-4">{user.role === UserRole.TECHNICIAN ? getAttendanceStatus(user.id) : '-'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const TechnicianProfilePage: React.FC<{ users: User[], workOrders: WorkOrder[], onEdit: (user: User) => void, t: Function }> = ({ users, workOrders, onEdit, t }) => {
-    const { employeeId } = useParams();
-    const navigate = useNavigate();
-    const user = users.find(u => u.id === employeeId);
-
-    if (!user) {
-        return <div className="text-center text-gray-500">Employee not found.</div>;
-    }
-
-    const recentWork = workOrders.filter(wo => wo.technicianId === user.id).slice(0, 5);
-
-    return (
-        <div className="max-w-4xl mx-auto space-y-6">
-            <button onClick={() => navigate('/employees')} className="flex items-center space-x-2 text-primary-600 hover:underline">
-                <ArrowLeftIcon className="h-5 w-5" />
-                <span>{t('pages.technicianProfile.back')}</span>
-            </button>
-             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{user.name}</h1>
-                        <p className="text-sm text-gray-500 capitalize">{user.role}</p>
-                    </div>
-                    <button onClick={() => onEdit(user)} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
-                        {t('pages.technicianProfile.editEmployee')}
-                    </button>
-                </div>
-                <div className="mt-6 border-t dark:border-gray-700 pt-6">
-                    <h3 className="font-semibold text-lg mb-2">{t('pages.technicianProfile.personalInfo')}</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div><p className="text-gray-500">Email</p><p className="font-medium">{user.email || 'N/A'}</p></div>
-                        <div><p className="text-gray-500">Phone</p><p className="font-medium">{user.phone || 'N/A'}</p></div>
-                        <div><p className="text-gray-500">Status</p><span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(user.status!)}`}>{t(`status.${user.status!}`)}</span></div>
-                    </div>
-                </div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                 <h3 className="font-semibold text-lg mb-2">{t('pages.technicianProfile.recentActivity')}</h3>
-                 <div className="space-y-3">
-                     {recentWork.length > 0 ? recentWork.map(wo => (
-                         <div key={wo.id} className="flex justify-between items-center border-b dark:border-gray-700 pb-2 last:border-0">
-                             <div>
-                                 <p className="font-medium">{wo.description}</p>
-                                 <p className="text-xs text-gray-500">WO #{wo.id} for {wo.customer.name}</p>
-                             </div>
-                             <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span>
-                         </div>
-                     )) : <p className="text-sm text-gray-500">No recent work orders found.</p>}
-                 </div>
-            </div>
-        </div>
-    );
-};
-
-const Dashboard: React.FC<{ workOrders: WorkOrder[]; customers: Customer[]; users: User[]; currentUser: User; transactions: Transaction[]; t: Function }> = ({ workOrders, customers, users, currentUser, transactions, t }) => {
-    const [aiSummary, setAiSummary] = useState<string | null>(null);
-    const [loadingAi, setLoadingAi] = useState(false);
-    const navigate = useNavigate();
-
-    const stats = useMemo(() => {
-        let relevantOrders = workOrders;
-        if (currentUser.role === UserRole.TECHNICIAN) {
-            relevantOrders = workOrders.filter(w => w.technicianId === currentUser.id);
-        }
-
-        const pending = relevantOrders.filter(w => w.status === WorkOrderStatus.PENDING || w.status === WorkOrderStatus.IN_PROGRESS).length;
-        const completed = relevantOrders.filter(w => w.status === WorkOrderStatus.COMPLETED).length;
-        
-        const totalRevenue = transactions.filter(tr => tr.type === 'income').reduce((sum, tr) => sum + tr.amount, 0);
-
-        return { pending, completed, totalRevenue, totalCustomers: customers.length };
-    }, [workOrders, customers, currentUser, transactions]);
-    
-    const technicians = useMemo(() => users.filter(u => u.role === UserRole.TECHNICIAN), [users]);
-
-    const handleGenerateSummary = async () => {
-        setLoadingAi(true);
-        const summary = await generateAiSummary({ workOrders, customers, users, transactions });
-        setAiSummary(summary);
-        setLoadingAi(false);
-    };
-
-    const chartData = useMemo(() => {
-        const data = technicians.map(tech => ({
-            name: tech.name.split(' ')[0],
-            completed: workOrders.filter(w => w.technicianId === tech.id && w.status === WorkOrderStatus.COMPLETED).length
-        }));
-        return data;
-    }, [technicians, workOrders]);
-    
-    const TechnicianStatusWidget = ({ isCard = false }: { isCard?: boolean }) => {
-        const statusColorMap: Record<string, string> = {
-            [TechnicianStatus.ON_JOB]: 'bg-green-500', // On Progress -> Green
-            [TechnicianStatus.AVAILABLE]: 'bg-blue-500', // Available -> Blue
-            [TechnicianStatus.ON_BREAK]: 'bg-yellow-500', // Break -> Yellow
-            [TechnicianStatus.OFFLINE]: 'bg-gray-400', // Offline -> Gray
-        };
-
-        const content = (
-            <div className={`space-y-2 ${isCard ? 'mt-2 max-h-[6.5rem] pr-2' : 'max-h-64'} overflow-y-auto`}>
-                {technicians.map(tech => (
-                    <div key={tech.id} className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-gray-700 dark:text-gray-300">{formatUserName(tech.name)}</span>
-                        <div className="flex items-center space-x-2">
-                            <span className={`h-2.5 w-2.5 rounded-full ${statusColorMap[tech.status!]}`} title={t(`status.${tech.status!}`)}></span>
-                            {!isCard && <span className="text-xs text-gray-500 dark:text-gray-400">{t(`status.${tech.status!}`)}</span>}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        );
-
-        if (isCard) {
-            return (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-full flex flex-col justify-center cursor-pointer" onClick={() => navigate('/employees')}>
-                    <div className="flex items-center space-x-4 mb-2">
-                        <div className="bg-indigo-100 dark:bg-indigo-900 p-3 rounded-full">
-                           <TechnicianIcon className="h-6 w-6 text-indigo-600 dark:text-indigo-200" />
-                        </div>
-                         <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.technicianStatus')}</p>
-                    </div>
-                    {content}
-                </div>
-            );
-        }
-
-        return (
-             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md h-full">
-                <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.technicianStatus')}</h3>
-                {content}
-            </div>
-        );
-    };
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.welcome', { name: currentUser.name.split(' ')[0] })}</h1>
-                    <p className="text-gray-600 dark:text-gray-400">{t('dashboard.summary')}</p>
-                </div>
-                {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.ADMINISTRATOR) && (
-                    <button onClick={handleGenerateSummary} disabled={loadingAi} className="flex items-center space-x-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg shadow-md hover:from-indigo-600 hover:to-purple-700 transition-all">
-                        {loadingAi ? <SpinnerIcon className="h-5 w-5" /> : <AiIcon className="h-5 w-5" />}
-                        <span>{loadingAi ? t('dashboard.generating') : t('dashboard.generateSummary')}</span>
-                    </button>
-                )}
-            </div>
-
-            {aiSummary && (
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-gray-800 dark:to-gray-800 p-6 rounded-lg border border-indigo-100 dark:border-gray-700 shadow-sm">
-                    {/* AI Summary Content */}
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {currentUser.role === UserRole.TECHNICIAN ? (
-                    <>
-                        <StatCard title="My Pending Jobs" value={stats.pending.toString()} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
-                        <StatCard title="My Completed Jobs" value={stats.completed.toString()} icon={<ReceiptIcon />} color="green" />
-                    </>
-                ) : (
-                    <>
-                        <StatCard title={t('dashboard.totalCustomers')} value={stats.totalCustomers.toString()} icon={<CustomerIcon />} color="blue" onClick={() => navigate('/customers')} />
-                        <StatCard title={t('dashboard.pendingWorkOrders')} value={stats.pending.toString()} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
-                        {currentUser.role === UserRole.ADMINISTRATOR ? (
-                            <>
-                                <StatCard title="Completed Orders" value={stats.completed.toString()} icon={<ReceiptIcon />} color="green" />
-                                <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(stats.totalRevenue)} icon={<FinanceIcon />} color="indigo" onClick={() => navigate('/finance')} />
-                            </>
-                        ) : (
-                           <>
-                             <StatCard title="Completed Orders" value={stats.completed.toString()} icon={<ReceiptIcon />} color="green" />
-                             <TechnicianStatusWidget isCard={true} />
-                           </>
-                        )}
-                    </>
-                )}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.ADMINISTRATOR) && (
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                        <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.completedByTechnician')}</h3>
-                        <div className="h-64">
-                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" stroke="#8884d8" />
-                                    <YAxis stroke="#8884d8" />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="completed" fill="#4f46e5" name="Completed Orders" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                )}
-                
-                {currentUser.role === UserRole.ADMINISTRATOR ? (
-                    <TechnicianStatusWidget />
-                ) : (
-                    <div className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md ${currentUser.role === UserRole.TECHNICIAN ? 'lg:col-span-2' : ''}`}>
-                         <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Recent Activity</h3>
-                         <div className="space-y-4">
-                             {workOrders.filter(w => currentUser.role === UserRole.TECHNICIAN ? w.technicianId === currentUser.id : true).slice(0, 5).map(wo => (
-                                 <div key={wo.id} className="flex justify-between items-center border-b dark:border-gray-700 pb-2 last:border-0">
-                                     <div>
-                                         <p className="font-medium text-gray-800 dark:text-white">{wo.description}</p>
-                                         <p className="text-xs text-gray-500">{timeAgo(wo.createdAt)}</p>
-                                     </div>
-                                     <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span>
-                                 </div>
-                             ))}
-                             {workOrders.length === 0 && <p className="text-gray-500">No recent activity.</p>}
-                         </div>
-                     </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
 const Chatbot: React.FC<{ currentUser: User; appData: any; }> = ({ currentUser, appData }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([{ sender: 'ai', text: 'Hello! I am ServisAI. How can I assist you with your business data today?' }]);
@@ -1839,7 +1788,6 @@ const Chatbot: React.FC<{ currentUser: User; appData: any; }> = ({ currentUser, 
         </>
     );
 };
-
 
 // --- MAIN APP COMPONENT ---
 const App: React.FC = () => {
@@ -2269,7 +2217,7 @@ const App: React.FC = () => {
                     <Routes>
                         <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} transactions={transactions} t={t} />} />
                         <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} />} />
-                        <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} />} />
+                        <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} onPrint={handlePrintWorkOrder} onUploadProof={handleUploadProof} />} />
                         <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
                         <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} onAddEmployee={() => setModalState({ type: 'add_employee', data: null })} t={t} />} />
                         <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} t={t} />} />
