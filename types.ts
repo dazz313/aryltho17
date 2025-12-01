@@ -37,6 +37,7 @@ export interface Customer {
   email: string;
   phone: string;
   address: string;
+  clientId?: string; // Client association is here
   category?: 'Residential' | 'Commercial' | 'Industrial' | 'VIP';
   tags?: string[];
   coordinates?: { lat: number; lng: number; };
@@ -94,7 +95,6 @@ export interface WorkOrder {
   }[];
   totalCost: number;
   coordinates?: { lat: number; lng: number; };
-  clientId?: string;
   workProofUrl?: string; // Base64 data URL
   paymentProofUrl?: string; // Base64 data URL
 }
@@ -135,6 +135,7 @@ export interface Transaction {
   amount: number;
   category: TransactionCategory;
   paymentMethod: PaymentMethod;
+  clientId?: string; // To associate costs with a client
   attachment?: {
     name: string;
     type: string;

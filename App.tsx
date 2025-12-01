@@ -1,3 +1,5 @@
+
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -64,7 +66,7 @@ const translations = {
         customerDetail: { back: 'Back to all customers', details: 'Customer Details', contracts: 'Service Contracts', history: 'Service History', noContracts: 'No contracts found.', noHistory: 'No service history found.' },
         workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Orders', myAssigned: 'My Assigned', available: 'Available', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job', addPart: 'Add Part', addCost: 'Add Cost', actions: 'Actions', uploadWorkProof: 'Upload Work Proof', uploadPaymentProof: 'Upload Payment Proof', generatePDF: 'Generate PDF', printWO: 'Print Work Order', completeWork: 'Complete Work' },
         spareParts: { title: 'Spare Part Management', inventory: 'Spare Part Inventory', suppliers: 'Suppliers', partName: 'Part Name', stock: 'Stock', location: 'Location', importParts: 'Import CSV', deleteSelected: 'Delete Selected', downloadTemplate: 'Download Template' },
-        finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)', addTransaction: 'Add Transaction' },
+        finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)', addTransaction: 'Add Transaction', clientReport: 'Client Report' },
         employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact', role: 'Role', monthlyPerformance: 'Monthly Performance (Completed WO)', attendanceStatus: 'Today\'s Attendance', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clocked In @ {time}', clockedOut: 'Clocked Out', absent: 'Absent', addEmployee: 'Add Employee' },
         technicianProfile: { title: 'Technician Profile', back: 'Back to all employees', personalInfo: 'Personal Information', recentActivity: 'Recent Activity', editEmployee: 'Edit Employee' },
         settings: { 
@@ -148,7 +150,7 @@ const translations = {
         customerDetail: { back: 'Kembali ke semua pelanggan', details: 'Detail Pelanggan', contracts: 'Kontrak Servis', history: 'Riwayat Servis', noContracts: 'Tidak ada kontrak.', noHistory: 'Tidak ada riwayat servis.' },
         workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK', completeWork: 'Selesaikan Pekerjaan' },
         spareParts: { title: 'Manajemen Suku Cadang', inventory: 'Inventaris Suku Cadang', suppliers: 'Pemasok', partName: 'Nama Part', stock: 'Stok', location: 'Lokasi', importParts: 'Import CSV', deleteSelected: 'Hapus Terpilih', downloadTemplate: 'Download Template' },
-        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi' },
+        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi', clientReport: 'Laporan per Klien' },
         employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak', role: 'Peran', monthlyPerformance: 'Kinerja Bulanan (SPK Selesai)', attendanceStatus: 'Status Absensi Hari Ini', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clock In @ {time}', clockedOut: 'Clocked Out', absent: 'Absen', addEmployee: 'Tambah Karyawan' },
         technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini', editEmployee: 'Ubah Karyawan' },
         settings: { 
@@ -311,7 +313,7 @@ const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: (
     e.preventDefault();
     setError('');
     // Bypass password check for testing
-    const user = users.find(u => (u.email?.toLowerCase() === identifier.toLowerCase() || u.phone === identifier));
+    const user = users.find(u => (u.email?.toLowerCase() === identifier.toLowerCase()));
     if (user) onLogin(user); else setError(t('login.invalidCredentials'));
   };
 
@@ -420,7 +422,7 @@ const AddEditEmployeeModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
-            password: formData.password,
+            password: formData.password || user?.password,
             role: formData.role,
             status: formData.role === UserRole.TECHNICIAN ? formData.status : undefined,
         };
@@ -462,14 +464,15 @@ const AddEditEmployeeModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
     );
 };
 
-const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (transaction: Transaction) => void; transaction: Transaction | null; t: Function; }> = ({ isOpen, onClose, onSave, transaction, t }) => {
+const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (transaction: Transaction) => void; transaction: Transaction | null; clients: Client[]; t: Function; }> = ({ isOpen, onClose, onSave, transaction, clients, t }) => {
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
         description: '',
         type: 'expense' as 'income' | 'expense',
         amount: '',
         category: TransactionCategory.OTHER_EXPENSE,
-        paymentMethod: PaymentMethod.CASH
+        paymentMethod: PaymentMethod.CASH,
+        clientId: ''
     });
 
     useEffect(() => {
@@ -481,6 +484,7 @@ const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; 
                 amount: String(transaction.amount),
                 category: transaction.category,
                 paymentMethod: transaction.paymentMethod,
+                clientId: transaction.clientId || ''
             });
         } else {
              setFormData({
@@ -489,7 +493,8 @@ const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; 
                 type: 'expense',
                 amount: '',
                 category: TransactionCategory.OTHER_EXPENSE,
-                paymentMethod: PaymentMethod.CASH
+                paymentMethod: PaymentMethod.CASH,
+                clientId: ''
             });
         }
     }, [transaction, isOpen]);
@@ -504,6 +509,7 @@ const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; 
             amount: Number(formData.amount),
             category: formData.category,
             paymentMethod: formData.paymentMethod,
+            clientId: formData.clientId || undefined
         });
     };
 
@@ -531,6 +537,13 @@ const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; 
                         </select>
                     </div>
                 </div>
+                 <div>
+                    <label className={labelClass}>Client (Optional)</label>
+                    <select value={formData.clientId} onChange={e => setFormData({...formData, clientId: e.target.value})} className={inputClass}>
+                        <option value="">-- No Client --</option>
+                        {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
+                    </select>
+                </div>
                  <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">{t('common.cancel')}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white">{t('common.save')}</button>
@@ -540,13 +553,13 @@ const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; 
     );
 };
 
-const AddEditCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (customer: Customer) => void; customer: Customer | null; t: Function; }> = ({ isOpen, onClose, onSave, customer, t }) => {
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
+const AddEditCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (customer: Customer) => void; customer: Customer | null; clients: Client[]; t: Function; }> = ({ isOpen, onClose, onSave, customer, clients, t }) => {
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', clientId: '' });
     useEffect(() => {
-        if (customer) { setFormData({ name: customer.name, email: customer.email, phone: customer.phone, address: customer.address }); } 
-        else { setFormData({ name: '', email: '', phone: '', address: '' }); }
+        if (customer) { setFormData({ name: customer.name, email: customer.email, phone: customer.phone, address: customer.address, clientId: customer.clientId || '' }); } 
+        else { setFormData({ name: '', email: '', phone: '', address: '', clientId: '' }); }
     }, [customer, isOpen]);
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ id: customer?.id || `cust-${Date.now()}`, ...formData }); };
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ id: customer?.id || `cust-${Date.now()}`, name: formData.name, email: formData.email, phone: formData.phone, address: formData.address, clientId: formData.clientId || undefined }); };
     const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={customer ? t('modals.editCustomerTitle') : t('modals.addCustomerTitle')}>
@@ -555,6 +568,13 @@ const AddEditCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
                 <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.email')}</label><input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required className={inputClass} /></div>
                 <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.phone')}</label><input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required className={inputClass} /></div>
                 <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.address')}</label><textarea value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} required rows={3} className={inputClass} /></div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Client (Optional)</label>
+                    <select value={formData.clientId} onChange={e => setFormData({...formData, clientId: e.target.value})} className={inputClass}>
+                        <option value="">-- Individual Customer --</option>
+                        {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
+                    </select>
+                </div>
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{t('common.cancel')}</button>
                     <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')}</button>
@@ -804,7 +824,6 @@ const AddEditSparePartModal: React.FC<{ isOpen: boolean; onClose: () => void; on
 };
 
 // --- PAGES ---
-{/* FIX: Define missing page components */}
 const Dashboard: React.FC<{
     workOrders: WorkOrder[];
     customers: Customer[];
@@ -851,20 +870,23 @@ const Dashboard: React.FC<{
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title={t('dashboard.totalCustomers')} value={String(customers.length)} icon={<CustomerIcon />} color="blue" onClick={() => navigate('/customers')} />
                 <StatCard title={currentUser.role === UserRole.TECHNICIAN ? "My Pending Jobs" : t('dashboard.pendingWorkOrders')} value={String(pendingWorkOrders)} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
-                {currentUser.role !== UserRole.ADMIN && currentUser.role !== UserRole.TECHNICIAN && (
+                
+                {currentUser.role === UserRole.ADMINISTRATOR && (
                      <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(monthlyRevenue)} icon={<FinanceIcon />} color="green" onClick={() => navigate('/finance')} />
                 )}
-                {currentUser.role === UserRole.TECHNICIAN ? (
+
+                {currentUser.role === UserRole.TECHNICIAN && (
                      <StatCard title="My Completed Jobs" value={String(completedWorkOrders)} icon={<ReceiptIcon />} color="green" />
-                ) : (
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                )}
+
+                {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.ADMINISTRATOR) && (
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md col-span-1">
                         <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('dashboard.technicianStatus')}</h3>
-                        <div className="space-y-2">
+                        <div className="space-y-2 overflow-y-auto h-24">
                             {technicians.map(tech => (
                                 <div key={tech.id} className="flex items-center justify-between text-sm">
                                     <span>{tech.name}</span>
                                     <div className="flex items-center space-x-2">
-                                        <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusColor(tech.status || TechnicianStatus.OFFLINE)}`}>{t(`status.${tech.status || TechnicianStatus.OFFLINE}`)}</span>
                                         <div className={`h-2.5 w-2.5 rounded-full ${
                                             tech.status === TechnicianStatus.ON_JOB ? 'bg-green-500' :
                                             tech.status === TechnicianStatus.AVAILABLE ? 'bg-blue-500' :
@@ -876,16 +898,7 @@ const Dashboard: React.FC<{
                         </div>
                     </div>
                 )}
-                 {(currentUser.role === UserRole.ADMINISTRATOR) && (
-                     <StatCard title={t('dashboard.technicianStatus')} value={`${technicians.filter(t=>t.status === 'Available').length} Available`} icon={<TechnicianIcon />} color="indigo" onClick={() => navigate('/employees')} />
-                 )}
             </div>
-             {currentUser.role === UserRole.ADMINISTRATOR && (
-                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                     <h3 className="font-semibold mb-4">{t('dashboard.technicianStatus')}</h3>
-                     {/* Detailed technician status widget for admin */}
-                 </div>
-             )}
         </div>
     );
 };
@@ -906,6 +919,17 @@ const WorkOrders: React.FC<{
     const [activeTab, setActiveTab] = useState(user.role === UserRole.TECHNICIAN ? 'my_assigned' : 'all');
     const [searchTerm, setSearchTerm] = useState('');
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setOpenDropdown(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const getTechnicianName = (id: string | null) => users.find(u => u.id === id)?.name || <span className="text-gray-400">{t('pages.workOrders.unassigned')}</span>;
 
@@ -972,11 +996,11 @@ const WorkOrders: React.FC<{
                                         <td className="px-6 py-4 space-x-2 whitespace-nowrap">
                                              {user.role === UserRole.TECHNICIAN && activeTab === 'available' && <button onClick={() => onClaim(wo)} className="text-green-600 hover:underline">{t('pages.workOrders.claimJob')}</button>}
                                              {isAdmin && !wo.technicianId && <button onClick={() => onAssign(wo)} className="text-green-600 hover:underline">Assign</button>}
-                                             <div className="relative inline-block">
+                                             <div className="relative inline-block" ref={dropdownRef}>
                                                 <button onClick={() => setOpenDropdown(openDropdown === wo.id ? null : wo.id)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
                                                     <MoreVerticalIcon className="h-5 w-5" />
                                                 </button>
-                                                {openDropdown === wo.id && (
+                                                {openDropdown === wo.id && wo.status === WorkOrderStatus.IN_PROGRESS && wo.technicianId === user.id && (
                                                     <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700 z-10">
                                                         <button onClick={() => { onAddPart(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addPart')}</button>
                                                         <button onClick={() => { onAddCost(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addCost')}</button>
@@ -1159,8 +1183,8 @@ const EmployeesPage: React.FC<{
                                     : t('pages.employees.absent');
                                 
                                 return (
-                                    <tr key={user.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700 cursor-pointer" onClick={() => navigate(`/employees/${user.id}`)}>
-                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{user.name}</td>
+                                    <tr key={user.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white hover:underline cursor-pointer" onClick={() => navigate(`/employees/${user.id}`)}>{user.name}</td>
                                         <td className="px-6 py-4">{user.role}</td>
                                         <td className="px-6 py-4">{user.email}<br/>{user.phone}</td>
                                         <td className="px-6 py-4">
@@ -1241,6 +1265,7 @@ const TechnicianProfilePage: React.FC<{
 };
 
 const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () => void, t: Function }> = ({ transactions, onAddTransaction, t }) => {
+    const navigate = useNavigate();
     const { totalIncome, totalExpense, profitLoss } = useMemo(() => {
         const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
         const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
@@ -1251,9 +1276,14 @@ const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () 
         <div className="space-y-6">
              <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.finance.title')}</h1>
-                <button onClick={onAddTransaction} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
-                    <FinanceIcon className="mr-2 h-5 w-5" /> {t('pages.finance.addTransaction')}
-                </button>
+                <div className="flex space-x-2">
+                    <button onClick={() => navigate('/finance/client-report')} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
+                        <UsersIcon className="mr-2 h-5 w-5" /> {t('pages.finance.clientReport')}
+                    </button>
+                    <button onClick={onAddTransaction} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
+                        <FinanceIcon className="mr-2 h-5 w-5" /> {t('pages.finance.addTransaction')}
+                    </button>
+                </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard title={t('pages.finance.totalIncome')} value={formatIDR(totalIncome)} icon={<FinanceIcon />} color="green" />
@@ -1292,6 +1322,71 @@ const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () 
                         </table>
                     </div>
                  </div>
+            </div>
+        </div>
+    );
+};
+
+// FIX: Added workOrders to props to resolve scope issue.
+const ClientFinancePage: React.FC<{
+    clients: Client[];
+    customers: Customer[];
+    workOrders: WorkOrder[];
+    transactions: Transaction[];
+    t: Function;
+}> = ({ clients, customers, workOrders, transactions, t }) => {
+    const navigate = useNavigate();
+
+    const clientReport = useMemo(() => {
+        return clients.map(client => {
+            const clientCustomers = customers.filter(c => c.clientId === client.id).map(c => c.id);
+            
+            const clientIncomeTransactions = transactions.filter(t => t.type === 'income' && (
+                (t.workOrderId && clientCustomers.includes(workOrders.find(wo => wo.id === t.workOrderId)?.customer.id || '')) ||
+                t.clientId === client.id
+            ));
+            
+            const clientExpenseTransactions = transactions.filter(t => t.type === 'expense' && t.clientId === client.id);
+
+            const totalRevenue = clientIncomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+            const totalCost = clientExpenseTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+            return {
+                ...client,
+                totalRevenue,
+                totalCost,
+                netProfit: totalRevenue - totalCost
+            };
+        });
+    }, [clients, customers, transactions, workOrders]); // FIX: Added workOrders to dependency array.
+
+    return (
+        <div className="space-y-6">
+            <button onClick={() => navigate('/finance')} className="flex items-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+                <ArrowLeftIcon className="h-4 w-4 mr-2" /> Back to Finance
+            </button>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Client Financial Report</h1>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                        <tr>
+                            <th className="px-6 py-3">Client Name</th>
+                            <th className="px-6 py-3 text-right">Total Revenue</th>
+                            <th className="px-6 py-3 text-right">Total Direct Costs</th>
+                            <th className="px-6 py-3 text-right">Net Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {clientReport.map(report => (
+                             <tr key={report.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{report.name}</td>
+                                <td className="px-6 py-4 text-right font-semibold text-green-600">{formatIDR(report.totalRevenue)}</td>
+                                <td className="px-6 py-4 text-right font-semibold text-red-600">{formatIDR(report.totalCost)}</td>
+                                <td className="px-6 py-4 text-right font-bold text-blue-600">{formatIDR(report.netProfit)}</td>
+                             </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -1345,7 +1440,7 @@ const CustomersAndClientsPage: React.FC<{
                             onClick={activeTab === 'customers' ? onAddCustomer : onAddClient}
                             className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
                         >
-                            {t('common.add')} {activeTab === 'customers' ? t('pages.customers.customersTab') : t('pages.customers.clientsTab')}
+                            {t('common.add')} {activeTab === 'customers' ? 'Customer' : 'Client'}
                         </button>
                     </div>
                     <div className="overflow-x-auto">
@@ -1354,9 +1449,9 @@ const CustomersAndClientsPage: React.FC<{
                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
                                     <tr>
                                         <th scope="col" className="px-6 py-3">{t('common.name')}</th>
+                                        <th scope="col" className="px-6 py-3">Client</th>
                                         <th scope="col" className="px-6 py-3">{t('common.email')}</th>
                                         <th scope="col" className="px-6 py-3">{t('common.phone')}</th>
-                                        <th scope="col" className="px-6 py-3">{t('common.address')}</th>
                                         <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
                                     </tr>
                                 </thead>
@@ -1364,9 +1459,9 @@ const CustomersAndClientsPage: React.FC<{
                                     {filteredCustomers.map(customer => (
                                         <tr key={customer.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                                             <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{customer.name}</td>
+                                            <td className="px-6 py-4">{clients.find(c => c.id === customer.clientId)?.name || '-'}</td>
                                             <td className="px-6 py-4">{customer.email}</td>
                                             <td className="px-6 py-4">{customer.phone}</td>
-                                            <td className="px-6 py-4">{customer.address}</td>
                                             <td className="px-6 py-4">
                                                 <button onClick={() => onEditCustomer(customer)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
                                             </td>
@@ -1898,6 +1993,8 @@ const App: React.FC = () => {
       const updatedWO = { ...wo, status: WorkOrderStatus.COMPLETED, completedAt: new Date().toISOString() };
       setWorkOrders(prev => prev.map(w => w.id === wo.id ? updatedWO : w));
       
+      const customer = customers.find(c => c.id === wo.customer.id);
+
       if (updatedWO.totalCost > 0) {
         const newTransaction: Transaction = {
             id: `trn-wo-${wo.id}`,
@@ -1908,6 +2005,7 @@ const App: React.FC = () => {
             category: TransactionCategory.SERVICE_INCOME,
             paymentMethod: PaymentMethod.BANK_TRANSFER,
             workOrderId: wo.id,
+            clientId: customer?.clientId,
         };
         setTransactions(prev => [newTransaction, ...prev]);
       }
@@ -2236,6 +2334,7 @@ const App: React.FC = () => {
                         <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} onAddEmployee={() => setModalState({ type: 'add_employee', data: null })} t={t} />} />
                         <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} t={t} />} />
                         <Route path="/finance" element={<FinancePage transactions={transactions} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} t={t} />} />
+                        <Route path="/finance/client-report" element={<ClientFinancePage clients={clients} customers={customers} workOrders={workOrders} transactions={transactions} t={t} />} />
                         <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} t={t} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} spareParts={spareParts} suppliers={suppliers} clients={clients} invoices={invoices} transactions={transactions} contracts={contracts} />} />
                         <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} onImport={handleImportSpareParts} onDelete={handleDeleteSparePart} onBulkDelete={handleBulkDeleteSpareParts} t={t} />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
@@ -2251,11 +2350,11 @@ const App: React.FC = () => {
             {modalState.type === 'add_additional_cost' && <AddAdditionalCostModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveAdditionalCost} t={t} />}
             {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
             {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} onDelete={handleDeleteSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
-            {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} t={t} />}
+            {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} clients={clients} t={t} />}
             {modalState.type === 'add_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={null} t={t} />}
             {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={modalState.data} t={t} />}
-            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} t={t} />}
-            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} t={t} />}
+            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} clients={clients} t={t} />}
+            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} clients={clients} t={t} />}
             {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} t={t} />}
             {modalState.type === 'edit_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={modalState.data} t={t} />}
             {modalState.type === 'add_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={null} t={t} />}
