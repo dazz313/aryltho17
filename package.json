@@ -16,7 +16,7 @@
     "jspdf": "^3.0.3",
     "react-router-dom": "^7.9.6",
     "jspdf-autotable": "^5.0.2",
-    "papaparse": "^5.4.1"
+    "papaparse": "^5.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
