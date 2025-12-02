@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 // FIX: Corrected import path for ChatMessage from root types file.
 import { ChatMessage } from '../types';
@@ -61,6 +62,7 @@ export const getChatbotResponse = async (
       - User Role: ${context.currentUser.role}
       
       You have access to the following real-time business data. Use it to answer user questions. Do NOT mention that you are using JSON data. Just answer the question naturally.
+      You now have access to employee data (including roles and current status) and financial transactions.
 
       CURRENT DATA:
       ${JSON.stringify({
@@ -68,19 +70,18 @@ export const getChatbotResponse = async (
         workOrders: context.workOrders,
         spareParts: context.spareParts,
         invoices: context.invoices,
-        technicians: context.technicians,
+        employees: context.users,
+        transactions: context.transactions,
       }, null, 2)}
     `;
     
-    // FIX: Switched from a single string to a structured array of Content objects for chat history.
-    // This is the correct way to pass conversational context to the Gemini API.
     const contents = history.map(msg => ({
       role: msg.sender === 'ai' ? 'model' : 'user',
       parts: [{ text: msg.text }]
     }));
     
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-latest',
       contents: contents,
       config: {
         systemInstruction: systemInstruction,

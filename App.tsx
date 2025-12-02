@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus, Supplier, Client, AttendanceRecord } from './types';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector } from 'recharts';
+import { User, UserRole, Customer, WorkOrder, WorkOrderStatus, SparePart, Invoice, Transaction, Notification, ChatMessage, CompanyProfile, TechnicianStatus, TransactionCategory, PaymentMethod, ServiceContract, ContractStatus, Supplier, Client, AttendanceRecord, CustomerEditRequest } from './types';
 import { AiIcon, CustomerIcon, DashboardIcon, FinanceIcon, LogoutIcon, SettingsIcon, SparePartIcon, TechnicianIcon, WorkOrderIcon, SpinnerIcon, XIcon, BellIcon, SendIcon, UsersIcon, ChevronsLeftIcon, ChevronsRightIcon, ReceiptIcon, MapPinIcon, MoreVerticalIcon, TruckIcon, BriefcaseIcon, TrashIcon, ArrowLeftIcon, WhatsAppIcon, MailIcon } from './components/icons';
 import { generateAiSummary, getChatbotResponse } from './services/geminiService';
 import { jsPDF } from 'jspdf';
@@ -30,6 +31,7 @@ const translations = {
       total: 'Total', date: 'Date', category: 'Category', amount: 'Amount', paymentMethod: 'Payment Method',
       attachment: 'Attachment', notes: 'Notes', search: 'Search', back: 'Back', close: 'Close', download: 'Download',
       approve: 'Approve', view: 'View', submit: 'Submit', optional: 'Optional', required: 'Required', delete: 'Delete',
+      reject: 'Reject',
     },
     status: {
       [WorkOrderStatus.PENDING]: 'Pending', [WorkOrderStatus.IN_PROGRESS]: 'In Progress', [WorkOrderStatus.COMPLETED]: 'Completed',
@@ -37,9 +39,10 @@ const translations = {
       [TechnicianStatus.AVAILABLE]: 'Available', [TechnicianStatus.ON_JOB]: 'On Job', [TechnicianStatus.ON_BREAK]: 'On Break',
       [TechnicianStatus.OFFLINE]: 'Offline', [ContractStatus.ACTIVE]: 'Active', [ContractStatus.EXPIRED]: 'Expired',
       'Pending Approval': 'Pending Approval', 'Approved': 'Approved',
+      pending: 'Pending', approved: 'Approved', rejected: 'Rejected',
     },
     modals: {
-        addCustomerTitle: 'Add New Customer', editCustomerTitle: 'Edit Customer',
+        addCustomerTitle: 'Add New Customer', editCustomerTitle: 'Edit Customer', requestChangeTitle: 'Request Customer Data Change',
         addClientTitle: 'Add New Client', editClientTitle: 'Edit Client',
         createWorkOrderTitle: 'Create New Work Order',
         assignTechnicianTitle: 'Assign Technician',
@@ -61,10 +64,11 @@ const translations = {
         reimbursement: { title: 'Reimbursement Requests', requestedBy: 'Requested By', empty: 'No reimbursement requests found.' },
         myReimbursements: { title: 'My Reimbursement History', workOrderId: 'Work Order ID', empty: 'You have not requested any reimbursements.'},
         customers: { title: 'Customers & Clients', customerList: 'Customer List', clientList: 'Client List', clientsTab: 'Clients', customersTab: 'Customers', importCustomers: 'Import Customers' },
+        customerEditRequests: { title: 'Customer Edit Requests', requestedBy: 'Requested By', requestedAt: 'Requested At', noRequests: 'No pending requests.' },
         customerDetail: { back: 'Back to all customers', details: 'Customer Details', contracts: 'Service Contracts', history: 'Service History', noContracts: 'No contracts found.', noHistory: 'No service history found.' },
         workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Orders', myAssigned: 'My Assigned', available: 'Available', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job', addPart: 'Add Part', addCost: 'Add Cost', actions: 'Actions', uploadWorkProof: 'Upload Work Proof', uploadPaymentProof: 'Upload Payment Proof', generatePDF: 'Generate PDF', printWO: 'Print Work Order', completeWork: 'Complete Work', requestReimbursement: 'Request Reimbursement' },
         spareParts: { title: 'Spare Part Management', inventory: 'Spare Part Inventory', suppliers: 'Suppliers', partName: 'Part Name', stock: 'Stock', location: 'Location', importParts: 'Import CSV', deleteSelected: 'Delete Selected', downloadTemplate: 'Download Template' },
-        finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet (Neraca)', assets: 'Assets', cash: 'Cash', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)', addTransaction: 'Add Transaction', clientReport: 'Client Report' },
+        finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet', profitAndLoss: 'Profit & Loss', assets: 'Assets', cash: 'Cash', inventoryValue: 'Inventory Value', totalAssets: 'Total Assets', liabilitiesAndEquity: 'Liabilities & Equity', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)', addTransaction: 'Add Transaction', clientReport: 'Client Report' },
         employees: { title: 'Employee Management', allEmployees: 'All Employees', performance: 'Performance', contact: 'Contact', role: 'Role', monthlyPerformance: 'Monthly Performance (Completed WO)', attendanceStatus: 'Today\'s Attendance', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clocked In @ {time}', clockedOut: 'Clocked Out', absent: 'Absent', addEmployee: 'Add Employee' },
         technicianProfile: { title: 'Technician Profile', back: 'Back to all employees', personalInfo: 'Personal Information', recentActivity: 'Recent Activity', editEmployee: 'Edit Employee' },
         settings: { 
@@ -114,6 +118,7 @@ const translations = {
       total: 'Total', date: 'Tanggal', category: 'Kategori', amount: 'Jumlah', paymentMethod: 'Metode Pembayaran',
       attachment: 'Lampiran', notes: 'Catatan', search: 'Cari', back: 'Kembali', close: 'Tutup', download: 'Unduh',
       approve: 'Setujui', view: 'Lihat', submit: 'Kirim', optional: 'Opsional', required: 'Wajib', delete: 'Hapus',
+      reject: 'Tolak',
     },
     status: {
       [WorkOrderStatus.PENDING]: 'Tertunda', [WorkOrderStatus.IN_PROGRESS]: 'Sedang Dikerjakan', [WorkOrderStatus.COMPLETED]: 'Selesai',
@@ -121,9 +126,10 @@ const translations = {
       [TechnicianStatus.AVAILABLE]: 'Tersedia', [TechnicianStatus.ON_JOB]: 'Bertugas', [TechnicianStatus.ON_BREAK]: 'Istirahat',
       [TechnicianStatus.OFFLINE]: 'Offline', [ContractStatus.ACTIVE]: 'Aktif', [ContractStatus.EXPIRED]: 'Kadaluarsa',
       'Pending Approval': 'Menunggu Persetujuan', 'Approved': 'Disetujui',
+      pending: 'Tertunda', approved: 'Disetujui', rejected: 'Ditolak',
     },
     modals: {
-        addCustomerTitle: 'Tambah Pelanggan Baru', editCustomerTitle: 'Ubah Pelanggan',
+        addCustomerTitle: 'Tambah Pelanggan Baru', editCustomerTitle: 'Ubah Pelanggan', requestChangeTitle: 'Ajukan Perubahan Data Pelanggan',
         addClientTitle: 'Tambah Klien Baru', editClientTitle: 'Ubah Klien',
         createWorkOrderTitle: 'Buat Perintah Kerja Baru',
         assignTechnicianTitle: 'Tugaskan Teknisi',
@@ -145,10 +151,11 @@ const translations = {
         reimbursement: { title: 'Permintaan Reimbursement', requestedBy: 'Diajukan Oleh', empty: 'Tidak ada permintaan reimbursement.' },
         myReimbursements: { title: 'Riwayat Reimbursement Saya', workOrderId: 'ID Perintah Kerja', empty: 'Anda belum mengajukan reimbursement.' },
         customers: { title: 'Pelanggan & Klien', customerList: 'Daftar Pelanggan', clientList: 'Daftar Klien', clientsTab: 'Klien', customersTab: 'Pelanggan', importCustomers: 'Import Pelanggan' },
+        customerEditRequests: { title: 'Permintaan Ubah Data Pelanggan', requestedBy: 'Diajukan Oleh', requestedAt: 'Waktu Pengajuan', noRequests: 'Tidak ada permintaan tertunda.' },
         customerDetail: { back: 'Kembali ke semua pelanggan', details: 'Detail Pelanggan', contracts: 'Kontrak Servis', history: 'Riwayat Servis', noContracts: 'Tidak ada kontrak.', noHistory: 'Tidak ada riwayat servis.' },
         workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK', completeWork: 'Selesaikan Pekerjaan', requestReimbursement: 'Ajukan Reimbursement' },
         spareParts: { title: 'Manajemen Suku Cadang', inventory: 'Inventaris Suku Cadang', suppliers: 'Pemasok', partName: 'Nama Part', stock: 'Stok', location: 'Lokasi', importParts: 'Import CSV', deleteSelected: 'Hapus Terpilih', downloadTemplate: 'Download Template' },
-        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', assets: 'Aset', cash: 'Kas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi', clientReport: 'Laporan per Klien' },
+        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', allTransactions: 'Semua Transaksi', balanceSheet: 'Neraca', profitAndLoss: 'Laba Rugi', assets: 'Aset', cash: 'Kas', inventoryValue: 'Nilai Persediaan', totalAssets: 'Total Aset', liabilitiesAndEquity: 'Liabilitas & Ekuitas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi', clientReport: 'Laporan per Klien' },
         employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak', role: 'Peran', monthlyPerformance: 'Kinerja Bulanan (SPK Selesai)', attendanceStatus: 'Status Absensi Hari Ini', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clock In @ {time}', clockedOut: 'Clocked Out', absent: 'Absen', addEmployee: 'Tambah Karyawan' },
         technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini', editEmployee: 'Ubah Karyawan' },
         settings: { 
@@ -194,6 +201,7 @@ const INITIAL_INVOICES: Invoice[] = [];
 const INITIAL_TRANSACTIONS: Transaction[] = [];
 const INITIAL_CONTRACTS: ServiceContract[] = [];
 const INITIAL_ATTENDANCE: AttendanceRecord[] = [];
+const INITIAL_CUSTOMER_REQUESTS: CustomerEditRequest[] = [];
 
 // --- UTILITY FUNCTIONS ---
 const formatIDR = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -203,13 +211,13 @@ const formatUserName = (name?: string | null): string => {
     return name.split(' (')[0];
 };
 
-const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid' | 'Pending Approval' | 'Approved' | ContractStatus | TechnicianStatus) => {
+const getStatusColor = (status: WorkOrderStatus | 'Paid' | 'Unpaid' | 'Pending Approval' | 'Approved' | ContractStatus | TechnicianStatus | 'pending' | 'approved' | 'rejected') => {
   switch (status) {
-    case WorkOrderStatus.PENDING: case 'Unpaid': case 'Pending Approval': case ContractStatus.EXPIRED: case TechnicianStatus.ON_BREAK: return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+    case WorkOrderStatus.PENDING: case 'Unpaid': case 'Pending Approval': case ContractStatus.EXPIRED: case TechnicianStatus.ON_BREAK: case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
     case WorkOrderStatus.IN_PROGRESS: case TechnicianStatus.ON_JOB: return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'; // ON_JOB is green
-    case WorkOrderStatus.COMPLETED: case 'Paid': case 'Approved': case ContractStatus.ACTIVE: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    case WorkOrderStatus.COMPLETED: case 'Paid': case 'approved': case ContractStatus.ACTIVE: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     case TechnicianStatus.AVAILABLE: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'; // AVAILABLE is blue
-    case WorkOrderStatus.CANCELLED: case ContractStatus.CANCELLED: return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+    case WorkOrderStatus.CANCELLED: case ContractStatus.CANCELLED: case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
     case TechnicianStatus.OFFLINE: return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   }
@@ -626,16 +634,29 @@ const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; 
     );
 };
 
-const AddEditCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (customer: Customer) => void; customer: Customer | null; clients: Client[]; t: Function; }> = ({ isOpen, onClose, onSave, customer, clients, t }) => {
+const AddEditCustomerModal: React.FC<{ 
+    isOpen: boolean; 
+    onClose: () => void; 
+    onSave: (customer: Customer) => void; 
+    customer: Customer | null; 
+    clients: Client[]; 
+    currentUser: User;
+    t: Function; 
+}> = ({ isOpen, onClose, onSave, customer, clients, currentUser, t }) => {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', clientId: '' });
     useEffect(() => {
         if (customer) { setFormData({ name: customer.name, email: customer.email, phone: customer.phone, address: customer.address, clientId: customer.clientId || '' }); } 
         else { setFormData({ name: '', email: '', phone: '', address: '', clientId: '' }); }
     }, [customer, isOpen]);
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ id: customer?.id || `cust-${Date.now()}`, name: formData.name, email: formData.email, phone: formData.phone, address: formData.address, clientId: formData.clientId || undefined }); };
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ ...customer, id: customer?.id || `cust-${Date.now()}`, name: formData.name, email: formData.email, phone: formData.phone, address: formData.address, clientId: formData.clientId || undefined }); };
+    
+    const isTechnician = currentUser.role === UserRole.TECHNICIAN;
+    const modalTitle = isTechnician ? t('modals.requestChangeTitle') : (customer ? t('modals.editCustomerTitle') : t('modals.addCustomerTitle'));
+    const buttonText = isTechnician ? 'Request Change' : t('common.save');
+
     const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={customer ? t('modals.editCustomerTitle') : t('modals.addCustomerTitle')}>
+        <Modal isOpen={isOpen} onClose={onClose} title={modalTitle}>
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.name')}</label><input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className={inputClass} /></div>
                 <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.email')}</label><input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required className={inputClass} /></div>
@@ -650,7 +671,7 @@ const AddEditCustomerModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
                 </div>
                 <div className="flex justify-end space-x-2 pt-4">
                     <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">{t('common.cancel')}</button>
-                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')}</button>
+                    <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{buttonText}</button>
                 </div>
             </form>
         </Modal>
@@ -906,35 +927,46 @@ const Dashboard: React.FC<{
     t: Function;
 }> = ({ workOrders, customers, users, currentUser, transactions, t }) => {
     const navigate = useNavigate();
-
     const technicians = users.filter(u => u.role === UserRole.TECHNICIAN);
 
     const monthlyRevenue = useMemo(() => 
-        transactions
-            .filter(t => t.type === 'income' && t.approved !== false)
-            .reduce((sum, t) => sum + t.amount, 0), 
+        transactions.filter(tr => tr.type === 'income' && tr.approved !== false).reduce((sum, tr) => sum + tr.amount, 0),
         [transactions]
     );
 
-    const pendingWorkOrders = useMemo(() => 
-        workOrders.filter(wo => {
-            if (currentUser.role === UserRole.TECHNICIAN) {
-                return wo.technicianId === currentUser.id && wo.status === WorkOrderStatus.PENDING;
-            }
-            return wo.status === WorkOrderStatus.PENDING;
-        }).length,
+    const userWorkOrders = useMemo(() => 
+        currentUser.role === UserRole.TECHNICIAN 
+            ? workOrders.filter(wo => wo.technicianId === currentUser.id) 
+            : workOrders,
         [workOrders, currentUser]
     );
 
-    const completedWorkOrders = useMemo(() => 
-        workOrders.filter(wo => {
-            if (currentUser.role === UserRole.TECHNICIAN) {
-                return wo.technicianId === currentUser.id && wo.status === WorkOrderStatus.COMPLETED;
-            }
-            return wo.status === WorkOrderStatus.COMPLETED;
-        }).length,
-        [workOrders, currentUser]
-    );
+    const pendingWorkOrders = userWorkOrders.filter(wo => wo.status === WorkOrderStatus.PENDING).length;
+    const completedWorkOrdersCount = userWorkOrders.filter(wo => wo.status === WorkOrderStatus.COMPLETED).length;
+
+    const woStatusData = useMemo(() => {
+        const counts = userWorkOrders.reduce((acc, wo) => {
+            acc[wo.status] = (acc[wo.status] || 0) + 1;
+            return acc;
+        }, {} as Record<WorkOrderStatus, number>);
+
+        return [
+            { name: t(`status.${WorkOrderStatus.PENDING}`), value: counts[WorkOrderStatus.PENDING] || 0 },
+            { name: t(`status.${WorkOrderStatus.IN_PROGRESS}`), value: counts[WorkOrderStatus.IN_PROGRESS] || 0 },
+            { name: t(`status.${WorkOrderStatus.COMPLETED}`), value: counts[WorkOrderStatus.COMPLETED] || 0 },
+        ];
+    }, [userWorkOrders, t]);
+    const totalWOs = userWorkOrders.length;
+    const completionPercentage = totalWOs > 0 ? Math.round((completedWorkOrdersCount / totalWOs) * 100) : 0;
+
+    const technicianPerformanceData = useMemo(() => {
+        return technicians.map(tech => ({
+            name: formatUserName(tech.name),
+            completed: workOrders.filter(wo => wo.technicianId === tech.id && wo.status === WorkOrderStatus.COMPLETED).length
+        }));
+    }, [workOrders, technicians]);
+
+    const COLORS = ['#FFBB28', '#3B82F6', '#22C55E'];
 
     return (
         <div className="space-y-6">
@@ -949,7 +981,7 @@ const Dashboard: React.FC<{
                 )}
 
                 {currentUser.role === UserRole.TECHNICIAN && (
-                     <StatCard title="My Completed Jobs" value={String(completedWorkOrders)} icon={<ReceiptIcon />} color="green" />
+                     <StatCard title="My Completed Jobs" value={String(completedWorkOrdersCount)} icon={<ReceiptIcon />} color="green" />
                 )}
 
                 {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.ADMINISTRATOR) && (
@@ -972,6 +1004,44 @@ const Dashboard: React.FC<{
                     </div>
                 )}
             </div>
+
+            {(currentUser.role === UserRole.ADMINISTRATOR || currentUser.role === UserRole.ADMIN) && (
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.workOrderStatus')}</h3>
+                        <div className="h-64 w-full relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={woStatusData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value">
+                                        {woStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="text-center">
+                                    <p className="text-3xl font-bold text-gray-800 dark:text-white">{completionPercentage}%</p>
+                                    <p className="text-sm text-gray-500">Completed</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="lg:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.completedByTechnician')}</h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={technicianPerformanceData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis type="number" />
+                                    <YAxis type="category" dataKey="name" width={80} />
+                                    <Tooltip />
+                                    <Bar dataKey="completed" fill="#3b82f6" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1047,7 +1117,7 @@ const WorkOrders: React.FC<{
                      <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 mb-4" />
                      <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                                 <tr>
                                     <th className="px-6 py-3">WO ID</th>
                                     <th className="px-6 py-3">Customer</th>
@@ -1228,7 +1298,7 @@ const ReimbursementPage: React.FC<{
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                  <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                             <tr>
                                 <th className="px-6 py-3">{t('common.date')}</th>
                                 <th className="px-6 py-3">{t('pages.reimbursement.requestedBy')}</th>
@@ -1272,7 +1342,7 @@ const MyReimbursementsPage: React.FC<{
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                  <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                         <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                             <tr>
                                 <th className="px-6 py-3">{t('common.date')}</th>
                                 <th className="px-6 py-3">{t('pages.myReimbursements.workOrderId')}</th>
@@ -1289,8 +1359,8 @@ const MyReimbursementsPage: React.FC<{
                                     <td className="px-6 py-4">{req.description}</td>
                                     <td className="px-6 py-4 text-right">{formatIDR(req.amount)}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(req.approved ? 'Approved' : 'Pending Approval')}`}>
-                                            {t(`status.${req.approved ? 'Approved' : 'Pending Approval'}`)}
+                                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(req.approved ? 'approved' : 'pending')}`}>
+                                            {t(`status.${req.approved ? 'approved' : 'pending'}`)}
                                         </span>
                                     </td>
                                 </tr>
@@ -1334,7 +1404,7 @@ const EmployeesPage: React.FC<{
                 <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('pages.employees.allEmployees')}</h2>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                             <tr>
                                 <th className="px-6 py-3">{t('common.name')}</th>
                                 <th className="px-6 py-3">{t('pages.employees.role')}</th>
@@ -1432,8 +1502,16 @@ const TechnicianProfilePage: React.FC<{
     );
 };
 
-const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () => void, t: Function }> = ({ transactions, onAddTransaction, t }) => {
+const FinancePage: React.FC<{
+    transactions: Transaction[],
+    spareParts: SparePart[],
+    onAddTransaction: () => void,
+    onGenerateReport: () => void,
+    t: Function
+}> = ({ transactions, spareParts, onAddTransaction, onGenerateReport, t }) => {
     const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('transactions');
+
     const { totalIncome, totalExpense, profitLoss } = useMemo(() => {
         const approvedTransactions = transactions.filter(t => t.approved !== false);
         const income = approvedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
@@ -1441,17 +1519,74 @@ const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () 
         return { totalIncome: income, totalExpense: expense, profitLoss: income - expense };
     }, [transactions]);
 
+    const inventoryValue = useMemo(() => 
+        spareParts.reduce((sum, part) => sum + (part.stock * (part.purchasePrice || 0)), 0),
+        [spareParts]
+    );
+
+    const totalAssets = profitLoss + inventoryValue;
+
+    const renderTransactions = () => (
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
+                    <tr>
+                        <th className="px-6 py-3">{t('common.date')}</th>
+                        <th className="px-6 py-3">{t('common.description')}</th>
+                        <th className="px-6 py-3">Type</th>
+                        <th className="px-6 py-3">{t('common.category')}</th>
+                        <th className="px-6 py-3 text-right">{t('common.amount')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {transactions.filter(t=> t.approved !== false).map(tr => (
+                        <tr key={tr.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                            <td className="px-6 py-4">{tr.date}</td>
+                            <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tr.description}</td>
+                            <td className="px-6 py-4">
+                                <span className={`px-2 py-1 rounded-full text-xs ${tr.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>{tr.type}</span>
+                            </td>
+                            <td className="px-6 py-4">{tr.category}</td>
+                            <td className={`px-6 py-4 text-right font-semibold ${tr.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{formatIDR(tr.amount)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+    
+    const renderProfitLoss = () => (
+      <div className="space-y-4 max-w-lg mx-auto">
+        <div className="flex justify-between py-2 border-b dark:border-gray-700"><span className="font-medium">Total Pendapatan</span> <span>{formatIDR(totalIncome)}</span></div>
+        <div className="flex justify-between py-2 border-b dark:border-gray-700"><span className="font-medium">Total Pengeluaran</span> <span>{formatIDR(totalExpense)}</span></div>
+        <div className="flex justify-between py-3 border-t-2 dark:border-gray-600 mt-4"><span className="font-bold text-lg">Laba / Rugi Bersih</span> <span className="font-bold text-lg">{formatIDR(profitLoss)}</span></div>
+      </div>
+    );
+
+    const renderBalanceSheet = () => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="space-y-4">
+          <h3 className="font-bold text-lg border-b pb-2 dark:border-gray-700">{t('pages.finance.assets')}</h3>
+          <div className="flex justify-between py-2 border-b dark:border-gray-700"><span>{t('pages.finance.cash')} ({t('pages.finance.retainedEarnings')})</span> <span>{formatIDR(profitLoss)}</span></div>
+          <div className="flex justify-between py-2 border-b dark:border-gray-700"><span>{t('pages.finance.inventoryValue')}</span> <span>{formatIDR(inventoryValue)}</span></div>
+          <div className="flex justify-between py-3 border-t-2 dark:border-gray-600 mt-4"><span className="font-bold text-lg">{t('pages.finance.totalAssets')}</span> <span className="font-bold text-lg">{formatIDR(totalAssets)}</span></div>
+        </div>
+        <div className="space-y-4">
+          <h3 className="font-bold text-lg border-b pb-2 dark:border-gray-700">{t('pages.finance.liabilitiesAndEquity')}</h3>
+          <div className="flex justify-between py-2 border-b dark:border-gray-700"><span>{t('pages.finance.equity')} ({t('pages.finance.retainedEarnings')})</span> <span>{formatIDR(profitLoss)}</span></div>
+          <div className="flex justify-between py-3 border-t-2 dark:border-gray-600 mt-4"><span className="font-bold text-lg">Total Liabilitas & Ekuitas</span> <span className="font-bold text-lg">{formatIDR(profitLoss)}</span></div>
+        </div>
+      </div>
+    );
+
     return (
         <div className="space-y-6">
              <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.finance.title')}</h1>
                 <div className="flex space-x-2">
-                    <button onClick={() => navigate('/finance/client-report')} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center">
-                        <UsersIcon className="mr-2 h-5 w-5" /> {t('pages.finance.clientReport')}
-                    </button>
-                    <button onClick={onAddTransaction} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
-                        <FinanceIcon className="mr-2 h-5 w-5" /> {t('pages.finance.addTransaction')}
-                    </button>
+                    <button onClick={onGenerateReport} className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center">{t('pages.finance.generateReport')}</button>
+                    <button onClick={() => navigate('/finance/client-report')} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"><UsersIcon className="mr-2 h-5 w-5" /> {t('pages.finance.clientReport')}</button>
+                    <button onClick={onAddTransaction} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"><FinanceIcon className="mr-2 h-5 w-5" /> {t('pages.finance.addTransaction')}</button>
                 </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1460,43 +1595,24 @@ const FinancePage: React.FC<{ transactions: Transaction[], onAddTransaction: () 
                 <StatCard title={t('pages.finance.profitLoss')} value={formatIDR(profitLoss)} icon={<FinanceIcon />} color={profitLoss >= 0 ? 'blue' : 'yellow'} />
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                <div className="border-b border-gray-200 dark:border-gray-700">
+                    <nav className="-mb-px flex space-x-8 px-6">
+                        <button onClick={() => setActiveTab('transactions')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'transactions' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.finance.allTransactions')}</button>
+                        <button onClick={() => setActiveTab('profit_loss')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'profit_loss' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.finance.profitAndLoss')}</button>
+                        <button onClick={() => setActiveTab('balance_sheet')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'balance_sheet' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.finance.balanceSheet')}</button>
+                    </nav>
+                </div>
                  <div className="p-6">
-                    <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('pages.finance.allTransactions')}</h2>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
-                                <tr>
-                                    <th className="px-6 py-3">{t('common.date')}</th>
-                                    <th className="px-6 py-3">{t('common.description')}</th>
-                                    <th className="px-6 py-3">Type</th>
-                                    <th className="px-6 py-3">{t('common.category')}</th>
-                                    <th className="px-6 py-3 text-right">{t('common.amount')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {transactions.filter(t=> t.approved !== false).map(tr => (
-                                    <tr key={tr.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                        <td className="px-6 py-4">{tr.date}</td>
-                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tr.description}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-2 py-1 rounded-full text-xs ${tr.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
-                                                {tr.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">{tr.category}</td>
-                                        <td className={`px-6 py-4 text-right font-semibold ${tr.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{formatIDR(tr.amount)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    {activeTab === 'transactions' && renderTransactions()}
+                    {activeTab === 'profit_loss' && renderProfitLoss()}
+                    {activeTab === 'balance_sheet' && renderBalanceSheet()}
                  </div>
             </div>
         </div>
     );
 };
 
-// FIX: Added workOrders to props to resolve scope issue.
+
 const ClientFinancePage: React.FC<{
     clients: Client[];
     customers: Customer[];
@@ -1527,7 +1643,7 @@ const ClientFinancePage: React.FC<{
                 netProfit: totalRevenue - totalCost
             };
         });
-    }, [clients, customers, transactions, workOrders]); // FIX: Added workOrders to dependency array.
+    }, [clients, customers, transactions, workOrders]);
 
     return (
         <div className="space-y-6">
@@ -1537,7 +1653,7 @@ const ClientFinancePage: React.FC<{
             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Client Financial Report</h1>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                 <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                         <tr>
                             <th className="px-6 py-3">Client Name</th>
                             <th className="px-6 py-3 text-right">Total Revenue</th>
@@ -1568,10 +1684,13 @@ const CustomersAndClientsPage: React.FC<{
     onEditCustomer: (customer: Customer) => void;
     onAddClient: () => void;
     onEditClient: (client: Client) => void;
+    currentUser: User;
     t: Function;
-}> = ({ customers, clients, onAddCustomer, onEditCustomer, onAddClient, onEditClient, t }) => {
+}> = ({ customers, clients, onAddCustomer, onEditCustomer, onAddClient, onEditClient, currentUser, t }) => {
     const [activeTab, setActiveTab] = useState<'customers' | 'clients'>('customers');
     const [searchTerm, setSearchTerm] = useState('');
+
+    const isAdmin = currentUser.role === UserRole.ADMINISTRATOR || currentUser.role === UserRole.ADMIN;
 
     const filteredCustomers = customers.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1605,17 +1724,19 @@ const CustomersAndClientsPage: React.FC<{
                             onChange={e => setSearchTerm(e.target.value)}
                             className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
                         />
-                        <button
-                            onClick={activeTab === 'customers' ? onAddCustomer : onAddClient}
-                            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
-                        >
-                            {t('common.add')} {activeTab === 'customers' ? 'Customer' : 'Client'}
-                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={activeTab === 'customers' ? onAddCustomer : onAddClient}
+                                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
+                            >
+                                {t('common.add')} {activeTab === 'customers' ? 'Customer' : 'Client'}
+                            </button>
+                        )}
                     </div>
                     <div className="overflow-x-auto">
                         {activeTab === 'customers' ? (
                             <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                                     <tr>
                                         <th scope="col" className="px-6 py-3">{t('common.name')}</th>
                                         <th scope="col" className="px-6 py-3">Client</th>
@@ -1640,7 +1761,7 @@ const CustomersAndClientsPage: React.FC<{
                             </table>
                         ) : (
                              <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                 <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                                 <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                                     <tr>
                                         <th scope="col" className="px-6 py-3">{t('common.name')}</th>
                                         <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
@@ -1660,6 +1781,57 @@ const CustomersAndClientsPage: React.FC<{
                         )}
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const CustomerEditRequestPage: React.FC<{
+    requests: CustomerEditRequest[];
+    customers: Customer[];
+    users: User[];
+    onApprove: (requestId: string) => void;
+    onReject: (requestId: string) => void;
+    t: Function;
+}> = ({ requests, customers, users, onApprove, onReject, t }) => {
+    const pendingRequests = requests.filter(r => r.status === 'pending');
+    return (
+        <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.customerEditRequests.title')}</h1>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                 <div className="overflow-x-auto">
+                    {pendingRequests.length === 0 ? (
+                        <p className="text-gray-500 dark:text-gray-400">{t('pages.customerEditRequests.noRequests')}</p>
+                    ) : (
+                        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
+                                <tr>
+                                    <th className="px-6 py-3">{t('pages.customers.customersTab')}</th>
+                                    <th className="px-6 py-3">{t('pages.customerEditRequests.requestedBy')}</th>
+                                    <th className="px-6 py-3">{t('pages.customerEditRequests.requestedAt')}</th>
+                                    <th className="px-6 py-3">{t('common.actions')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {pendingRequests.map(req => {
+                                    const customer = customers.find(c => c.id === req.customerId);
+                                    const requester = users.find(u => u.id === req.requestedByUserId);
+                                    return (
+                                        <tr key={req.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                            <td className="px-6 py-4 font-medium">{customer?.name}</td>
+                                            <td className="px-6 py-4">{requester?.name}</td>
+                                            <td className="px-6 py-4">{new Date(req.timestamp).toLocaleString()}</td>
+                                            <td className="px-6 py-4 space-x-2">
+                                                <button onClick={() => onApprove(req.id)} className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600">{t('common.approve')}</button>
+                                                <button onClick={() => onReject(req.id)} className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600">{t('common.reject')}</button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
+                 </div>
             </div>
         </div>
     );
@@ -1753,7 +1925,7 @@ const SpareParts: React.FC<{
                              </div>
                          </div>
                          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                                 <tr>
                                     <th className="p-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedParts.length === filteredParts.length && filteredParts.length > 0} /></th>
                                     <th className="px-6 py-3">Item Code</th>
@@ -1790,7 +1962,7 @@ const SpareParts: React.FC<{
                             <button onClick={onAddSupplier} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Supplier</button>
                          </div>
                          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-300">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
                                 <tr>
                                     <th className="px-6 py-3">Supplier Name</th>
                                     <th className="px-6 py-3">Contact Person</th>
@@ -1963,12 +2135,19 @@ const SettingsPage: React.FC<{
     );
 };
 
-const Chatbot: React.FC<{ currentUser: User; appData: any; }> = ({ currentUser, appData }) => {
+const Chatbot: React.FC<{ currentUser: User; appData: any; initialMessage: string; }> = ({ currentUser, appData, initialMessage }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState<ChatMessage[]>([{ sender: 'ai', text: 'Hello! I am ServisAI. How can I assist you with your business data today?' }]);
+    const [messages, setMessages] = useState<ChatMessage[]>([{ sender: 'ai', text: initialMessage }]);
     const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
+    const CHATBOT_AVATAR = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxAHBgsIBw8QEA0QDQ8PDQ4QEA8NDQ8OFREWFhURExMYHSggGBolGxMVITEhJSkrLi4uFx8zODMsNygtLisBCgoKDQ0NDw0NDisZFRkrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK//AABEIAJ8AmwMBIgACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAAAgQDBQYBB//EADQQAQABAgMFBwQCAAcAAAAAAAABAgMEBREhMUFREhNhcYGRBiIjUqGxwdFSYhQjM0Jy4fD/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAQIDBP/EACERAQEAAgICAwEBAQAAAAAAAAABEQIhMTJBUQMSYTNx/9oADAMBAAIRAxEAPwD9xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADzVdqmmiZqmmIjxl0bfa+Hsqi3brpmqfKIneUCYEdF/tGxbVUTXcoiJ3TudfG7W2b1E00TOKe9W/wAAdQHQ/9asTP7ymnfG//AEc2N2vXMzFFMRHjO+oHQg41e2sWvfcj7QtU4u9VdmmrtUzVT4TAO4Dw1XKaYmarhER4y9FFymqImiqJieExO7IHoAAAAAAAAAAAAAAAAAAAI+0tqxsKiZmubk9KeP0BJR8S7R2rVfmubkxT/LHx9ZX666q5mqqZmfGXkB9DHY2xYnE1+tV4UeEfLzXzbX2jVjK+bVcimbdPSiI/wC5UAPqqqpmZmd5neZAcgCUAAAAAAAAAAAAAAAAAAAJmxsKrE4ii3T4z1T4RHjIP57CwsSu/XFq3G+Z3z4RHjL9E7O2fY2fREURvqe1VPjKo7O2dRs+zFFMb56qp8ZVMgAAIoAAAIgAAIogAAAAAAAIgACKIAACMgA/fsnBfA4Si3V6076vvV4qRAHIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/9k=";
+
+    useEffect(() => {
+        if (messages.length === 1 && messages[0].sender === 'ai') {
+            setMessages([{ sender: 'ai', text: initialMessage }]);
+        }
+    }, [initialMessage]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1999,15 +2178,22 @@ const Chatbot: React.FC<{ currentUser: User; appData: any; }> = ({ currentUser, 
         <>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="fixed bottom-6 right-6 bg-primary-600 text-white rounded-full p-4 shadow-lg hover:bg-primary-700 transition-transform transform hover:scale-110 z-50"
+                className="fixed bottom-6 right-6 bg-white dark:bg-gray-700 text-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-transform transform hover:scale-110 z-50"
                 aria-label="Toggle Chatbot"
             >
-                {isOpen ? <XIcon className="h-8 w-8" /> : <AiIcon className="h-8 w-8" />}
+                <img src={CHATBOT_AVATAR} alt="Chatbot Avatar" className="h-12 w-12 rounded-full object-cover" />
             </button>
             {isOpen && (
                 <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col z-50 border border-gray-200 dark:border-gray-700">
-                    <div className="p-4 border-b dark:border-gray-700">
-                        <h3 className="font-bold text-lg text-gray-800 dark:text-white">ServisAI Assistant</h3>
+                    <div className="p-4 border-b dark:border-gray-700 flex items-center space-x-3">
+                        <img src={CHATBOT_AVATAR} alt="Chatbot Avatar" className="h-10 w-10 rounded-full object-cover" />
+                        <div>
+                            <h3 className="font-bold text-lg text-gray-800 dark:text-white">ServisAI Assistant</h3>
+                            <div className="flex items-center space-x-1.5">
+                                <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                                <span className="text-xs text-gray-500">Online</span>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto space-y-4">
                         {messages.map((msg, index) => (
@@ -2077,6 +2263,7 @@ const App: React.FC = () => {
   // App-wide state
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [customerEditRequests, setCustomerEditRequests] = useState<CustomerEditRequest[]>(INITIAL_CUSTOMER_REQUESTS);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>(INITIAL_WORK_ORDERS);
   const [spareParts, setSpareParts] = useState<SparePart[]>(INITIAL_SPARE_PARTS);
   const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
@@ -2089,21 +2276,120 @@ const App: React.FC = () => {
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({ name: 'ServisPro Inc.', address: '123 Service St', email: 'contact@servispro.com', phone: '0812-3456-7890', logo: '' });
   const [modalState, setModalState] = useState<{ type: string | null; data: any }>({ type: null, data: null });
 
-  const addNotification = (message: string, link: string) => {
+  const addNotification = (message: string, link: string, workOrderId?: string, partId?: string) => {
       const newNotif: Notification = {
           id: `notif-${Date.now()}`,
           message,
           timestamp: new Date().toISOString(),
           read: false,
-          link
+          link,
+          workOrderId,
+          partId
       };
       setNotifications(prev => [newNotif, ...prev].slice(0, 50)); // Keep last 50
   };
 
+  useEffect(() => {
+    const checkSystemStatus = () => {
+        const now = new Date();
+        const oneHourAgo = now.getTime() - 3600 * 1000;
+
+        // Check for unclaimed work orders older than 1 hour
+        workOrders.forEach(wo => {
+            if (wo.status === WorkOrderStatus.PENDING && !wo.technicianId) {
+                const createdAt = new Date(wo.createdAt).getTime();
+                if (createdAt < oneHourAgo) {
+                    const hasNotif = notifications.some(n => n.workOrderId === wo.id && n.message.includes('pending for over 1 hour'));
+                    if (!hasNotif) {
+                        addNotification(`WO #${wo.id} has been pending for over 1 hour.`, `/work-orders/${wo.id}`, wo.id);
+                    }
+                }
+            }
+        });
+
+        // Check for low stock parts
+        spareParts.forEach(part => {
+            if (part.stock <= 5) {
+                const hasNotif = notifications.some(n => n.partId === part.id);
+                if (!hasNotif) {
+                    addNotification(`Stock for ${part.name} is low (${part.stock} left).`, '/spare-parts', undefined, part.id);
+                }
+            }
+        });
+    };
+
+    const intervalId = setInterval(checkSystemStatus, 60000); // Check every minute
+    return () => clearInterval(intervalId);
+  }, [workOrders, spareParts, notifications]);
+
+  const proactiveChatbotMessage = useMemo(() => {
+    const oneHourAgo = new Date().getTime() - 3600 * 1000;
+    const pendingWOs = workOrders.filter(wo => 
+        wo.status === WorkOrderStatus.PENDING && 
+        !wo.technicianId && 
+        new Date(wo.createdAt).getTime() < oneHourAgo
+    );
+    const lowStockParts = spareParts.filter(p => p.stock <= 5);
+
+    const alerts: string[] = [];
+    if (pendingWOs.length > 0) {
+        alerts.push(...pendingWOs.map(wo => `- WO #${wo.id} has been pending for over an hour.`));
+    }
+    if (lowStockParts.length > 0) {
+        alerts.push(...lowStockParts.map(p => `- Stock for '${p.name}' is low (${p.stock} left).`));
+    }
+
+    if (alerts.length > 0) {
+        return `Hello! I am ServisAI. I have some important updates for you:\n${alerts.join('\n')}`;
+    }
+    
+    return 'Hello! I am ServisAI. How can I assist you with your business data today?';
+  }, [workOrders, spareParts]);
+
   const handleLogin = (user: User) => { setCurrentUser(user); setAuthScreen('login'); };
   const handleLogout = () => { setCurrentUser(null); };
   const handleSignUp = (newUser: User) => { setUsers(prev => [...prev, newUser]); setAuthScreen('login'); };
-  const handleSaveCustomer = (c: Customer) => { setCustomers(prev => { const ex = prev.find(x => x.id === c.id); return ex ? prev.map(x => x.id === c.id ? c : x) : [...prev, c]; }); setModalState({type:null, data:null}); };
+  
+  const handleCustomerSubmit = (customerData: Customer) => {
+    if (!currentUser) return;
+
+    if (currentUser.role === UserRole.ADMINISTRATOR || currentUser.role === UserRole.ADMIN) {
+        setCustomers(prev => {
+            const exists = prev.some(c => c.id === customerData.id);
+            if (exists) { return prev.map(c => c.id === customerData.id ? customerData : c); }
+            return [...prev, customerData];
+        });
+    } else if (currentUser.role === UserRole.TECHNICIAN && customerData.id) {
+        const newRequest: CustomerEditRequest = {
+            id: `cer-${Date.now()}`,
+            customerId: customerData.id,
+            requestedByUserId: currentUser.id,
+            requestedData: customerData,
+            status: 'pending',
+            timestamp: new Date().toISOString()
+        };
+        setCustomerEditRequests(prev => [newRequest, ...prev]);
+        addNotification(`${currentUser.name} requested changes for ${customerData.name}.`, '/customer-edit-requests');
+    }
+    setModalState({ type: null, data: null });
+  };
+  
+  const handleApproveCustomerRequest = (requestId: string) => {
+    const request = customerEditRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    setCustomers(prev => prev.map(c => c.id === request.customerId ? { ...c, ...request.requestedData, id: c.id } : c));
+    setCustomerEditRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'approved' } : r));
+    addNotification(`Your change request for ${request.requestedData.name} was approved.`, '/customers');
+  };
+
+  const handleRejectCustomerRequest = (requestId: string) => {
+     const request = customerEditRequests.find(r => r.id === requestId);
+     if (!request) return;
+    setCustomerEditRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r));
+    addNotification(`Your change request for ${request.requestedData.name} was rejected.`, '/customers');
+  };
+
   const handleSaveClient = (c: Client) => { setClients(prev => { const ex = prev.find(x => x.id === c.id); return ex ? prev.map(x => x.id === c.id ? c : x) : [c, ...prev]; }); setModalState({type:null, data:null}); };
   
   const handleSaveEmployee = (user: User) => {
@@ -2114,6 +2400,52 @@ const App: React.FC = () => {
         setUsers(prev => [...prev, user]);
     }
     setModalState({type: null, data: null});
+  };
+
+  const handleGenerateFinancialReport = () => {
+    const doc = new jsPDF();
+    generatePdfHeader(doc, companyProfile);
+
+    const approvedTransactions = transactions.filter(t => t.approved !== false);
+    const totalIncome = approvedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpense = approvedTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const profitLoss = totalIncome - totalExpense;
+    const inventoryValue = spareParts.reduce((sum, part) => sum + (part.stock * (part.purchasePrice || 0)), 0);
+    const totalAssets = profitLoss + inventoryValue;
+
+    doc.setFontSize(16);
+    doc.text('Laporan Keuangan', 14, 60);
+
+    autoTable(doc, {
+        startY: 65,
+        head: [['Laporan Laba Rugi', '']],
+        body: [
+            ['Total Pendapatan', formatIDR(totalIncome)],
+            ['Total Pengeluaran', formatIDR(totalExpense)],
+            [{ content: 'Laba Bersih', styles: { fontStyle: 'bold' } }, { content: formatIDR(profitLoss), styles: { fontStyle: 'bold' } }],
+        ],
+        theme: 'striped',
+        columnStyles: { 1: { halign: 'right' } }
+    });
+
+    autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        head: [['Neraca', '']],
+        body: [
+            [{ content: 'ASET', styles: { fontStyle: 'bold', fillColor: '#f3f4f6' } }, ''],
+            ['Kas (dari Laba Ditahan)', formatIDR(profitLoss)],
+            ['Nilai Persediaan', formatIDR(inventoryValue)],
+            [{ content: 'Total Aset', styles: { fontStyle: 'bold' } }, { content: formatIDR(totalAssets), styles: { fontStyle: 'bold' } }],
+            ['', ''],
+            [{ content: 'LIABILITAS & EKUITAS', styles: { fontStyle: 'bold', fillColor: '#f3f4f6' } }, ''],
+            ['Ekuitas (Laba Ditahan)', formatIDR(profitLoss)],
+            [{ content: 'Total Liabilitas & Ekuitas', styles: { fontStyle: 'bold' } }, { content: formatIDR(profitLoss), styles: { fontStyle: 'bold' } }],
+        ],
+        theme: 'striped',
+        columnStyles: { 1: { halign: 'right' } }
+    });
+    
+    doc.save(`Laporan_Keuangan_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Work Order Handlers
@@ -2132,7 +2464,7 @@ const App: React.FC = () => {
           totalCost: serviceFee,
       };
       setWorkOrders(prev => [newOrder, ...prev]);
-      addNotification(`New Work Order Created: ${newOrder.id}`, '/work-orders');
+      addNotification(`New Work Order Created: ${newOrder.id}`, '/work-orders', newOrder.id);
       setModalState({ type: null, data: null });
   };
 
@@ -2140,7 +2472,7 @@ const App: React.FC = () => {
       if (modalState.data) {
           setWorkOrders(prev => prev.map(wo => wo.id === modalState.data.id ? { ...wo, technicianId: techId, status: WorkOrderStatus.IN_PROGRESS } : wo));
           const tech = users.find(u => u.id === techId);
-          addNotification(`Work Order ${modalState.data.id} assigned to ${tech?.name}`, '/work-orders');
+          addNotification(`Work Order ${modalState.data.id} assigned to ${tech?.name}`, `/work-orders/${modalState.data.id}`, modalState.data.id);
       }
       setModalState({ type: null, data: null });
   };
@@ -2155,7 +2487,7 @@ const App: React.FC = () => {
           )
       );
       setUsers(prev => prev.map(u => u.id === currentUser.id ? {...u, status: TechnicianStatus.ON_JOB} : u));
-      addNotification(`${currentUser.name} has claimed Work Order ${wo.id}`, '/work-orders');
+      addNotification(`${currentUser.name} has claimed Work Order ${wo.id}`, `/work-orders/${wo.id}`, wo.id);
   };
 
   const handleCompleteWorkOrder = (wo: WorkOrder) => {
@@ -2182,7 +2514,7 @@ const App: React.FC = () => {
       if(wo.technicianId) {
           setUsers(prev => prev.map(u => u.id === wo.technicianId ? {...u, status: TechnicianStatus.AVAILABLE} : u));
       }
-      addNotification(`Work Order ${wo.id} marked as Completed`, '/work-orders');
+      addNotification(`Work Order ${wo.id} marked as Completed`, `/work-orders/${wo.id}`, wo.id);
   };
   
   const handleUpdateWorkOrderParts = (parts: { partId: string; quantity: number }[]) => {
@@ -2444,7 +2776,7 @@ const App: React.FC = () => {
     const location = useLocation();
     const navItems = [
         { path: '/', labelKey: 'sidebar.dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-blue-500' },
-        { path: '/customers', labelKey: 'sidebar.customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-green-500' },
+        { path: '/customers', labelKey: 'sidebar.customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-green-500' },
         { path: '/work-orders', labelKey: 'sidebar.workOrders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-orange-500' },
         { path: '/my-reimbursements', labelKey: 'sidebar.myReimbursements', icon: ReceiptIcon, roles: [UserRole.TECHNICIAN], color: 'text-cyan-500' },
         { path: '/reimbursements', labelKey: 'sidebar.reimbursement', icon: ReceiptIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-cyan-500' },
@@ -2458,12 +2790,12 @@ const App: React.FC = () => {
     return (
         <div className={`flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
             <div className={`h-16 flex items-center border-b border-gray-200 dark:border-gray-700 ${isSidebarCollapsed ? 'justify-center' : 'justify-center'}`}>
-                {isSidebarCollapsed ? <DashboardIcon className="h-10 w-10 text-primary-600" /> : <h1 className="text-2xl font-bold text-primary-600">ServisPro</h1>}
+                {isSidebarCollapsed ? <DashboardIcon className="h-10 w-10 text-primary-600" /> : <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-400 bg-clip-text text-transparent">ServisPro</h1>}
             </div>
             <nav className="flex-1 p-4 space-y-2">
                 {accessibleNavItems.map(item => (
                      <Link key={item.path} to={item.path} title={isSidebarCollapsed ? t(item.labelKey) : ''} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${(location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path) ? 'bg-primary-100 dark:bg-gray-700 text-primary-700 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-                        <item.icon className={`${isSidebarCollapsed ? `h-9 w-9 ${item.color}` : 'h-5 w-5'}`} />
+                        <item.icon className={`${isSidebarCollapsed ? `h-8 w-8 ${item.color}` : `h-5 w-5 ${item.color}`}`} />
                         {!isSidebarCollapsed && <span className="font-medium">{t(item.labelKey)}</span>}
                     </Link>
                 ))}
@@ -2531,10 +2863,11 @@ const App: React.FC = () => {
                         <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} transactions={transactions} t={t} />} />
                         <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} t={t} />} />
                         <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} onPrint={handlePrintWorkOrder} onUploadProof={handleUploadProof} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} />} />
-                        <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} t={t} />} />
+                        <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} currentUser={currentUser} t={t} />} />
+                        <Route path="/customer-edit-requests" element={<CustomerEditRequestPage requests={customerEditRequests} customers={customers} users={users} onApprove={handleApproveCustomerRequest} onReject={handleRejectCustomerRequest} t={t} />} />
                         <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} onAddEmployee={() => setModalState({ type: 'add_employee', data: null })} t={t} />} />
                         <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} t={t} />} />
-                        <Route path="/finance" element={<FinancePage transactions={transactions} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} t={t} />} />
+                        <Route path="/finance" element={<FinancePage transactions={transactions} spareParts={spareParts} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} onGenerateReport={handleGenerateFinancialReport} t={t} />} />
                         <Route path="/finance/client-report" element={<ClientFinancePage clients={clients} customers={customers} workOrders={workOrders} transactions={transactions} t={t} />} />
                         <Route path="/reimbursements" element={<ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(att) => setModalState({type: 'view_attachment', data: att})} t={t} />} />
                         <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(att) => setModalState({type: 'view_attachment', data: att})} t={t} />} />
@@ -2545,7 +2878,7 @@ const App: React.FC = () => {
                 </main>
             </div>
             
-            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users, transactions }} />
+            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users, transactions }} initialMessage={proactiveChatbotMessage} />
             
             {/* All Modals */}
             <ReimbursementModal isOpen={modalState.type === 'request_reimbursement'} onClose={() => setModalState({type: null, data: null})} onConfirm={handleRequestReimbursement} t={t} />
@@ -2560,8 +2893,8 @@ const App: React.FC = () => {
             {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} clients={clients} t={t} />}
             {modalState.type === 'add_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={null} t={t} />}
             {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={modalState.data} t={t} />}
-            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={null} clients={clients} t={t} />}
-            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveCustomer} customer={modalState.data} clients={clients} t={t} />}
+            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCustomerSubmit} customer={null} clients={clients} currentUser={currentUser} t={t} />}
+            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCustomerSubmit} customer={modalState.data} clients={clients} currentUser={currentUser} t={t} />}
             {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} t={t} />}
             {modalState.type === 'edit_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={modalState.data} t={t} />}
             {modalState.type === 'add_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={null} t={t} />}

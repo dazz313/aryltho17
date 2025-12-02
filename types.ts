@@ -171,6 +171,7 @@ export interface Notification {
   read: boolean;
   link: string;
   workOrderId?: string;
+  partId?: string;
 }
 
 export interface ChatMessage {
@@ -192,4 +193,13 @@ export interface AttendanceRecord {
   date: string; // YYYY-MM-DD
   clockInTime: string; // ISO string
   clockOutTime?: string; // ISO string
+}
+
+export interface CustomerEditRequest {
+  id: string;
+  customerId: string;
+  requestedByUserId: string;
+  requestedData: Partial<Customer>;
+  status: 'pending' | 'approved' | 'rejected';
+  timestamp: string;
 }
