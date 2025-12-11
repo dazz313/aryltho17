@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate, useParams, useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector } from 'recharts';
@@ -9,7 +8,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
 
-// --- I18N Translations ---
+// --- I1N Translations ---
 const translations = {
   en: {
     sidebar: {
@@ -65,7 +64,6 @@ const translations = {
         myReimbursements: { title: 'My Reimbursement History', workOrderId: 'Work Order ID', empty: 'You have not requested any reimbursements.'},
         customers: { title: 'Customers & Clients', customerList: 'Customer List', clientList: 'Client List', clientsTab: 'Clients', customersTab: 'Customers', importCustomers: 'Import Customers' },
         customerEditRequests: { title: 'Customer Edit Requests', requestedBy: 'Requested By', requestedAt: 'Requested At', noRequests: 'No pending requests.' },
-        customerDetail: { back: 'Back to all customers', details: 'Customer Details', contracts: 'Service Contracts', history: 'Service History', noContracts: 'No contracts found.', noHistory: 'No service history found.' },
         workOrders: { title: 'Work Order Management', myTitle: 'Work Orders', myFullName: '{name}', allOrders: 'All Orders', myAssigned: 'My Assigned', available: 'Available', technician: 'Technician', unassigned: 'Unassigned', claimJob: 'Claim Job', addPart: 'Add Part', addCost: 'Add Cost', actions: 'Actions', uploadWorkProof: 'Upload Work Proof', uploadPaymentProof: 'Upload Payment Proof', generatePDF: 'Generate PDF', printWO: 'Print Work Order', completeWork: 'Complete Work', requestReimbursement: 'Request Reimbursement' },
         spareParts: { title: 'Spare Part Management', inventory: 'Spare Part Inventory', suppliers: 'Suppliers', partName: 'Part Name', stock: 'Stock', location: 'Location', importParts: 'Import CSV', deleteSelected: 'Delete Selected', downloadTemplate: 'Download Template' },
         finance: { title: 'Finance', generateReport: 'Generate Financial Report', totalIncome: 'Total Income', totalExpense: 'Total Expense', profitLoss: 'Profit / Loss', invoices: 'Invoices', allTransactions: 'All Transactions', balanceSheet: 'Balance Sheet', profitAndLoss: 'Profit & Loss', assets: 'Assets', cash: 'Cash', inventoryValue: 'Inventory Value', totalAssets: 'Total Assets', liabilitiesAndEquity: 'Liabilities & Equity', liabilities: 'Liabilities', opCosts: 'Operational Costs', equity: 'Equity', retainedEarnings: 'Retained Earnings (Profit)', addTransaction: 'Add Transaction', clientReport: 'Client Report' },
@@ -74,6 +72,8 @@ const translations = {
         settings: { 
             title: 'Settings & Data', 
             companyProfile: 'Company Profile (KOP Surat)', 
+            companyLogo: 'Company Logo',
+            changeLogo: 'Change Logo',
             dataBackup: 'Data Backup & Restore', 
             exportData: 'Export Data', 
             exportDesc: 'Download a copy of your application data.', 
@@ -153,14 +153,16 @@ const translations = {
         customers: { title: 'Pelanggan & Klien', customerList: 'Daftar Pelanggan', clientList: 'Daftar Klien', clientsTab: 'Klien', customersTab: 'Pelanggan', importCustomers: 'Import Pelanggan' },
         customerEditRequests: { title: 'Permintaan Ubah Data Pelanggan', requestedBy: 'Diajukan Oleh', requestedAt: 'Waktu Pengajuan', noRequests: 'Tidak ada permintaan tertunda.' },
         customerDetail: { back: 'Kembali ke semua pelanggan', details: 'Detail Pelanggan', contracts: 'Kontrak Servis', history: 'Riwayat Servis', noContracts: 'Tidak ada kontrak.', noHistory: 'Tidak ada riwayat servis.' },
-        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Perintah Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK', completeWork: 'Selesaikan Pekerjaan', requestReimbursement: 'Ajukan Reimbursement' },
+        workOrders: { title: 'Manajemen Perintah Kerja', myTitle: 'Lembar Kerja', myFullName: '{name}', allOrders: 'Semua SPK', myAssigned: 'Tugas Saya', available: 'SPK Tersedia', technician: 'Teknisi', unassigned: 'Belum Ditugaskan', claimJob: 'Ambil Pekerjaan', addPart: 'Tambah Part', addCost: 'Tambah Biaya', actions: 'Aksi', uploadWorkProof: 'Unggah Bukti Kerja', uploadPaymentProof: 'Unggah Bukti Bayar', generatePDF: 'Buat PDF', printWO: 'Cetak SPK', completeWork: 'Selesaikan Pekerjaan', requestReimbursement: 'Ajukan Reimbursement' },
         spareParts: { title: 'Manajemen Suku Cadang', inventory: 'Inventaris Suku Cadang', suppliers: 'Pemasok', partName: 'Nama Part', stock: 'Stok', location: 'Lokasi', importParts: 'Import CSV', deleteSelected: 'Hapus Terpilih', downloadTemplate: 'Download Template' },
-        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', allTransactions: 'Semua Transaksi', balanceSheet: 'Neraca', profitAndLoss: 'Laba Rugi', assets: 'Aset', cash: 'Kas', inventoryValue: 'Nilai Persediaan', totalAssets: 'Total Aset', liabilitiesAndEquity: 'Liabilitas & Ekuitas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi', clientReport: 'Laporan per Klien' },
-        employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak', role: 'Peran', monthlyPerformance: 'Kinerja Bulanan (SPK Selesai)', attendanceStatus: 'Status Absensi Hari Ini', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clock In @ {time}', clockedOut: 'Clocked Out', absent: 'Absen', addEmployee: 'Tambah Karyawan' },
+        finance: { title: 'Keuangan', generateReport: 'Buat Laporan Keuangan', totalIncome: 'Total Pendapatan', totalExpense: 'Total Pengeluaran', profitLoss: 'Laba / Rugi', invoices: 'Faktur', semuaTransaksi: 'Semua Transaksi', balanceSheet: 'Neraca', profitAndLoss: 'Laba Rugi', assets: 'Aset', cash: 'Kas', inventoryValue: 'Nilai Persediaan', totalAssets: 'Total Aset', liabilitiesAndEquity: 'Liabilitas & Ekuitas', liabilities: 'Liabilitas', opCosts: 'Biaya Operasional', equity: 'Ekuitas', retainedEarnings: 'Laba Ditahan', addTransaction: 'Tambah Transaksi', clientReport: 'Laporan per Klien' },
+        employees: { title: 'Manajemen Karyawan', allEmployees: 'Semua Karyawan', performance: 'Kinerja', contact: 'Kontak', role: 'Peran', monthlyPerformance: 'Kinerja Bulanan (SPK Selesai)', attendanceStatus: 'Status Absensi Hari Ini', clockIn: 'Clock In', clockOut: 'Clock Out', clockedInAt: 'Clocked In @ {time}', clockedOut: 'Clocked Out', absent: 'Absen', addEmployee: 'Tambah Karyawan' },
         technicianProfile: { title: 'Profil Teknisi', back: 'Kembali ke semua karyawan', personalInfo: 'Informasi Pribadi', aktivitasTerkini: 'Aktivitas Terkini', editEmployee: 'Ubah Karyawan' },
         settings: { 
             title: 'Pengaturan & Data', 
             companyProfile: 'Profil Perusahaan (KOP Surat)', 
+            companyLogo: 'Logo Perusahaan',
+            changeLogo: 'Ganti Logo',
             dataBackup: 'Cadangkan & Pulihkan Data', 
             exportData: 'Ekspor Data', 
             exportDesc: 'Unduh salinan data aplikasi Anda.', 
@@ -245,10 +247,10 @@ const generatePdfHeader = (doc: jsPDF, profile: CompanyProfile) => {
         try { doc.addImage(profile.logo, 'PNG', 14, 15, 30, 30); } 
         catch(e) { console.error("Error adding logo to PDF", e); }
     }
-    doc.setFontSize(22);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
     doc.text(profile.name, 50, 25);
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.text(profile.address, 50, 32);
     doc.text(`Email: ${profile.email} | Phone: ${profile.phone}`, 50, 39);
@@ -256,16 +258,17 @@ const generatePdfHeader = (doc: jsPDF, profile: CompanyProfile) => {
     doc.line(14, 50, 196, 50);
 };
 
+// FIX: Define a reusable type for the translation function to ensure consistency and fix type errors.
+type TFunction = (key: string, replacements?: Record<string, string | number>) => string;
 
 // --- HELPER & MODAL COMPONENTS ---
-interface CardProps {
+const StatCard: React.FC<{
   title: string;
   value: string;
   icon: React.ReactElement<{ className?: string }>;
   color: 'blue' | 'yellow' | 'green' | 'indigo' | 'red';
   onClick?: () => void;
-}
-const StatCard: React.FC<CardProps> = ({ title, value, icon, color, onClick }) => {
+}> = ({ title, value, icon, color, onClick }) => {
     const colorClasses = {
         blue: { bg: 'bg-blue-100 dark:bg-blue-900', text: 'text-blue-600 dark:text-blue-200' },
         yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-600 dark:text-yellow-200' },
@@ -310,7 +313,7 @@ const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; chi
 };
 
 // --- AUTHENTICATION SCREENS ---
-const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: () => void, users: User[]; t: Function }> = ({ onLogin, onSwitchToSignUp, users, t }) => {
+const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: () => void, users: User[]; t: TFunction }> = ({ onLogin, onSwitchToSignUp, users, t }) => {
   const [identifier, setIdentifier] = useState('administrator');
   const [password, setPassword] = useState('123');
   const [error, setError] = useState('');
@@ -354,7 +357,7 @@ const LoginScreen: React.FC<{ onLogin: (user: User) => void; onSwitchToSignUp: (
   );
 };
 
-const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: () => void; t: Function }> = ({ onSignUp, onSwitchToLogin, t }) => {
+const SignUpScreen: React.FC<{ onSignUp: (user: User) => void; onSwitchToLogin: () => void; t: TFunction; }> = ({ onSignUp, onSwitchToLogin, t }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
@@ -406,7 +409,7 @@ const ReimbursementModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
     onConfirm: (description: string, amount: number, attachment: { name: string; type: string; data: string; }) => void;
-    t: Function;
+    t: TFunction;
 }> = ({ isOpen, onClose, onConfirm, t }) => {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
@@ -466,7 +469,7 @@ const ReimbursementModal: React.FC<{
     );
 };
 
-const AttachmentViewerModal: React.FC<{ isOpen: boolean; onClose: () => void; attachment: { name: string; type: string; data: string; } | null; t: Function; }> = ({ isOpen, onClose, attachment, t }) => {
+const AttachmentViewerModal: React.FC<{ isOpen: boolean; onClose: () => void; attachment: { name: string; type: string; data: string; } | null; t: TFunction; }> = ({ isOpen, onClose, attachment, t }) => {
     if (!attachment) return null;
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`${t('modals.attachmentViewerTitle')}: ${attachment.name}`} size="lg">
@@ -477,7 +480,7 @@ const AttachmentViewerModal: React.FC<{ isOpen: boolean; onClose: () => void; at
     );
 };
 
-const AddEditEmployeeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (user: User) => void; user: User | null; t: Function; }> = ({ isOpen, onClose, onSave, user, t }) => {
+const AddEditEmployeeModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (user: User) => void; user: User | null; t: TFunction; }> = ({ isOpen, onClose, onSave, user, t }) => {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', role: UserRole.TECHNICIAN, status: TechnicianStatus.AVAILABLE });
 
     useEffect(() => {
@@ -545,7 +548,7 @@ const AddEditEmployeeModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
     );
 };
 
-const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (transaction: Transaction) => void; transaction: Transaction | null; clients: Client[]; t: Function; }> = ({ isOpen, onClose, onSave, transaction, clients, t }) => {
+const AddEditTransactionModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (transaction: Transaction) => void; transaction: Transaction | null; clients: Client[]; t: TFunction; }> = ({ isOpen, onClose, onSave, transaction, clients, t }) => {
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
         description: '',
@@ -641,7 +644,7 @@ const AddEditCustomerModal: React.FC<{
     customer: Customer | null; 
     clients: Client[]; 
     currentUser: User;
-    t: Function; 
+    t: TFunction; 
 }> = ({ isOpen, onClose, onSave, customer, clients, currentUser, t }) => {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '', clientId: '' });
     useEffect(() => {
@@ -678,7 +681,7 @@ const AddEditCustomerModal: React.FC<{
     );
 };
 
-const AddEditClientModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (client: Client) => void; client: Client | null; t: Function; }> = ({ isOpen, onClose, onSave, client, t }) => {
+const AddEditClientModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (client: Client) => void; client: Client | null; t: TFunction; }> = ({ isOpen, onClose, onSave, client, t }) => {
     const [name, setName] = useState('');
     useEffect(() => { if (client) setName(client.name); else setName(''); }, [client, isOpen]);
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ id: client?.id || `client-${Date.now()}`, name }); };
@@ -696,7 +699,7 @@ const AddEditClientModal: React.FC<{ isOpen: boolean; onClose: () => void; onSav
     );
 };
 
-const AddEditSupplierModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (supplier: Supplier) => void; supplier: Supplier | null; t: Function; }> = ({ isOpen, onClose, onSave, supplier, t }) => {
+const AddEditSupplierModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (supplier: Supplier) => void; supplier: Supplier | null; t: TFunction; }> = ({ isOpen, onClose, onSave, supplier, t }) => {
     const [formData, setFormData] = useState({ name: '', contactPerson: '', phone: '', email: '' });
     useEffect(() => { if (supplier) { setFormData({ name: supplier.name, contactPerson: supplier.contactPerson, phone: supplier.phone, email: supplier.email }); } else { setFormData({ name: '', contactPerson: '', phone: '', email: '' }); } }, [supplier, isOpen]);
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ id: supplier?.id || `sup-${Date.now()}`, ...formData }); };
@@ -717,7 +720,7 @@ const AddEditSupplierModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
     );
 };
 
-const CreateWorkOrderModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (wo: Partial<WorkOrder>) => void; customers: Customer[]; t: Function }> = ({ isOpen, onClose, onSave, customers, t }) => {
+const CreateWorkOrderModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (wo: Partial<WorkOrder>) => void; customers: Customer[]; t: TFunction }> = ({ isOpen, onClose, onSave, customers, t }) => {
     const [customerId, setCustomerId] = useState('');
     const [description, setDescription] = useState('');
     const [initialServiceFee, setInitialServiceFee] = useState('');
@@ -770,7 +773,7 @@ const CreateWorkOrderModal: React.FC<{ isOpen: boolean; onClose: () => void; onS
     );
 };
 
-const AssignTechnicianModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (techId: string) => void; technicians: User[]; t: Function }> = ({ isOpen, onClose, onSave, technicians, t }) => {
+const AssignTechnicianModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (techId: string) => void; technicians: User[]; t: TFunction }> = ({ isOpen, onClose, onSave, technicians, t }) => {
     const [techId, setTechId] = useState('');
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if(techId) onSave(techId); };
     return (
@@ -797,12 +800,12 @@ const AddPartToWorkOrderModal: React.FC<{
     onClose: () => void;
     onSave: (parts: { partId: string; quantity: number }[]) => void;
     availableParts: SparePart[];
-    t: Function;
+    t: TFunction;
 }> = ({ isOpen, onClose, onSave, availableParts, t }) => {
     const [partsToAdd, setPartsToAdd] = useState<Record<string, number>>({});
 
     const handleQuantityChange = (partId: string, quantity: number, maxStock: number) => {
-        if (quantity < 0 || quantity > (maxStock as number)) return;
+        if (quantity < 0 || quantity > maxStock) return;
         setPartsToAdd(prev => ({ ...prev, [partId]: quantity }));
     };
 
@@ -843,7 +846,7 @@ const AddAdditionalCostModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
     onSave: (cost: { description: string; amount: number }) => void;
-    t: Function;
+    t: TFunction;
 }> = ({ isOpen, onClose, onSave, t }) => {
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
@@ -880,7 +883,7 @@ const AddAdditionalCostModal: React.FC<{
 };
 
 
-const AddEditSparePartModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (part: SparePart) => void; onDelete?: (id: string) => void; part: SparePart | null; suppliers: Supplier[]; allSpareParts: SparePart[]; t: Function; }> = ({ isOpen, onClose, onSave, onDelete, part, suppliers, allSpareParts, t }) => {
+const AddEditSparePartModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (part: SparePart) => void; onDelete?: (id: string) => void; part: SparePart | null; suppliers: Supplier[]; allSpareParts: SparePart[]; t: TFunction; }> = ({ isOpen, onClose, onSave, onDelete, part, suppliers, allSpareParts, t }) => {
     const [formData, setFormData] = useState({ itemCode: '', name: '', purchasePrice: '', sellingPrice: '', stock: '', unit: '', location: '', supplierId: '' });
     useEffect(() => {
         if (part) { setFormData({ itemCode: part.itemCode, name: part.name, purchasePrice: String(part.purchasePrice || ''), sellingPrice: String(part.sellingPrice), stock: String(part.stock), unit: part.unit, location: part.location, supplierId: part.supplierId || '' }); } 
@@ -924,79 +927,80 @@ const Dashboard: React.FC<{
     users: User[];
     currentUser: User;
     transactions: Transaction[];
-    t: Function;
+    t: TFunction;
 }> = ({ workOrders, customers, users, currentUser, transactions, t }) => {
     const navigate = useNavigate();
     const technicians = users.filter(u => u.role === UserRole.TECHNICIAN);
 
-    const monthlyRevenue = useMemo(() => 
-        transactions.filter(tr => tr.type === 'income' && tr.approved !== false).reduce((sum, tr) => sum + tr.amount, 0),
-        [transactions]
-    );
+    const stats = useMemo(() => {
+        const relevantWorkOrders = currentUser.role === UserRole.TECHNICIAN
+            ? workOrders.filter(wo => wo.technicianId === currentUser.id)
+            : workOrders;
 
-    const userWorkOrders = useMemo(() => 
-        currentUser.role === UserRole.TECHNICIAN 
-            ? workOrders.filter(wo => wo.technicianId === currentUser.id) 
-            : workOrders,
-        [workOrders, currentUser]
-    );
+        const pending = relevantWorkOrders.filter(w => w.status === WorkOrderStatus.PENDING).length;
+        const totalCustomers = customers.length;
+        
+        const approvedTransactions = transactions.filter(t => t.approved !== false);
+        const totalRevenue = approvedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
 
-    const pendingWorkOrders = userWorkOrders.filter(wo => wo.status === WorkOrderStatus.PENDING).length;
-    const completedWorkOrdersCount = userWorkOrders.filter(wo => wo.status === WorkOrderStatus.COMPLETED).length;
+        return { pending, totalCustomers, totalRevenue };
+    }, [workOrders, customers, users, currentUser, transactions]);
 
-    const woStatusData = useMemo(() => {
-        const counts = userWorkOrders.reduce((acc, wo) => {
+    const workOrderDonutData = useMemo(() => {
+        const counts = workOrders.reduce((acc, wo) => {
             acc[wo.status] = (acc[wo.status] || 0) + 1;
             return acc;
-        }, {} as Record<WorkOrderStatus, number>);
+        }, {} as Record<string, number>);
 
-        return [
-            { name: t(`status.${WorkOrderStatus.PENDING}`), value: counts[WorkOrderStatus.PENDING] || 0 },
-            { name: t(`status.${WorkOrderStatus.IN_PROGRESS}`), value: counts[WorkOrderStatus.IN_PROGRESS] || 0 },
-            { name: t(`status.${WorkOrderStatus.COMPLETED}`), value: counts[WorkOrderStatus.COMPLETED] || 0 },
-        ];
-    }, [userWorkOrders, t]);
-    const totalWOs = userWorkOrders.length;
-    const completionPercentage = totalWOs > 0 ? Math.round((completedWorkOrdersCount / totalWOs) * 100) : 0;
+        const total = workOrders.length;
+        const completed = counts[WorkOrderStatus.COMPLETED] || 0;
+        const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
+        return {
+            data: [
+                { name: t('status.Completed'), value: completed },
+                { name: t('status.In Progress'), value: counts[WorkOrderStatus.IN_PROGRESS] || 0 },
+                { name: t('status.Pending'), value: counts[WorkOrderStatus.PENDING] || 0 },
+            ],
+            completionRate
+        };
+    }, [workOrders, t]);
+    
     const technicianPerformanceData = useMemo(() => {
         return technicians.map(tech => ({
             name: formatUserName(tech.name),
             completed: workOrders.filter(wo => wo.technicianId === tech.id && wo.status === WorkOrderStatus.COMPLETED).length
-        }));
+        })).sort((a, b) => b.completed - a.completed);
     }, [workOrders, technicians]);
 
-    const COLORS = ['#FFBB28', '#3B82F6', '#22C55E'];
+    const COLORS = ['#8884d8', '#3B82F6', '#F59E0B']; // Completed is gray, In Progress is blue, Pending is yellow
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.welcome', { name: formatUserName(currentUser.name) })}</h1>
+            <div>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('dashboard.welcome', { name: formatUserName(currentUser.name) })}</h1>
+                <p className="text-gray-600 dark:text-gray-400">{t('dashboard.summary')}</p>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title={t('dashboard.totalCustomers')} value={String(customers.length)} icon={<CustomerIcon />} color="blue" onClick={() => navigate('/customers')} />
-                <StatCard title={currentUser.role === UserRole.TECHNICIAN ? "My Pending Jobs" : t('dashboard.pendingWorkOrders')} value={String(pendingWorkOrders)} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
-                
-                {currentUser.role === UserRole.ADMINISTRATOR && (
-                     <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(monthlyRevenue)} icon={<FinanceIcon />} color="green" onClick={() => navigate('/finance')} />
-                )}
-
-                {currentUser.role === UserRole.TECHNICIAN && (
-                     <StatCard title="My Completed Jobs" value={String(completedWorkOrdersCount)} icon={<ReceiptIcon />} color="green" />
-                )}
+                 <StatCard title={t('dashboard.totalCustomers')} value={stats.totalCustomers.toString()} icon={<CustomerIcon />} color="blue" onClick={() => navigate('/customers')} />
+                <StatCard title={t('dashboard.pendingWorkOrders')} value={stats.pending.toString()} icon={<WorkOrderIcon />} color="yellow" onClick={() => navigate('/work-orders')} />
+                 {(currentUser.role === UserRole.ADMINISTRATOR) ? (
+                    <StatCard title={t('dashboard.monthlyRevenue')} value={formatIDR(stats.totalRevenue)} icon={<FinanceIcon />} color="green" onClick={() => navigate('/finance')} />
+                 ) : (currentUser.role === UserRole.TECHNICIAN) ? (
+                     <StatCard title="My Completed Jobs" value={workOrders.filter(wo => wo.technicianId === currentUser.id && wo.status === WorkOrderStatus.COMPLETED).length.toString()} icon={<ReceiptIcon />} color="green" />
+                 ) : null}
 
                 {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.ADMINISTRATOR) && (
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md col-span-1">
-                        <h3 className="text-sm text-gray-500 dark:text-gray-400 mb-2">{t('dashboard.technicianStatus')}</h3>
-                        <div className="space-y-2 overflow-y-auto h-24">
-                            {technicians.map(tech => (
-                                <div key={tech.id} className="flex items-center justify-between text-sm">
-                                    <span>{tech.name}</span>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">{t('dashboard.technicianStatus')}</h3>
+                        <div className="space-y-2">
+                             {technicians.map(tech => (
+                                <div key={tech.id} className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-800 dark:text-white">{formatUserName(tech.name)}</span>
                                     <div className="flex items-center space-x-2">
-                                        <div className={`h-2.5 w-2.5 rounded-full ${
-                                            tech.status === TechnicianStatus.ON_JOB ? 'bg-green-500' :
-                                            tech.status === TechnicianStatus.AVAILABLE ? 'bg-blue-500' :
-                                            tech.status === TechnicianStatus.ON_BREAK ? 'bg-yellow-500' : 'bg-gray-400'
-                                        }`}></div>
+                                        <span className={`h-2.5 w-2.5 rounded-full ${getStatusColor(tech.status!).replace(/text-(.*?)-(\d+)/, 'bg-$1-500')}`}></span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">{t(`status.${tech.status!}`)}</span>
                                     </div>
                                 </div>
                             ))}
@@ -1005,33 +1009,34 @@ const Dashboard: React.FC<{
                 )}
             </div>
 
-            {(currentUser.role === UserRole.ADMINISTRATOR || currentUser.role === UserRole.ADMIN) && (
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                    <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+             {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.ADMINISTRATOR) && (
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                         <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.workOrderStatus')}</h3>
-                        <div className="h-64 w-full relative">
+                        <div className="h-64 flex items-center justify-center">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie data={woStatusData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value">
-                                        {woStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                    <Pie data={workOrderDonutData.data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5}>
+                                        {workOrderDonutData.data.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                     </Pie>
                                     <Tooltip />
+                                    <Legend />
+                                    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-3xl font-bold fill-gray-800 dark:fill-white">
+                                        {`${workOrderDonutData.completionRate}%`}
+                                    </text>
+                                    <text x="50%" y="60%" textAnchor="middle" dominantBaseline="middle" className="text-sm fill-gray-500 dark:fill-gray-400">
+                                        Completed
+                                    </text>
                                 </PieChart>
                             </ResponsiveContainer>
-                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="text-center">
-                                    <p className="text-3xl font-bold text-gray-800 dark:text-white">{completionPercentage}%</p>
-                                    <p className="text-sm text-gray-500">Completed</p>
-                                </div>
-                            </div>
                         </div>
                     </div>
-                    <div className="lg:col-span-3 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                         <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">{t('dashboard.completedByTechnician')}</h3>
                         <div className="h-64">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={technicianPerformanceData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
+                                <BarChart data={technicianPerformanceData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                                     <XAxis type="number" />
                                     <YAxis type="category" dataKey="name" width={80} />
                                     <Tooltip />
@@ -1057,14 +1062,18 @@ const WorkOrders: React.FC<{
     onAddCost: (wo: WorkOrder) => void;
     onComplete: (wo: WorkOrder) => void;
     onRequestReimbursement: (wo: WorkOrder) => void;
-    t: Function;
+    t: TFunction;
 }> = ({ user, workOrders, users, onCreate, onAssign, onClaim, onAddPart, onAddCost, onComplete, onRequestReimbursement, t }) => {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState(user.role === UserRole.TECHNICIAN ? 'my_assigned' : 'all');
-    const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState<'myAssigned' | 'available' | 'all'>('all');
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    
+
+    useEffect(() => {
+        if (user.role === UserRole.TECHNICIAN) setActiveTab('myAssigned');
+        else setActiveTab('all');
+    }, [user.role]);
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -1075,600 +1084,126 @@ const WorkOrders: React.FC<{
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const getTechnicianName = (id: string | null) => users.find(u => u.id === id)?.name || <span className="text-gray-400">{t('pages.workOrders.unassigned')}</span>;
-
-    const filteredWorkOrders = useMemo(() => {
-        let orders = workOrders;
-        if (activeTab === 'my_assigned' && user) {
-            orders = workOrders.filter(wo => wo.technicianId === user.id);
-        } else if (activeTab === 'available') {
-            orders = workOrders.filter(wo => !wo.technicianId && wo.status === WorkOrderStatus.PENDING);
+    const filteredOrders = useMemo(() => {
+        switch (activeTab) {
+            case 'myAssigned': return workOrders.filter(wo => wo.technicianId === user.id);
+            case 'available': return workOrders.filter(wo => !wo.technicianId && wo.status === WorkOrderStatus.PENDING);
+            case 'all': default: return workOrders;
         }
-        
-        return orders.filter(wo => 
-            wo.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            wo.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            wo.description.toLowerCase().includes(searchTerm.toLowerCase())
+    }, [activeTab, workOrders, user.id]);
+
+    const DropdownItem: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
+        <button onClick={onClick} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
+            {children}
+        </button>
+    );
+    
+    const isTechnician = user.role === UserRole.TECHNICIAN;
+
+    // --- TECHNICIAN CARD VIEW (PORTABLE SHEET STYLE) ---
+    if (isTechnician) {
+        return (
+            <div>
+                 <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.workOrders.title')}</h1>
+                </div>
+
+                <div className="flex space-x-2 mb-4 overflow-x-auto pb-2">
+                    <button onClick={() => setActiveTab('myAssigned')} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${activeTab === 'myAssigned' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700'}`}>
+                        {t('pages.workOrders.myAssigned')} ({workOrders.filter(wo => wo.technicianId === user.id).length})
+                    </button>
+                    <button onClick={() => setActiveTab('available')} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium ${activeTab === 'available' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700'}`}>
+                        {t('pages.workOrders.available')} ({workOrders.filter(wo => !wo.technicianId && wo.status === WorkOrderStatus.PENDING).length})
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredOrders.map(wo => (
+                        <div key={wo.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-5 flex flex-col justify-between h-full hover:shadow-md transition-shadow">
+                            <div>
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="font-mono text-xs text-gray-500">#{wo.id}</span>
+                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(wo.status)}`}>
+                                        {t(`status.${wo.status}`)}
+                                    </span>
+                                </div>
+                                <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-1 truncate">{wo.customer.name}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 line-clamp-2 flex items-start">
+                                    <MapPinIcon className="h-4 w-4 mr-1 mt-0.5 flex-shrink-0"/>
+                                    {wo.customer.address}
+                                </p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg mb-4 line-clamp-3">
+                                    "{wo.description}"
+                                </p>
+                            </div>
+                            
+                            <div className="mt-auto">
+                                {activeTab === 'available' ? (
+                                    <button onClick={() => onClaim(wo)} className="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 shadow-sm">
+                                        {t('pages.workOrders.claimJob')}
+                                    </button>
+                                ) : (
+                                    <Link to={`/work-orders/${wo.id}`} className="block w-full text-center py-3 rounded-lg bg-primary-600 text-white font-semibold hover:bg-primary-700 shadow-sm">
+                                        Open Job Sheet
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    {filteredOrders.length === 0 && (
+                        <div className="col-span-full text-center py-10 text-gray-500">
+                            No work orders found in this section.
+                        </div>
+                    )}
+                </div>
+            </div>
         );
-    }, [workOrders, activeTab, user, searchTerm]);
-    
-    const isAdmin = user.role === UserRole.ADMINISTRATOR || user.role === UserRole.ADMIN;
-    
+    }
+
+    // --- STANDARD TABLE VIEW (ADMIN) ---
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
+        <div>
+            <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.workOrders.title')}</h1>
-                {isAdmin && (
-                    <button onClick={onCreate} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center">
-                        <WorkOrderIcon className="mr-2 h-5 w-5" /> {t('modals.createWorkOrderTitle')}
+                {user.role !== UserRole.TECHNICIAN && (
+                    <button onClick={onCreate} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">
+                        {t('common.create')} Work Order
                     </button>
                 )}
             </div>
             
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                <div className="border-b border-gray-200 dark:border-gray-700">
-                    <nav className="-mb-px flex space-x-8 px-6">
-                        {isAdmin && <button onClick={() => setActiveTab('all')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.workOrders.allOrders')}</button>}
-                        {user.role === UserRole.TECHNICIAN && <button onClick={() => setActiveTab('my_assigned')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'my_assigned' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.workOrders.myAssigned')}</button>}
-                        {user.role === UserRole.TECHNICIAN && <button onClick={() => setActiveTab('available')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'available' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.workOrders.available')}</button>}
-                    </nav>
-                </div>
-                <div className="p-6">
-                     <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 mb-4" />
-                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                                <tr>
-                                    <th className="px-6 py-3">WO ID</th>
-                                    <th className="px-6 py-3">Customer</th>
-                                    <th className="px-6 py-3">{t('common.description')}</th>
-                                    <th className="px-6 py-3">{t('common.status')}</th>
-                                    <th className="px-6 py-3">{t('pages.workOrders.technician')}</th>
-                                    <th className="px-6 py-3">{t('common.total')}</th>
-                                    <th className="px-6 py-3">{t('common.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredWorkOrders.map(wo => (
-                                    <tr key={wo.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                        <td className="px-6 py-4 font-mono text-xs cursor-pointer hover:underline" onClick={() => navigate(`/work-orders/${wo.id}`)}>{wo.id}</td>
-                                        <td className="px-6 py-4">{wo.customer.name}</td>
-                                        <td className="px-6 py-4 truncate max-w-xs">{wo.description}</td>
-                                        <td className="px-6 py-4"><span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span></td>
-                                        <td className="px-6 py-4">{getTechnicianName(wo.technicianId)}</td>
-                                        <td className="px-6 py-4">{formatIDR(wo.totalCost)}</td>
-                                        <td className="px-6 py-4 space-x-2 whitespace-nowrap">
-                                             {user.role === UserRole.TECHNICIAN && activeTab === 'available' && <button onClick={() => onClaim(wo)} className="text-green-600 hover:underline">{t('pages.workOrders.claimJob')}</button>}
-                                             {isAdmin && !wo.technicianId && <button onClick={() => onAssign(wo)} className="text-green-600 hover:underline">Assign</button>}
-                                             <div className="relative inline-block" ref={dropdownRef}>
-                                                <button onClick={() => setOpenDropdown(openDropdown === wo.id ? null : wo.id)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-                                                    <MoreVerticalIcon className="h-5 w-5" />
-                                                </button>
-                                                {openDropdown === wo.id && wo.status === WorkOrderStatus.IN_PROGRESS && wo.technicianId === user.id && (
-                                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700 z-10">
-                                                        <button onClick={() => { onAddPart(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addPart')}</button>
-                                                        <button onClick={() => { onAddCost(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.addCost')}</button>
-                                                        <button onClick={() => { onRequestReimbursement(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.requestReimbursement')}</button>
-                                                        <div className="border-t my-1 dark:border-gray-700"></div>
-                                                        <button onClick={() => { onComplete(wo); setOpenDropdown(null); }} className="block w-full text-left px-4 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.completeWork')}</button>
-                                                    </div>
-                                                )}
-                                             </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+             <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
+                <nav className="-mb-px flex space-x-8">
+                     <button onClick={() => setActiveTab('all')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'all' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>{t('pages.workOrders.allOrders')}</button>
+                </nav>
             </div>
-        </div>
-    );
-};
 
-const WorkOrderDetailPage: React.FC<{
-    workOrders: WorkOrder[];
-    users: User[];
-    spareParts: SparePart[];
-    onAddPart: (wo: WorkOrder) => void;
-    onAddCost: (wo: WorkOrder) => void;
-    onComplete: (wo: WorkOrder) => void;
-    onPrint: (wo: WorkOrder, action: 'print' | 'download') => void;
-    onUploadProof: (workOrderId: string, proofType: 'work' | 'payment') => void;
-    onRequestReimbursement: (wo: WorkOrder) => void;
-    onChat: (wo: WorkOrder) => void;
-    onNotify: (wo: WorkOrder) => void;
-    t: Function;
-}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, onPrint, onUploadProof, onRequestReimbursement, onChat, onNotify, t }) => {
-    const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
-    const workOrder = workOrders.find(wo => wo.id === id);
-
-    if (!workOrder) {
-        return <div className="text-center p-8">Work Order not found.</div>;
-    }
-
-    const technician = users.find(u => u.id === workOrder.technicianId);
-
-    return (
-        <div className="space-y-6">
-            <button onClick={() => navigate('/work-orders')} className="flex items-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                <ArrowLeftIcon className="h-4 w-4 mr-2" /> {t('common.back')} to all work orders
-            </button>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Work Order #{workOrder.id}</h1>
-                        <p className="text-gray-500">{t('common.date')}: {new Date(workOrder.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <span className={`px-3 py-1 text-sm rounded-full font-semibold ${getStatusColor(workOrder.status)}`}>{t(`status.${workOrder.status}`)}</span>
-                        <div className="relative group">
-                            <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-                                <MoreVerticalIcon className="h-5 w-5"/>
-                            </button>
-                            <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border dark:border-gray-700 hidden group-hover:block z-10">
-                                <button onClick={() => onPrint(workOrder, 'download')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.generatePDF')}</button>
-                                <button onClick={() => onPrint(workOrder, 'print')} className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">{t('pages.workOrders.printWO')}</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2 space-y-6">
-                        <div>
-                            <h3 className="font-semibold text-lg mb-2">{t('common.description')}</h3>
-                            <p className="text-gray-600 dark:text-gray-300">{workOrder.description}</p>
-                        </div>
-                        <div className="border-t dark:border-gray-700 pt-6">
-                            <div className="flex justify-between items-center mb-2">
-                                <h3 className="font-semibold text-lg">Rincian Biaya</h3>
-                            </div>
-                            <table className="w-full text-sm">
-                                <tbody>
-                                    <tr className="border-b dark:border-gray-700"><td className="py-2">Biaya Jasa Awal</td><td className="text-right">{formatIDR(workOrder.initialServiceFee)}</td></tr>
-                                    {workOrder.usedParts.map((item, i) => {
-                                        const part = spareParts.find(p => p.id === item.partId);
-                                        return <tr key={`part-${i}`} className="border-b dark:border-gray-700"><td className="py-2">{part?.name} x{item.quantity}</td><td className="text-right">{formatIDR(item.sellingPrice * item.quantity)}</td></tr>
-                                    })}
-                                    {workOrder.additionalCosts.map((item, i) => (
-                                        <tr key={`cost-${i}`} className="border-b dark:border-gray-700"><td className="py-2">{item.description}</td><td className="text-right">{formatIDR(item.amount)}</td></tr>
-                                    ))}
-                                </tbody>
-                                <tfoot>
-                                    <tr className="font-bold"><td className="py-3 text-lg">Total</td><td className="text-right text-lg">{formatIDR(workOrder.totalCost)}</td></tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                        <div className="flex space-x-2">
-                            {workOrder.status !== WorkOrderStatus.COMPLETED && <button onClick={() => onAddPart(workOrder)} className="px-4 py-2 text-sm rounded-lg border">{t('pages.workOrders.addPart')}</button>}
-                            {workOrder.status !== WorkOrderStatus.COMPLETED && <button onClick={() => onAddCost(workOrder)} className="px-4 py-2 text-sm rounded-lg border">{t('pages.workOrders.addCost')}</button>}
-                            {workOrder.status !== WorkOrderStatus.COMPLETED && <button onClick={() => onRequestReimbursement(workOrder)} className="px-4 py-2 text-sm rounded-lg border">{t('pages.workOrders.requestReimbursement')}</button>}
-                        </div>
-                    </div>
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="font-semibold text-lg mb-2">{t('pages.customers.customersTab')}</h3>
-                            <p className="font-bold">{workOrder.customer.name}</p>
-                            <div className="flex items-center space-x-2 mt-1">
-                                <p className="text-sm text-gray-500">{workOrder.customer.phone}</p>
-                                <button onClick={() => onChat(workOrder)} className="text-green-500 hover:text-green-600" title="Chat on WhatsApp"><WhatsAppIcon className="h-5 w-5"/></button>
-                            </div>
-                            <div className="flex items-center space-x-2 mt-1">
-                                <p className="text-sm text-gray-500">{workOrder.customer.email}</p>
-                                <button onClick={() => onNotify(workOrder)} className="text-gray-500 hover:text-gray-600" title="Send Email"><MailIcon className="h-5 w-5"/></button>
-                            </div>
-                             <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(workOrder.customer.address)}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline mt-1 block">{workOrder.customer.address}</a>
-                        </div>
-                        <div>
-                            <h3 className="font-semibold text-lg mb-2">{t('pages.workOrders.technician')}</h3>
-                            {technician ? <p>{technician.name}</p> : <p className="text-gray-500">{t('pages.workOrders.unassigned')}</p>}
-                        </div>
-                         <div>
-                            <h3 className="font-semibold text-lg mb-2">Proofs</h3>
-                             <div className="space-y-2">
-                                <button onClick={() => onUploadProof(workOrder.id, 'work')} className="text-sm text-blue-600 hover:underline w-full text-left">{t('pages.workOrders.uploadWorkProof')}</button>
-                                {workOrder.workProofUrl && <a href={workOrder.workProofUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600">View Work Proof</a>}
-                                <button onClick={() => onUploadProof(workOrder.id, 'payment')} className="text-sm text-blue-600 hover:underline w-full text-left">{t('pages.workOrders.uploadPaymentProof')}</button>
-                                {workOrder.paymentProofUrl && <a href={workOrder.paymentProofUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-green-600">View Payment Proof</a>}
-                            </div>
-                        </div>
-                        {workOrder.status === WorkOrderStatus.IN_PROGRESS && (
-                            <button onClick={() => onComplete(workOrder)} className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">{t('pages.workOrders.completeWork')}</button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const ReimbursementPage: React.FC<{
-    transactions: Transaction[],
-    users: User[],
-    onApprove: (transactionId: string) => void,
-    onViewAttachment: (attachment: any) => void,
-    t: Function
-}> = ({ transactions, users, onApprove, onViewAttachment, t }) => {
-    const requests = transactions.filter(tr => tr.category === TransactionCategory.REIMBURSEMENT && tr.approved === false);
-    return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.reimbursement.title')}</h1>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                            <tr>
-                                <th className="px-6 py-3">{t('common.date')}</th>
-                                <th className="px-6 py-3">{t('pages.reimbursement.requestedBy')}</th>
-                                <th className="px-6 py-3">{t('common.description')}</th>
-                                <th className="px-6 py-3 text-right">{t('common.amount')}</th>
-                                <th className="px-6 py-3">{t('common.actions')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {requests.length > 0 ? requests.map(req => (
-                                <tr key={req.id}>
-                                    <td className="px-6 py-4">{req.date}</td>
-                                    <td className="px-6 py-4">{users.find(u => u.id === req.requestedByUserId)?.name || 'Unknown'}</td>
-                                    <td className="px-6 py-4">{req.description} (WO: {req.workOrderId})</td>
-                                    <td className="px-6 py-4 text-right">{formatIDR(req.amount)}</td>
-                                    <td className="px-6 py-4 space-x-2">
-                                        <button onClick={() => onViewAttachment(req.attachment)} className="text-blue-600 hover:underline">{t('common.view')}</button>
-                                        <button onClick={() => onApprove(req.id)} className="text-green-600 hover:underline">{t('common.approve')}</button>
-                                    </td>
-                                </tr>
-                            )) : <tr><td colSpan={5} className="text-center py-4">{t('pages.reimbursement.empty')}</td></tr>}
-                        </tbody>
-                    </table>
-                 </div>
-            </div>
-        </div>
-    );
-};
-
-const MyReimbursementsPage: React.FC<{
-    transactions: Transaction[],
-    currentUser: User,
-    onViewAttachment: (attachment: any) => void,
-    t: Function
-}> = ({ transactions, currentUser, onViewAttachment, t }) => {
-    const myRequests = transactions.filter(tr => tr.requestedByUserId === currentUser.id && tr.category === TransactionCategory.REIMBURSEMENT);
-
-    return (
-        <div className="space-y-6">
-             <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.myReimbursements.title')}</h1>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                         <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                            <tr>
-                                <th className="px-6 py-3">{t('common.date')}</th>
-                                <th className="px-6 py-3">{t('pages.myReimbursements.workOrderId')}</th>
-                                <th className="px-6 py-3">{t('common.description')}</th>
-                                <th className="px-6 py-3 text-right">{t('common.amount')}</th>
-                                <th className="px-6 py-3">{t('common.status')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {myRequests.length > 0 ? myRequests.map(req => (
-                                <tr key={req.id}>
-                                    <td className="px-6 py-4">{req.date}</td>
-                                    <td className="px-6 py-4">{req.workOrderId}</td>
-                                    <td className="px-6 py-4">{req.description}</td>
-                                    <td className="px-6 py-4 text-right">{formatIDR(req.amount)}</td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(req.approved ? 'approved' : 'pending')}`}>
-                                            {t(`status.${req.approved ? 'approved' : 'pending'}`)}
-                                        </span>
-                                    </td>
-                                </tr>
-                            )) : <tr><td colSpan={5} className="text-center py-4">{t('pages.myReimbursements.empty')}</td></tr>}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-const EmployeesPage: React.FC<{
-    users: User[];
-    workOrders: WorkOrder[];
-    attendance: AttendanceRecord[];
-    onAddEmployee: () => void;
-    t: Function;
-}> = ({ users, workOrders, attendance, onAddEmployee, t }) => {
-    const navigate = useNavigate();
-    const today = new Date().toISOString().split('T')[0];
-
-    const performanceData = useMemo(() => {
-        return users
-            .filter(u => u.role === UserRole.TECHNICIAN)
-            .map(tech => ({
-                id: tech.id,
-                name: tech.name,
-                completed: workOrders.filter(wo => wo.technicianId === tech.id && wo.status === WorkOrderStatus.COMPLETED).length
-            }));
-    }, [users, workOrders]);
-    
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.employees.title')}</h1>
-                <button onClick={onAddEmployee} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('pages.employees.addEmployee')}</button>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">{t('pages.employees.allEmployees')}</h2>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                            <tr>
-                                <th className="px-6 py-3">{t('common.name')}</th>
-                                <th className="px-6 py-3">{t('pages.employees.role')}</th>
-                                <th className="px-6 py-3">{t('pages.employees.contact')}</th>
-                                <th className="px-6 py-3">{t('common.status')} / Attendance</th>
-                                <th className="px-6 py-3">{t('pages.employees.monthlyPerformance')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.map(user => {
-                                const attendanceRecord = attendance.find(a => a.userId === user.id && a.date === today);
-                                const attendanceStatus = attendanceRecord 
-                                    ? (attendanceRecord.clockOutTime ? t('pages.employees.clockedOut') : `${t('pages.employees.clockedInAt', { time: new Date(attendanceRecord.clockInTime).toLocaleTimeString() })}`)
-                                    : t('pages.employees.absent');
-                                
-                                return (
-                                    <tr key={user.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white hover:underline cursor-pointer" onClick={() => navigate(`/employees/${user.id}`)}>{user.name}</td>
-                                        <td className="px-6 py-4">{user.role}</td>
-                                        <td className="px-6 py-4">{user.email}<br/>{user.phone}</td>
-                                        <td className="px-6 py-4">
-                                            {user.role === UserRole.TECHNICIAN ? (
-                                                <>
-                                                    <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(user.status || TechnicianStatus.OFFLINE)}`}>{t(`status.${user.status || TechnicianStatus.OFFLINE}`)}</span>
-                                                    <div className="text-xs mt-1 text-gray-500">{attendanceStatus}</div>
-                                                </>
-                                            ) : '-'}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">{performanceData.find(p => p.id === user.id)?.completed || 0}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const TechnicianProfilePage: React.FC<{
-    users: User[];
-    workOrders: WorkOrder[];
-    onEdit: (user: User) => void;
-    t: Function;
-}> = ({ users, workOrders, onEdit, t }) => {
-    const { employeeId } = useParams<{ employeeId: string }>();
-    const navigate = useNavigate();
-    const user = users.find(u => u.id === employeeId);
-    
-    const recentWorkOrders = useMemo(() => {
-        return workOrders.filter(wo => wo.technicianId === employeeId).slice(0, 10);
-    }, [workOrders, employeeId]);
-    
-    if (!user) {
-        return <div>Employee not found</div>;
-    }
-
-    return (
-        <div className="space-y-6">
-             <button onClick={() => navigate('/employees')} className="flex items-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                <ArrowLeftIcon className="h-4 w-4 mr-2" /> {t('technicianProfile.back')}
-            </button>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                 <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{user.name}</h1>
-                        <p className="text-gray-500">{user.role}</p>
-                    </div>
-                    <button onClick={() => onEdit(user)} className="px-4 py-2 text-sm rounded-lg border">{t('technicianProfile.editEmployee')}</button>
-                </div>
-                 <div className="mt-6 border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 className="font-semibold text-lg mb-2">{t('technicianProfile.personalInfo')}</h3>
-                         <div className="space-y-2 text-sm">
-                            <p><strong>{t('common.email')}:</strong> {user.email || '-'}</p>
-                            <p><strong>{t('common.phone')}:</strong> {user.phone || '-'}</p>
-                            <p><strong>{t('common.status')}:</strong> <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(user.status || TechnicianStatus.OFFLINE)}`}>{t(`status.${user.status || TechnicianStatus.OFFLINE}`)}</span></p>
-                         </div>
-                    </div>
-                     <div>
-                        <h3 className="font-semibold text-lg mb-2">{t('technicianProfile.recentActivity')}</h3>
-                        <ul className="space-y-2 text-sm">
-                            {recentWorkOrders.length > 0 ? recentWorkOrders.map(wo => (
-                                <li key={wo.id} className="flex justify-between p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
-                                    <Link to={`/work-orders/${wo.id}`} className="hover:underline">{wo.id}: {wo.description}</Link>
-                                    <span className={`text-xs ${getStatusColor(wo.status)} px-2 py-0.5 rounded-full`}>{t(`status.${wo.status}`)}</span>
-                                </li>
-                            )) : <p className="text-gray-500">No recent activity.</p>}
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const FinancePage: React.FC<{
-    transactions: Transaction[],
-    spareParts: SparePart[],
-    onAddTransaction: () => void,
-    onGenerateReport: () => void,
-    t: Function
-}> = ({ transactions, spareParts, onAddTransaction, onGenerateReport, t }) => {
-    const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState('transactions');
-
-    const { totalIncome, totalExpense, profitLoss } = useMemo(() => {
-        const approvedTransactions = transactions.filter(t => t.approved !== false);
-        const income = approvedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-        const expense = approvedTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-        return { totalIncome: income, totalExpense: expense, profitLoss: income - expense };
-    }, [transactions]);
-
-    const inventoryValue = useMemo(() => 
-        spareParts.reduce((sum, part) => sum + (part.stock * (part.purchasePrice || 0)), 0),
-        [spareParts]
-    );
-
-    const totalAssets = profitLoss + inventoryValue;
-
-    const renderTransactions = () => (
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                    <tr>
-                        <th className="px-6 py-3">{t('common.date')}</th>
-                        <th className="px-6 py-3">{t('common.description')}</th>
-                        <th className="px-6 py-3">Type</th>
-                        <th className="px-6 py-3">{t('common.category')}</th>
-                        <th className="px-6 py-3 text-right">{t('common.amount')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {transactions.filter(t=> t.approved !== false).map(tr => (
-                        <tr key={tr.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                            <td className="px-6 py-4">{tr.date}</td>
-                            <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{tr.description}</td>
-                            <td className="px-6 py-4">
-                                <span className={`px-2 py-1 rounded-full text-xs ${tr.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>{tr.type}</span>
-                            </td>
-                            <td className="px-6 py-4">{tr.category}</td>
-                            <td className={`px-6 py-4 text-right font-semibold ${tr.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{formatIDR(tr.amount)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    );
-    
-    const renderProfitLoss = () => (
-      <div className="space-y-4 max-w-lg mx-auto">
-        <div className="flex justify-between py-2 border-b dark:border-gray-700"><span className="font-medium">Total Pendapatan</span> <span>{formatIDR(totalIncome)}</span></div>
-        <div className="flex justify-between py-2 border-b dark:border-gray-700"><span className="font-medium">Total Pengeluaran</span> <span>{formatIDR(totalExpense)}</span></div>
-        <div className="flex justify-between py-3 border-t-2 dark:border-gray-600 mt-4"><span className="font-bold text-lg">Laba / Rugi Bersih</span> <span className="font-bold text-lg">{formatIDR(profitLoss)}</span></div>
-      </div>
-    );
-
-    const renderBalanceSheet = () => (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        <div className="space-y-4">
-          <h3 className="font-bold text-lg border-b pb-2 dark:border-gray-700">{t('pages.finance.assets')}</h3>
-          <div className="flex justify-between py-2 border-b dark:border-gray-700"><span>{t('pages.finance.cash')} ({t('pages.finance.retainedEarnings')})</span> <span>{formatIDR(profitLoss)}</span></div>
-          <div className="flex justify-between py-2 border-b dark:border-gray-700"><span>{t('pages.finance.inventoryValue')}</span> <span>{formatIDR(inventoryValue)}</span></div>
-          <div className="flex justify-between py-3 border-t-2 dark:border-gray-600 mt-4"><span className="font-bold text-lg">{t('pages.finance.totalAssets')}</span> <span className="font-bold text-lg">{formatIDR(totalAssets)}</span></div>
-        </div>
-        <div className="space-y-4">
-          <h3 className="font-bold text-lg border-b pb-2 dark:border-gray-700">{t('pages.finance.liabilitiesAndEquity')}</h3>
-          <div className="flex justify-between py-2 border-b dark:border-gray-700"><span>{t('pages.finance.equity')} ({t('pages.finance.retainedEarnings')})</span> <span>{formatIDR(profitLoss)}</span></div>
-          <div className="flex justify-between py-3 border-t-2 dark:border-gray-600 mt-4"><span className="font-bold text-lg">Total Liabilitas & Ekuitas</span> <span className="font-bold text-lg">{formatIDR(profitLoss)}</span></div>
-        </div>
-      </div>
-    );
-
-    return (
-        <div className="space-y-6">
-             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.finance.title')}</h1>
-                <div className="flex space-x-2">
-                    <button onClick={onGenerateReport} className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center">{t('pages.finance.generateReport')}</button>
-                    <button onClick={() => navigate('/finance/client-report')} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"><UsersIcon className="mr-2 h-5 w-5" /> {t('pages.finance.clientReport')}</button>
-                    <button onClick={onAddTransaction} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"><FinanceIcon className="mr-2 h-5 w-5" /> {t('pages.finance.addTransaction')}</button>
-                </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard title={t('pages.finance.totalIncome')} value={formatIDR(totalIncome)} icon={<FinanceIcon />} color="green" />
-                <StatCard title={t('pages.finance.totalExpense')} value={formatIDR(totalExpense)} icon={<FinanceIcon />} color="red" />
-                <StatCard title={t('pages.finance.profitLoss')} value={formatIDR(profitLoss)} icon={<FinanceIcon />} color={profitLoss >= 0 ? 'blue' : 'yellow'} />
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                <div className="border-b border-gray-200 dark:border-gray-700">
-                    <nav className="-mb-px flex space-x-8 px-6">
-                        <button onClick={() => setActiveTab('transactions')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'transactions' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.finance.allTransactions')}</button>
-                        <button onClick={() => setActiveTab('profit_loss')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'profit_loss' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.finance.profitAndLoss')}</button>
-                        <button onClick={() => setActiveTab('balance_sheet')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'balance_sheet' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500'}`}>{t('pages.finance.balanceSheet')}</button>
-                    </nav>
-                </div>
-                 <div className="p-6">
-                    {activeTab === 'transactions' && renderTransactions()}
-                    {activeTab === 'profit_loss' && renderProfitLoss()}
-                    {activeTab === 'balance_sheet' && renderBalanceSheet()}
-                 </div>
-            </div>
-        </div>
-    );
-};
-
-
-const ClientFinancePage: React.FC<{
-    clients: Client[];
-    customers: Customer[];
-    workOrders: WorkOrder[];
-    transactions: Transaction[];
-    t: Function;
-}> = ({ clients, customers, workOrders, transactions, t }) => {
-    const navigate = useNavigate();
-
-    const clientReport = useMemo(() => {
-        return clients.map(client => {
-            const clientCustomers = customers.filter(c => c.clientId === client.id).map(c => c.id);
-            
-            const clientIncomeTransactions = transactions.filter(t => t.type === 'income' && t.approved !== false && (
-                (t.workOrderId && clientCustomers.includes(workOrders.find(wo => wo.id === t.workOrderId)?.customer.id || '')) ||
-                t.clientId === client.id
-            ));
-            
-            const clientExpenseTransactions = transactions.filter(t => t.type === 'expense' && t.clientId === client.id && t.approved !== false);
-
-            const totalRevenue = clientIncomeTransactions.reduce((sum, t) => sum + t.amount, 0);
-            const totalCost = clientExpenseTransactions.reduce((sum, t) => sum + t.amount, 0);
-
-            return {
-                ...client,
-                totalRevenue,
-                totalCost,
-                netProfit: totalRevenue - totalCost
-            };
-        });
-    }, [clients, customers, transactions, workOrders]);
-
-    return (
-        <div className="space-y-6">
-            <button onClick={() => navigate('/finance')} className="flex items-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-                <ArrowLeftIcon className="h-4 w-4 mr-2" /> Back to Finance
-            </button>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Client Financial Report</h1>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
                         <tr>
-                            <th className="px-6 py-3">Client Name</th>
-                            <th className="px-6 py-3 text-right">Total Revenue</th>
-                            <th className="px-6 py-3 text-right">Total Direct Costs</th>
-                            <th className="px-6 py-3 text-right">Net Profit</th>
+                            <th scope="col" className="px-6 py-3">ID</th>
+                            <th scope="col" className="px-6 py-3">Customer</th>
+                            <th scope="col" className="px-6 py-3">{t('pages.workOrders.technician')}</th>
+                            <th scope="col" className="px-6 py-3">{t('common.status')}</th>
+                            <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {clientReport.map(report => (
-                             <tr key={report.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
-                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{report.name}</td>
-                                <td className="px-6 py-4 text-right font-semibold text-green-600">{formatIDR(report.totalRevenue)}</td>
-                                <td className="px-6 py-4 text-right font-semibold text-red-600">{formatIDR(report.totalCost)}</td>
-                                <td className="px-6 py-4 text-right font-bold text-blue-600">{formatIDR(report.netProfit)}</td>
-                             </tr>
+                        {filteredOrders.map(wo => (
+                            <tr key={wo.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                    <Link to={`/work-orders/${wo.id}`} className="text-primary-600 hover:underline">{wo.id}</Link>
+                                </td>
+                                <td className="px-6 py-4">{wo.customer.name}</td>
+                                <td className="px-6 py-4">{users.find(u => u.id === wo.technicianId)?.name || <span className="text-gray-500">{t('pages.workOrders.unassigned')}</span>}</td>
+                                <td className="px-6 py-4"><span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(wo.status)}`}>{t(`status.${wo.status}`)}</span></td>
+                                <td className="px-6 py-4 relative">
+                                     {user.role !== UserRole.TECHNICIAN && wo.status === WorkOrderStatus.PENDING && (
+                                        <button onClick={() => onAssign(wo)} className="font-medium text-blue-600 dark:text-blue-500 hover:underline">Assign</button>
+                                     )}
+                                </td>
+                            </tr>
                         ))}
                     </tbody>
                 </table>
@@ -1677,319 +1212,714 @@ const ClientFinancePage: React.FC<{
     );
 };
 
-const CustomersAndClientsPage: React.FC<{
-    customers: Customer[];
-    clients: Client[];
-    onAddCustomer: () => void;
-    onEditCustomer: (customer: Customer) => void;
-    onAddClient: () => void;
-    onEditClient: (client: Client) => void;
-    currentUser: User;
-    t: Function;
+const WorkOrderDetailPage: React.FC<{
+    workOrders: WorkOrder[]; users: User[]; spareParts: SparePart[]; 
+    onAddPart: (wo: WorkOrder) => void; onAddCost: (wo: WorkOrder) => void; onComplete: (wo: WorkOrder) => void; 
+    t: TFunction; onPrint: (wo: WorkOrder, action: 'print' | 'download') => void; onUploadProof: (id: string, type: 'work' | 'payment') => void;
+    onChat: (wo: WorkOrder) => void; onNotify: (wo: WorkOrder) => void; onRequestReimbursement: (wo: WorkOrder) => void;
+}> = ({ workOrders, users, spareParts, onAddPart, onAddCost, onComplete, t, onPrint, onUploadProof, onChat, onNotify, onRequestReimbursement }) => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const workOrder = workOrders.find(wo => wo.id === id);
+
+    // Identify if current user is technician (mocking check via localStorage or passing User as prop in real app)
+    // For now, we infer based on UI structure, but ideally should pass `currentUser` prop.
+    // Assuming if we are here, we have access to context or we check based on role.
+    // Let's rely on the design being responsive, but add specific mobile touches.
+    
+    if (!workOrder) return <div className="text-center text-gray-500 p-10">Work Order not found. <Link to="/work-orders" className="text-primary-600 underline">{t('common.back')}</Link></div>;
+    
+    const technician = users.find(u => u.id === workOrder.technicianId);
+    
+    // --- JOB SHEET LAYOUT (PORTABLE) ---
+    return (
+        <div className="max-w-2xl mx-auto pb-20">
+            {/* Top Bar */}
+            <div className="flex items-center justify-between mb-4">
+                <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-900 dark:text-gray-300">
+                    <ArrowLeftIcon className="h-5 w-5 mr-1" />
+                    <span className="font-medium">Back</span>
+                </button>
+                <div className="flex space-x-2">
+                    <button onClick={() => onPrint(workOrder, 'download')} className="p-2 text-gray-600 bg-white rounded-full shadow-sm border dark:bg-gray-700 dark:border-gray-600 dark:text-white"><ReceiptIcon className="h-5 w-5"/></button>
+                </div>
+            </div>
+
+            {/* Main Job Sheet Card */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                
+                {/* Header Status */}
+                <div className={`p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center ${workOrder.status === WorkOrderStatus.COMPLETED ? 'bg-green-50 dark:bg-green-900/20' : ''}`}>
+                    <div>
+                        <div className="text-xs text-gray-500 font-mono">#{workOrder.id}</div>
+                        <div className="font-bold text-lg dark:text-white">{workOrder.customer.name}</div>
+                    </div>
+                    <span className={`px-3 py-1 text-sm font-bold rounded-full ${getStatusColor(workOrder.status)}`}>
+                        {t(`status.${workOrder.status}`)}
+                    </span>
+                </div>
+
+                {/* Customer Actions & Address */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-700/30 border-b border-gray-100 dark:border-gray-700">
+                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 flex items-start">
+                        <MapPinIcon className="h-4 w-4 mr-2 mt-0.5 text-gray-400 flex-shrink-0"/>
+                        {workOrder.customer.address}
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                         <a href={`tel:${workOrder.customer.phone}`} className="flex flex-col items-center justify-center p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm active:bg-gray-100">
+                            <span className="p-2 bg-blue-100 text-blue-600 rounded-full mb-1"><BriefcaseIcon className="h-5 w-5"/></span>
+                            <span className="text-xs font-medium">Call</span>
+                        </a>
+                        <button onClick={() => onChat(workOrder)} className="flex flex-col items-center justify-center p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm active:bg-gray-100">
+                             <span className="p-2 bg-green-100 text-green-600 rounded-full mb-1"><WhatsAppIcon className="h-5 w-5"/></span>
+                             <span className="text-xs font-medium">WhatsApp</span>
+                        </button>
+                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(workOrder.customer.address)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm active:bg-gray-100">
+                             <span className="p-2 bg-red-100 text-red-600 rounded-full mb-1"><MapPinIcon className="h-5 w-5"/></span>
+                             <span className="text-xs font-medium">Map</span>
+                        </a>
+                    </div>
+                </div>
+
+                {/* Task Description */}
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Task Description</h3>
+                    <p className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed">{workOrder.description}</p>
+                </div>
+
+                {/* Spare Parts Section */}
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+                     <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Used Parts</h3>
+                        {workOrder.status === WorkOrderStatus.IN_PROGRESS && (
+                            <button onClick={() => onAddPart(workOrder)} className="text-sm font-semibold text-primary-600 flex items-center bg-primary-50 px-3 py-1 rounded-full">
+                                + Add Part
+                            </button>
+                        )}
+                    </div>
+                    {workOrder.usedParts.length === 0 ? (
+                        <div className="text-sm text-gray-400 italic">No parts added yet.</div>
+                    ) : (
+                        <ul className="space-y-3">
+                            {workOrder.usedParts.map((item, i) => {
+                                const part = spareParts.find(p => p.id === item.partId);
+                                return (
+                                    <li key={i} className="flex justify-between items-center text-sm p-2 rounded bg-gray-50 dark:bg-gray-700/50">
+                                        <span className="font-medium text-gray-800 dark:text-white">{part?.name || 'Unknown'} <span className="text-gray-500 text-xs">x{item.quantity}</span></span>
+                                        <span className="font-mono text-gray-600 dark:text-gray-300">{formatIDR(item.sellingPrice * item.quantity)}</span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </div>
+
+                {/* Additional Costs Section */}
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+                     <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Extra Costs</h3>
+                         {workOrder.status === WorkOrderStatus.IN_PROGRESS && (
+                            <button onClick={() => onAddCost(workOrder)} className="text-sm font-semibold text-primary-600 flex items-center bg-primary-50 px-3 py-1 rounded-full">
+                                + Add Cost
+                            </button>
+                        )}
+                    </div>
+                    {workOrder.additionalCosts.length === 0 ? (
+                        <div className="text-sm text-gray-400 italic">No additional costs.</div>
+                    ) : (
+                        <ul className="space-y-3">
+                            {workOrder.additionalCosts.map((cost, i) => (
+                                <li key={i} className="flex justify-between items-center text-sm p-2 rounded bg-gray-50 dark:bg-gray-700/50">
+                                    <span className="font-medium text-gray-800 dark:text-white">{cost.description}</span>
+                                    <span className="font-mono text-gray-600 dark:text-gray-300">{formatIDR(cost.amount)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                {/* Evidence / Proofs */}
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Job Evidence</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* Work Proof */}
+                        <div onClick={() => onUploadProof(workOrder.id, 'work')} className="cursor-pointer group relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-500 transition-colors">
+                            {workOrder.workProofUrl ? (
+                                <img src={workOrder.workProofUrl} className="w-full h-full object-cover" alt="Work Proof" />
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                                    <BriefcaseIcon className="h-8 w-8 mb-2" />
+                                    <span className="text-xs font-medium">Tap to upload<br/>Work Proof</span>
+                                </div>
+                            )}
+                            {workOrder.workProofUrl && <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs">Change</div>}
+                        </div>
+
+                        {/* Payment Proof */}
+                        <div onClick={() => onUploadProof(workOrder.id, 'payment')} className="cursor-pointer group relative aspect-square bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary-500 transition-colors">
+                            {workOrder.paymentProofUrl ? (
+                                <img src={workOrder.paymentProofUrl} className="w-full h-full object-cover" alt="Payment Proof" />
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                                    <ReceiptIcon className="h-8 w-8 mb-2" />
+                                    <span className="text-xs font-medium">Tap to upload<br/>Payment Proof</span>
+                                </div>
+                            )}
+                             {workOrder.paymentProofUrl && <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs">Change</div>}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Total Summary */}
+                <div className="p-5 bg-gray-50 dark:bg-gray-900/50">
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-500 font-medium">Total Bill</span>
+                        <span className="text-2xl font-bold text-gray-900 dark:text-white">{formatIDR(workOrder.totalCost)}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Floating Action Bar for Technicians */}
+            {workOrder.status !== WorkOrderStatus.COMPLETED && (
+                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex space-x-3 z-30 pb-6 md:pb-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                    <button onClick={() => onRequestReimbursement(workOrder)} className="flex-1 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-semibold text-sm">
+                        Reimburse
+                    </button>
+                    <button onClick={() => onComplete(workOrder)} className="flex-[2] py-3 rounded-xl bg-green-600 text-white font-bold shadow-lg hover:bg-green-700 active:scale-95 transition-transform">
+                        Complete Job
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const CustomersAndClientsPage: React.FC<{ 
+    customers: Customer[]; 
+    clients: Client[]; 
+    onAddCustomer: () => void; 
+    onEditCustomer: (c: Customer) => void; 
+    onAddClient: () => void; 
+    onEditClient: (c: Client) => void; 
+    currentUser: User; 
+    t: TFunction; 
 }> = ({ customers, clients, onAddCustomer, onEditCustomer, onAddClient, onEditClient, currentUser, t }) => {
     const [activeTab, setActiveTab] = useState<'customers' | 'clients'>('customers');
     const [searchTerm, setSearchTerm] = useState('');
 
-    const isAdmin = currentUser.role === UserRole.ADMINISTRATOR || currentUser.role === UserRole.ADMIN;
-
     const filteredCustomers = customers.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.phone.includes(searchTerm) ||
         c.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
     const filteredClients = clients.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const renderCustomerTable = () => (
+        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+                <tr>
+                    <th className="px-6 py-3">{t('common.name')}</th>
+                    <th className="px-6 py-3">{t('common.phone')}</th>
+                    <th className="px-6 py-3">{t('common.email')}</th>
+                    <th className="px-6 py-3">{t('pages.customers.clientsTab')}</th>
+                    <th className="px-6 py-3">{t('common.actions')}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {filteredCustomers.map(customer => (
+                    <tr key={customer.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{customer.name}</td>
+                        <td className="px-6 py-4">{customer.phone}</td>
+                        <td className="px-6 py-4">{customer.email}</td>
+                        <td className="px-6 py-4">{clients.find(c => c.id === customer.clientId)?.name || '-'}</td>
+                        <td className="px-6 py-4">
+                            <button onClick={() => onEditCustomer(customer)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+
+    const renderClientTable = () => (
+         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+                <tr>
+                    <th className="px-6 py-3">Client Name</th>
+                    <th className="px-6 py-3">{t('common.actions')}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {filteredClients.map(client => (
+                    <tr key={client.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{client.name}</td>
+                        <td className="px-6 py-4">
+                            <button onClick={() => onEditClient(client)} className="font-medium text-primary-600 hover:underline">{t('common.edit')}</button>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.customers.title')}</h1>
+            <div className="flex justify-between items-center flex-wrap gap-4">
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.customers.title')}</h1>
+                {currentUser.role !== UserRole.TECHNICIAN && (
+                    <button onClick={activeTab === 'customers' ? onAddCustomer : onAddClient} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">
+                        {activeTab === 'customers' ? t('modals.addCustomerTitle') : t('modals.addClientTitle')}
+                    </button>
+                )}
+            </div>
+             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                <div className="border-b border-gray-200 dark:border-gray-700">
+                    <nav className="-mb-px flex space-x-8 px-6">
+                        <button onClick={() => setActiveTab('customers')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'customers' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>{t('pages.customers.customersTab')}</button>
+                        <button onClick={() => setActiveTab('clients')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'clients' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>{t('pages.customers.clientsTab')}</button>
+                    </nav>
+                </div>
+                 <div className="p-4">
+                     <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full max-w-sm px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                 </div>
+                 <div className="overflow-x-auto">
+                    {activeTab === 'customers' ? renderCustomerTable() : renderClientTable()}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CustomerEditRequestPage: React.FC<{ requests: CustomerEditRequest[]; customers: Customer[]; users: User[]; onApprove: (id: string) => void; onReject: (id: string) => void; t: TFunction; }> = ({ requests, customers, users, onApprove, onReject, t }) => {
+    const pendingRequests = requests.filter(r => r.status === 'pending');
+    return (
+        <div>
+            <h1 className="text-2xl font-bold mb-4">{t('pages.customerEditRequests.title')}</h1>
+            <div className="space-y-4">
+                {pendingRequests.length === 0 && <p>{t('pages.customerEditRequests.noRequests')}</p>}
+                {pendingRequests.map(req => {
+                    const customer = customers.find(c => c.id === req.customerId);
+                    const requester = users.find(u => u.id === req.requestedByUserId);
+                    return (
+                        <div key={req.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                            <p><strong>{customer?.name}</strong> requested by <strong>{requester?.name}</strong></p>
+                            <div className="flex space-x-2 mt-2">
+                                <button onClick={() => onApprove(req.id)} className="px-3 py-1 text-sm bg-green-500 text-white rounded">{t('common.approve')}</button>
+                                <button onClick={() => onReject(req.id)} className="px-3 py-1 text-sm bg-red-500 text-white rounded">{t('common.reject')}</button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+const EmployeesPage: React.FC<{ users: User[]; workOrders: WorkOrder[]; attendance: AttendanceRecord[]; onAddEmployee: () => void; t: TFunction; }> = ({ users, workOrders, attendance, onAddEmployee, t }) => {
+    const navigate = useNavigate();
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold">{t('pages.employees.title')}</h1>
+                <button onClick={onAddEmployee} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">
+                    {t('pages.employees.addEmployee')}
+                </button>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr><th>{t('common.name')}</th><th>{t('pages.employees.role')}</th><th>{t('common.status')}</th></tr>
+                    </thead>
+                    <tbody>
+                        {users.map(user => (
+                            <tr key={user.id} onClick={() => navigate(`/employees/${user.id}`)} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td>{user.name}</td>
+                                <td>{user.role}</td>
+                                <td>{user.status && <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(user.status)}`}>{t(`status.${user.status}`)}</span>}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+const TechnicianProfilePage: React.FC<{ users: User[]; workOrders: WorkOrder[]; onEdit: (u: User) => void; t: TFunction; }> = ({ users, workOrders, onEdit, t }) => {
+    const { employeeId } = useParams();
+    const user = users.find(u => u.id === employeeId);
+    if (!user) return <div>{t('pages.employees.notFound')}</div>;
+    return (
+        <div>
+            <h1 className="text-2xl font-bold">{user.name}</h1>
+            <button onClick={() => onEdit(user)}>{t('common.edit')}</button>
+        </div>
+    );
+};
+
+const FinancePage: React.FC<{ transactions: Transaction[]; spareParts: SparePart[]; onAddTransaction: () => void; onGenerateReport: () => void; t: TFunction; }> = ({ transactions, spareParts, onAddTransaction, onGenerateReport, t }) => {
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('transactions');
+
+    const { totalIncome, totalExpense, profitLoss, inventoryValue, totalAssets } = useMemo(() => {
+        const approvedTransactions = transactions.filter(t => t.approved !== false);
+        const totalIncome = approvedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+        const totalExpense = approvedTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+        const profitLoss = totalIncome - totalExpense;
+        const inventoryValue = spareParts.reduce((sum, part) => sum + (part.stock * (part.purchasePrice || 0)), 0);
+        const totalAssets = profitLoss + inventoryValue; // Simplified cash = profitLoss
+        return { totalIncome, totalExpense, profitLoss, inventoryValue, totalAssets };
+    }, [transactions, spareParts]);
+
+    const renderTransactions = () => (
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th className="px-6 py-3">{t('common.date')}</th>
+                        <th className="px-6 py-3">{t('common.description')}</th>
+                        <th className="px-6 py-3">{t('common.category')}</th>
+                        <th className="px-6 py-3 text-right">{t('common.amount')}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {transactions.filter(t => t.approved !== false).map(tr => (
+                        <tr key={tr.id} className="border-b dark:border-gray-700">
+                            <td className="px-6 py-4">{tr.date}</td>
+                            <td className="px-6 py-4">{tr.description}</td>
+                            <td className="px-6 py-4">{tr.category}</td>
+                            <td className={`px-6 py-4 text-right font-medium ${tr.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                {tr.type === 'expense' ? '-' : ''}{formatIDR(tr.amount)}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+
+    const renderProfitLoss = () => (
+        <div className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Laporan Laba Rugi</h3>
+            <div className="space-y-2">
+                <div className="flex justify-between border-b pb-2">
+                    <span className="font-medium">Total Pendapatan</span>
+                    <span className="font-medium text-green-600">{formatIDR(totalIncome)}</span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                    <span className="font-medium">Total Pengeluaran</span>
+                    <span className="font-medium text-red-600">{formatIDR(totalExpense)}</span>
+                </div>
+                <div className="flex justify-between pt-2 text-lg">
+                    <span className="font-bold">Laba / Rugi Bersih</span>
+                    <span className="font-bold">{formatIDR(profitLoss)}</span>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderBalanceSheet = () => (
+        <div className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Neraca</h3>
+             <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-2">
+                    <h4 className="font-bold border-b pb-1">Aset</h4>
+                    <div className="flex justify-between"><span>Kas (dari Laba Ditahan)</span><span>{formatIDR(profitLoss)}</span></div>
+                    <div className="flex justify-between"><span>Nilai Persediaan</span><span>{formatIDR(inventoryValue)}</span></div>
+                    <div className="flex justify-between font-bold border-t pt-2"><span>Total Aset</span><span>{formatIDR(totalAssets)}</span></div>
+                </div>
+                 <div className="space-y-2">
+                     <h4 className="font-bold border-b pb-1">Liabilitas & Ekuitas</h4>
+                     <div className="flex justify-between"><span>Ekuitas (Laba Ditahan)</span><span>{formatIDR(profitLoss)}</span></div>
+                     <div className="flex justify-between font-bold border-t pt-2"><span>Total Liabilitas & Ekuitas</span><span>{formatIDR(profitLoss)}</span></div>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center flex-wrap gap-4">
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.finance.title')}</h1>
+                <div className="flex space-x-2">
+                     <button onClick={() => navigate('/finance/client-report')} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">{t('pages.finance.clientReport')}</button>
+                    <button onClick={onGenerateReport} className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">{t('pages.finance.generateReport')}</button>
+                    <button onClick={onAddTransaction} className="px-4 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('pages.finance.addTransaction')}</button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard title={t('pages.finance.totalIncome')} value={formatIDR(totalIncome)} icon={<FinanceIcon />} color="green" />
+                <StatCard title={t('pages.finance.totalExpense')} value={formatIDR(totalExpense)} icon={<FinanceIcon />} color="red" />
+                <StatCard title={t('pages.finance.profitLoss')} value={formatIDR(profitLoss)} icon={<FinanceIcon />} color="blue" />
+            </div>
+            
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
                 <div className="border-b border-gray-200 dark:border-gray-700">
                     <nav className="-mb-px flex space-x-8 px-6">
-                        <button onClick={() => setActiveTab('customers')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'customers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                            {t('pages.customers.customersTab')}
-                        </button>
-                        <button onClick={() => setActiveTab('clients')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'clients' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                            {t('pages.customers.clientsTab')}
-                        </button>
+                        <button onClick={() => setActiveTab('transactions')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'transactions' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>{t('pages.finance.allTransactions')}</button>
+                        <button onClick={() => setActiveTab('profit_loss')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'profit_loss' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>{t('pages.finance.profitAndLoss')}</button>
+                        <button onClick={() => setActiveTab('balance_sheet')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'balance_sheet' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>{t('pages.finance.balanceSheet')}</button>
                     </nav>
                 </div>
-                <div className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <input
-                            type="text"
-                            placeholder={t('common.search')}
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
-                        />
-                        {isAdmin && (
-                            <button
-                                onClick={activeTab === 'customers' ? onAddCustomer : onAddClient}
-                                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700"
-                            >
-                                {t('common.add')} {activeTab === 'customers' ? 'Customer' : 'Client'}
-                            </button>
-                        )}
-                    </div>
-                    <div className="overflow-x-auto">
-                        {activeTab === 'customers' ? (
-                            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3">{t('common.name')}</th>
-                                        <th scope="col" className="px-6 py-3">Client</th>
-                                        <th scope="col" className="px-6 py-3">{t('common.email')}</th>
-                                        <th scope="col" className="px-6 py-3">{t('common.phone')}</th>
-                                        <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredCustomers.map(customer => (
-                                        <tr key={customer.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                            <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{customer.name}</td>
-                                            <td className="px-6 py-4">{clients.find(c => c.id === customer.clientId)?.name || '-'}</td>
-                                            <td className="px-6 py-4">{customer.email}</td>
-                                            <td className="px-6 py-4">{customer.phone}</td>
-                                            <td className="px-6 py-4">
-                                                <button onClick={() => onEditCustomer(customer)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                             <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                 <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                                    <tr>
-                                        <th scope="col" className="px-6 py-3">{t('common.name')}</th>
-                                        <th scope="col" className="px-6 py-3">{t('common.actions')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                     {filteredClients.map(client => (
-                                         <tr key={client.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                            <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{client.name}</td>
-                                            <td className="px-6 py-4">
-                                                <button onClick={() => onEditClient(client)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
-                                            </td>
-                                        </tr>
-                                     ))}
-                                 </tbody>
-                             </table>
-                        )}
-                    </div>
+                <div>
+                    {activeTab === 'transactions' && renderTransactions()}
+                    {activeTab === 'profit_loss' && renderProfitLoss()}
+                    {activeTab === 'balance_sheet' && renderBalanceSheet()}
                 </div>
             </div>
         </div>
     );
 };
 
-const CustomerEditRequestPage: React.FC<{
-    requests: CustomerEditRequest[];
-    customers: Customer[];
-    users: User[];
-    onApprove: (requestId: string) => void;
-    onReject: (requestId: string) => void;
-    t: Function;
-}> = ({ requests, customers, users, onApprove, onReject, t }) => {
-    const pendingRequests = requests.filter(r => r.status === 'pending');
+
+const ClientFinancePage: React.FC<{ clients: Client[]; customers: Customer[]; workOrders: WorkOrder[]; transactions: Transaction[]; t: TFunction; }> = ({ clients, customers, workOrders, transactions, t }) => {
+    const clientReport = useMemo(() => {
+        return clients.map(client => {
+            const clientCustomers = customers.filter(c => c.clientId === client.id);
+            const clientCustomerIds = clientCustomers.map(c => c.id);
+            const clientWorkOrders = workOrders.filter(wo => clientCustomerIds.includes(wo.customer.id) && wo.status === WorkOrderStatus.COMPLETED);
+            const clientIncome = clientWorkOrders.reduce((sum, wo) => sum + wo.totalCost, 0);
+            const clientExpenses = transactions.filter(t => t.clientId === client.id && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+            return {
+                ...client,
+                income: clientIncome,
+                expense: clientExpenses,
+                profit: clientIncome - clientExpenses
+            };
+        });
+    }, [clients, customers, workOrders, transactions]);
+    
+    return <h1>{t('pages.finance.clientReport')}</h1>;
+};
+
+const ReimbursementPage: React.FC<{ transactions: Transaction[]; users: User[]; onApprove: (id: string) => void; onViewAttachment: (att: any) => void; t: TFunction; }> = ({ transactions, users, onApprove, onViewAttachment, t }) => {
+    const requests = transactions.filter(tr => tr.category === TransactionCategory.REIMBURSEMENT && !tr.approved);
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.customerEditRequests.title')}</h1>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                 <div className="overflow-x-auto">
-                    {pendingRequests.length === 0 ? (
-                        <p className="text-gray-500 dark:text-gray-400">{t('pages.customerEditRequests.noRequests')}</p>
-                    ) : (
-                        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                                <tr>
-                                    <th className="px-6 py-3">{t('pages.customers.customersTab')}</th>
-                                    <th className="px-6 py-3">{t('pages.customerEditRequests.requestedBy')}</th>
-                                    <th className="px-6 py-3">{t('pages.customerEditRequests.requestedAt')}</th>
-                                    <th className="px-6 py-3">{t('common.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pendingRequests.map(req => {
-                                    const customer = customers.find(c => c.id === req.customerId);
-                                    const requester = users.find(u => u.id === req.requestedByUserId);
-                                    return (
-                                        <tr key={req.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                                            <td className="px-6 py-4 font-medium">{customer?.name}</td>
-                                            <td className="px-6 py-4">{requester?.name}</td>
-                                            <td className="px-6 py-4">{new Date(req.timestamp).toLocaleString()}</td>
-                                            <td className="px-6 py-4 space-x-2">
-                                                <button onClick={() => onApprove(req.id)} className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600">{t('common.approve')}</button>
-                                                <button onClick={() => onReject(req.id)} className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600">{t('common.reject')}</button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    )}
-                 </div>
-            </div>
+        <div>
+            <h1 className="text-2xl font-bold">{t('pages.reimbursement.title')}</h1>
+             {requests.map(req => (
+                <div key={req.id}>
+                    <p>{req.description} - {formatIDR(req.amount)}</p>
+                    <button onClick={() => onApprove(req.id)}>{t('common.approve')}</button>
+                    {req.attachment && <button onClick={() => onViewAttachment(req.attachment)}>{t('common.view')} Attachment</button>}
+                </div>
+            ))}
         </div>
     );
 };
 
-const SpareParts: React.FC<{
-    spareParts: SparePart[];
-    suppliers: Supplier[];
-    onAddPart: () => void;
-    onEditPart: (part: SparePart) => void;
-    onAddSupplier: () => void;
-    onEditSupplier: (supplier: Supplier) => void;
-    onImport: (parsedParts: any[]) => void;
-    onDelete: (id: string) => void;
-    onBulkDelete: (ids: string[]) => void;
-    t: Function;
-}> = ({ spareParts, suppliers, onAddPart, onEditPart, onAddSupplier, onEditSupplier, onImport, onBulkDelete, t }) => {
-    const [activeTab, setActiveTab] = useState<'inventory' | 'suppliers'>('inventory');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedParts, setSelectedParts] = useState<string[]>([]);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+const MyReimbursementsPage: React.FC<{ transactions: Transaction[]; currentUser: User; onViewAttachment: (att: any) => void; t: TFunction; }> = ({ transactions, currentUser, onViewAttachment, t }) => {
+    const myRequests = transactions.filter(tr => tr.category === TransactionCategory.REIMBURSEMENT && tr.requestedByUserId === currentUser.id);
+    return (
+         <div>
+            <h1 className="text-2xl font-bold">{t('pages.myReimbursements.title')}</h1>
+            {myRequests.map(req => (
+                <div key={req.id}>
+                    <p>{req.description} - {formatIDR(req.amount)} - {req.approved ? t('status.Approved') : t('status.Pending Approval')}</p>
+                    {req.attachment && <button onClick={() => onViewAttachment(req.attachment)}>{t('common.view')} Attachment</button>}
+                </div>
+            ))}
+        </div>
+    );
+};
 
-    const filteredParts = spareParts.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.itemCode.toLowerCase().includes(searchTerm.toLowerCase()));
-    const filteredSuppliers = suppliers.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()));
+const SpareParts: React.FC<{ 
+    spareParts: SparePart[], 
+    suppliers: Supplier[],
+    onAddPart: () => void, 
+    onEditPart: (sp: SparePart) => void,
+    onAddSupplier: () => void,
+    onEditSupplier: (s: Supplier) => void,
+    onImport: (data: any[]) => void,
+    onDelete: (id: string) => void,
+    onBulkDelete: (ids: string[]) => void,
+    t: TFunction;
+}> = ({ spareParts, suppliers, onAddPart, onEditPart, onAddSupplier, onEditSupplier, onImport, onDelete, onBulkDelete, t }) => {
+    const [activeTab, setActiveTab] = useState<'inventory' | 'suppliers'>('inventory');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
-            setSelectedParts(filteredParts.map(p => p.id));
+            setSelectedIds(new Set(spareParts.map(p => p.id)));
         } else {
-            setSelectedParts([]);
-        }
-    };
-    const handleSelectOne = (id: string) => {
-        setSelectedParts(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
-    };
-    
-    const handleImportClick = () => fileInputRef.current?.click();
-    const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            Papa.parse(e.target.files[0], {
-                header: true,
-                skipEmptyLines: true,
-                complete: (results) => {
-                    onImport(results.data);
-                },
-            });
+            setSelectedIds(new Set());
         }
     };
 
-    const downloadCsvTemplate = () => {
-        const csv = Papa.unparse([{
-            itemCode: 'SKU-001',
-            name: 'Compressor',
-            purchasePrice: '500000',
-            sellingPrice: '750000',
-            stock: '10',
-            unit: 'pcs',
-            location: 'Rack A1',
-            supplierId: ''
-        }]);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const handleSelectOne = (id: string) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) {
+            newSelected.delete(id);
+        } else {
+            newSelected.add(id);
+        }
+        setSelectedIds(newSelected);
+    };
+
+    const handleBulkDelete = () => {
+        if (confirm(`Are you sure you want to delete ${selectedIds.size} items?`)) {
+            onBulkDelete(Array.from(selectedIds));
+            setSelectedIds(new Set());
+        }
+    };
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const csvData = event.target?.result as string;
+            const cleanedData = csvData.split('\n').map(line => {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.indexOf('","') === -1) {
+                    return trimmed.substring(1, trimmed.length - 1);
+                }
+                return line;
+            }).join('\n');
+
+            Papa.parse(cleanedData, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    // FIX: Operator '>' cannot be applied to types 'unknown' and 'number'. Cast results.data to any[].
+                    if (results.data && (results.data as any[]).length > 0) {
+                        onImport(results.data as any[]);
+                    }
+                    if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                    }
+                },
+                error: (error: any) => {
+                    alert('Error parsing CSV: ' + error.message);
+                }
+            });
+        };
+        reader.readAsText(file);
+    };
+
+    const downloadTemplate = () => {
+        const csvContent = "Name,Selling Price,Purchase Price,Stock,Unit,Location,Supplier,Item Code\nContoh Part,50000,30000,10,pcs,Gudang A,PT ABC,";
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", "spare_part_template.csv");
+        link.setAttribute("download", "sparepart_template.csv");
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
-    return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">{t('pages.spareParts.title')}</h1>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                <div className="border-b border-gray-200 dark:border-gray-700">
-                    <nav className="-mb-px flex space-x-8 px-6">
-                        <button onClick={() => setActiveTab('inventory')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'inventory' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.spareParts.inventory')}</button>
-                        <button onClick={() => setActiveTab('suppliers')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'suppliers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>{t('pages.spareParts.suppliers')}</button>
-                    </nav>
+    const renderInventory = () => (
+        <>
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">{t('pages.spareParts.inventory')}</h2>
+                <div className="flex space-x-2">
+                    <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                    <button onClick={downloadTemplate} className="bg-gray-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600">{t('pages.spareParts.downloadTemplate')}</button>
+                    <button onClick={() => fileInputRef.current?.click()} className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-700">{t('pages.spareParts.importParts')}</button>
+                    {selectedIds.size > 0 && (
+                        <button onClick={handleBulkDelete} className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-700">{t('pages.spareParts.deleteSelected')} ({selectedIds.size})</button>
+                    )}
+                    <button onClick={onAddPart} className="bg-primary-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-primary-700">{t('common.add')} Part</button>
                 </div>
-                {activeTab === 'inventory' ? (
-                     <div className="p-6">
-                         <div className="flex justify-between items-center mb-4">
-                             <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                             <div className="space-x-2">
-                                <button onClick={handleImportClick} className="px-4 py-2 rounded-lg border">{t('pages.spareParts.importParts')}</button>
-                                <input type="file" ref={fileInputRef} onChange={handleFileImport} className="hidden" accept=".csv"/>
-                                <button onClick={downloadCsvTemplate} className="px-4 py-2 rounded-lg border">{t('pages.spareParts.downloadTemplate')}</button>
-                                {selectedParts.length > 0 && <button onClick={() => onBulkDelete(selectedParts)} className="px-4 py-2 rounded-lg bg-red-600 text-white">{t('pages.spareParts.deleteSelected')}</button>}
-                                <button onClick={onAddPart} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Part</button>
-                             </div>
-                         </div>
-                         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                                <tr>
-                                    <th className="p-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedParts.length === filteredParts.length && filteredParts.length > 0} /></th>
-                                    <th className="px-6 py-3">Item Code</th>
-                                    <th className="px-6 py-3">{t('pages.spareParts.partName')}</th>
-                                    <th className="px-6 py-3">{t('pages.spareParts.stock')}</th>
-                                    <th className="px-6 py-3">Price</th>
-                                    <th className="px-6 py-3">{t('pages.spareParts.location')}</th>
-                                    <th className="px-6 py-3">Supplier</th>
-                                    <th className="px-6 py-3">{t('common.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredParts.map(part => (
-                                    <tr key={part.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                        <td className="p-4"><input type="checkbox" checked={selectedParts.includes(part.id)} onChange={() => handleSelectOne(part.id)} /></td>
-                                        <td className="px-6 py-4 font-mono text-xs">{part.itemCode}</td>
-                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{part.name}</td>
-                                        <td className="px-6 py-4">{part.stock} {part.unit}</td>
-                                        <td className="px-6 py-4">{formatIDR(part.sellingPrice)}</td>
-                                        <td className="px-6 py-4">{part.location}</td>
-                                        <td className="px-6 py-4">{suppliers.find(s => s.id === part.supplierId)?.name || '-'}</td>
-                                        <td className="px-6 py-4">
-                                            <button onClick={() => onEditPart(part)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                     </div>
-                ) : (
-                    <div className="p-6">
-                         <div className="flex justify-between items-center mb-4">
-                            <input type="text" placeholder={t('common.search')} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-1/3 px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                            <button onClick={onAddSupplier} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Supplier</button>
-                         </div>
-                         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700/50 dark:text-gray-300">
-                                <tr>
-                                    <th className="px-6 py-3">Supplier Name</th>
-                                    <th className="px-6 py-3">Contact Person</th>
-                                    <th className="px-6 py-3">{t('common.phone')}</th>
-                                    <th className="px-6 py-3">{t('common.email')}</th>
-                                    <th className="px-6 py-3">{t('common.actions')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredSuppliers.map(supplier => (
-                                    <tr key={supplier.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{supplier.name}</td>
-                                        <td className="px-6 py-4">{supplier.contactPerson}</td>
-                                        <td className="px-6 py-4">{supplier.phone}</td>
-                                        <td className="px-6 py-4">{supplier.email}</td>
-                                        <td className="px-6 py-4">
-                                            <button onClick={() => onEditSupplier(supplier)} className="text-primary-600 hover:underline">{t('common.edit')}</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+                        <tr>
+                            <th className="p-4"><input type="checkbox" onChange={handleSelectAll} checked={spareParts.length > 0 && selectedIds.size === spareParts.length} /></th>
+                            <th className="px-6 py-3">Kode Item</th>
+                            <th className="px-6 py-3">{t('pages.spareParts.partName')}</th>
+                            <th className="px-6 py-3">Supplier</th>
+                            <th className="px-6 py-3">Harga Beli</th>
+                            <th className="px-6 py-3">Harga Jual</th>
+                            <th className="px-6 py-3">{t('pages.spareParts.stock')}</th>
+                            <th className="px-6 py-3">Satuan</th>
+                            <th className="px-6 py-3">{t('pages.spareParts.location')}</th>
+                            <th className="px-6 py-3">{t('common.actions')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {spareParts.map(part => (
+                            <tr key={part.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                                <td className="p-4"><input type="checkbox" checked={selectedIds.has(part.id)} onChange={() => handleSelectOne(part.id)} /></td>
+                                <td className="px-6 py-4 font-mono text-xs">{part.itemCode}</td>
+                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{part.name}</td>
+                                <td className="px-6 py-4">{suppliers.find(s => s.id === part.supplierId)?.name || '-'}</td>
+                                <td className="px-6 py-4">{part.purchasePrice ? formatIDR(part.purchasePrice) : '-'}</td>
+                                <td className="px-6 py-4">{formatIDR(part.sellingPrice)}</td>
+                                <td className={`px-6 py-4 font-semibold ${part.stock <= 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{part.stock}</td>
+                                <td className="px-6 py-4">{part.unit}</td>
+                                <td className="px-6 py-4">{part.location}</td>
+                                <td className="px-6 py-4 space-x-2 flex">
+                                    <button onClick={() => onEditPart(part)} className="font-medium text-primary-600 hover:underline dark:text-primary-400">{t('common.edit')}</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </>
+    );
+
+     const renderSuppliers = () => (
+        <>
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Supplier List</h2>
+                <button onClick={onAddSupplier} className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">{t('common.add')} Supplier</button>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-100 dark:bg-gray-700 dark:text-gray-400">
+                        <tr>
+                            <th className="px-6 py-3">Supplier Name</th>
+                            <th className="px-6 py-3">Contact Person</th>
+                            <th className="px-6 py-3">Contact Info</th>
+                            <th className="px-6 py-3">{t('common.actions')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {suppliers.map(supplier => (
+                            <tr key={supplier.id} className="bg-white border-b hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:hover:bg-gray-700">
+                                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{supplier.name}</td>
+                                <td className="px-6 py-4">{supplier.contactPerson}</td>
+                                <td className="px-6 py-4"><div>{supplier.phone}</div><div>{supplier.email}</div></td>
+                                <td className="px-6 py-4 space-x-2">
+                                    <button onClick={() => onEditSupplier(supplier)} className="font-medium text-primary-600 hover:underline dark:text-primary-400">{t('common.edit')}</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </>
+    );
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">{t('pages.spareParts.title')}</h1>
+             <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button onClick={() => setActiveTab('inventory')} className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'inventory' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}`}>
+                        <SparePartIcon className={`mr-2 h-5 w-5 ${activeTab === 'inventory' ? 'text-primary-500' : 'text-gray-400'}`} />
+                        <span>{t('pages.spareParts.inventory')}</span>
+                    </button>
+                    <button onClick={() => setActiveTab('suppliers')} className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'suppliers' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}`}>
+                        <TruckIcon className={`mr-2 h-5 w-5 ${activeTab === 'suppliers' ? 'text-primary-500' : 'text-gray-400'}`} />
+                        <span>{t('pages.spareParts.suppliers')}</span>
+                    </button>
+                </nav>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                {activeTab === 'inventory' ? renderInventory() : renderSuppliers()}
             </div>
         </div>
-    )
+    );
 };
 
 const SettingsPage: React.FC<{
@@ -1998,7 +1928,7 @@ const SettingsPage: React.FC<{
     users: User[];
     profile: CompanyProfile;
     onProfileSave: (profile: CompanyProfile) => void;
-    t: Function;
+    t: TFunction;
     language: 'en' | 'id';
     setLanguage: (lang: 'en' | 'id') => void;
     theme: 'light' | 'dark';
@@ -2012,6 +1942,7 @@ const SettingsPage: React.FC<{
 }> = ({ customers, workOrders, users, profile, onProfileSave, t, language, setLanguage, theme, setTheme, spareParts, suppliers, clients, invoices, transactions, contracts }) => {
     const [companyProfileData, setCompanyProfileData] = useState(profile);
     const inputClass = "mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500";
+    const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300";
 
     useEffect(() => {
         setCompanyProfileData(profile);
@@ -2019,6 +1950,17 @@ const SettingsPage: React.FC<{
     
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setCompanyProfileData({ ...companyProfileData, [e.target.name]: e.target.value });
+    };
+
+    const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setCompanyProfileData(prev => ({ ...prev, logo: event.target?.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleProfileSubmit = (e: React.FormEvent) => {
@@ -2074,23 +2016,39 @@ const SettingsPage: React.FC<{
                 <form onSubmit={handleProfileSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.name')}</label>
+                            <label className={labelClass}>{t('common.name')}</label>
                             <input type="text" name="name" value={companyProfileData.name} onChange={handleProfileChange} className={inputClass} />
                         </div>
                          <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.phone')}</label>
+                            <label className={labelClass}>{t('common.phone')}</label>
                             <input type="text" name="phone" value={companyProfileData.phone} onChange={handleProfileChange} className={inputClass} />
                         </div>
                     </div>
                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.email')}</label>
+                        <label className={labelClass}>{t('common.email')}</label>
                         <input type="email" name="email" value={companyProfileData.email} onChange={handleProfileChange} className={inputClass} />
                     </div>
                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('common.address')}</label>
+                        <label className={labelClass}>{t('common.address')}</label>
                         <input type="text" name="address" value={companyProfileData.address} onChange={handleProfileChange} className={inputClass} />
                     </div>
-                    <div className="flex justify-end">
+                    <div>
+                        <label className={labelClass}>{t('pages.settings.companyLogo')}</label>
+                        <div className="mt-2 flex items-center space-x-4">
+                            {companyProfileData.logo ? (
+                                <img src={companyProfileData.logo} alt="Company Logo" className="h-20 w-20 object-contain rounded-md bg-gray-100 dark:bg-gray-700 p-1 border dark:border-gray-600" />
+                            ) : (
+                                <div className="h-20 w-20 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-md text-gray-400">
+                                    <BriefcaseIcon className="h-10 w-10" />
+                                </div>
+                            )}
+                            <label className="cursor-pointer px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                {t('pages.settings.changeLogo')}
+                                <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="flex justify-end pt-4">
                         <button type="submit" className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">{t('common.save')}</button>
                     </div>
                 </form>
@@ -2141,10 +2099,10 @@ const Chatbot: React.FC<{ currentUser: User; appData: any; initialMessage: strin
     const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
-    const CHATBOT_AVATAR = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxAHBgsIBw8QEA0QDQ8PDQ4QEA8NDQ8OFREWFhURExMYHSggGBolGxMVITEhJSkrLi4uFx8zODMsNygtLisBCgoKDQ0NDw0NDisZFRkrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK//AABEIAJ8AmwMBIgACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAAAgQDBQYBB//EADQQAQABAgMFBwQCAAcAAAAAAAABAgMEBREhMUFREhNhcYGRBiIjUqGxwdFSYhQjM0Jy4fD/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAQIDBP/EACERAQEAAgICAwEBAQAAAAAAAAABEQIhMTJBUQMSYTNx/9oADAMBAAIRAxEAPwD9xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADzVdqmmiZqmmIjxl0bfa+Hsqi3brpmqfKIneUCYEdF/tGxbVUTXcoiJ3TudfG7W2b1E00TOKe9W/wAAdQHQ/9asTP7ymnfG//AEc2N2vXMzFFMRHjO+oHQg41e2sWvfcj7QtU4u9VdmmrtUzVT4TAO4Dw1XKaYmarhER4y9FFymqImiqJieExO7IHoAAAAAAAAAAAAAAAAAAAI+0tqxsKiZmubk9KeP0BJR8S7R2rVfmubkxT/LHx9ZX666q5mqqZmfGXkB9DHY2xYnE1+tV4UeEfLzXzbX2jVjK+bVcimbdPSiI/wC5UAPqqqpmZmd5neZAcgCUAAAAAAAAAAAAAAAAAAAJmxsKrE4ii3T4z1T4RHjIP57CwsSu/XFq3G+Z3z4RHjL9E7O2fY2fREURvqe1VPjKo7O2dRs+zFFMb56qp8ZVMgAAIoAAAIgAAIogAAAAAAAIgACKIAACMgA/fsnBfA4Si3V6076vvV4qRAHIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/9k=";
+    const CHATBOT_AVATAR = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxAHBgsIBw8QEA0QDQ8PDQ4QEA8NDQ8OFREWFhURExMYHSggGBolGxMVITEhJSkrLi4uFx8zODMsNygtLisBCgoKDQ0NDw0NDisZFRkrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrK//EABEIAJ8AmwMBIgACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAAAgQDBQYBB//EADQQAQABAgMFBwQCAAcAAAAAAAABAgMEBREhMUFREhNhcYGRBiIjUqGxwdFSYhQjM0Jy4fD/xAAYAQEBAQEBAAAAAAAAAAAAAAAAAQIDBP/EACERAQEAAgICAwEBAQAAAAAAAAABEQIhMTJBUQMSYTNx/9oADAMBAAIRAxEAPwD9xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADzVdqmmiZqmmIjxl0bfa+Hsqi3brpmqfKIneUCYEdF/tGxbVUTXcoiJ3TudfG7W2b1E00TOKe9W/wAAdQHQ/9asTP7ymnfG//AEc2N2vXMzFFMRHjO+oHQg41e2sWvfcj7QtU4u9VdmmrtUzVT4TAO4Dw1XKaYmarlER4y9FFymqImiqJieExO7IHoAAAAAAAAAAAAAAAAAAAI+0tqxsKiZmubk9KeP0BJR8S7R2rVfmubkxT/LHx9ZX666q5mqqZmfGXkB9DHY2xYnE1+tV4UeEfLzXzbX2jVjK+bVcimbdPSiI/wC5UAPqqqpmZmd5neZAcgCUAAAAAAAAAAAAAAAAAAAJmxsKrE4ii3T4z1T4RHjIP57CwsSu/XFq3G+Z3z4RHjL9E7O2fY2fREURvqe1VPjKo7O2dRs+zFFMb56qp8ZVMgAAIoAAAIgAAIogAAAAAAAIgACKIAACMgA/fsnBfA4Si3V6076vvV4qRAHIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/9k=";
 
     useEffect(() => {
-        if (messages.length === 1 && messages[0].sender === 'ai') {
+        if (messages.length <= 1) { // Only reset if it's the initial state
             setMessages([{ sender: 'ai', text: initialMessage }]);
         }
     }, [initialMessage]);
@@ -2231,437 +2189,665 @@ const Chatbot: React.FC<{ currentUser: User; appData: any; initialMessage: strin
     );
 };
 
-// --- MAIN APP COMPONENT ---
+// --- App Routes Component ---
+const AppRoutes: React.FC<{
+    currentUser: User;
+    appState: any;
+    handlers: any;
+    t: TFunction;
+}> = ({ currentUser, appState, handlers, t }) => {
+    const isAdmin = currentUser.role === UserRole.ADMINISTRATOR || currentUser.role === UserRole.ADMIN;
+    const isTech = currentUser.role === UserRole.TECHNICIAN;
+
+    return (
+        <Routes>
+            <Route path="/" element={
+                <Dashboard 
+                    workOrders={appState.workOrders}
+                    customers={appState.customers}
+                    users={appState.users}
+                    currentUser={currentUser}
+                    transactions={appState.transactions}
+                    t={t}
+                />
+            } />
+            <Route path="/customers" element={
+                <CustomersAndClientsPage
+                    customers={appState.customers}
+                    clients={appState.clients}
+                    onAddCustomer={() => handlers.openModal('add_customer', null)}
+                    onEditCustomer={(c) => handlers.openModal('edit_customer', c)}
+                    onAddClient={() => handlers.openModal('add_client', null)}
+                    onEditClient={(c) => handlers.openModal('edit_client', c)}
+                    currentUser={currentUser}
+                    t={t}
+                />
+            } />
+            {isAdmin && <Route path="/customer-edit-requests" element={
+                <CustomerEditRequestPage 
+                    requests={appState.customerEditRequests}
+                    customers={appState.customers}
+                    users={appState.users}
+                    onApprove={handlers.handleApproveCustomerRequest}
+                    onReject={handlers.handleRejectCustomerRequest}
+                    t={t}
+                />
+            } />}
+            <Route path="/work-orders" element={
+                <WorkOrders
+                    user={currentUser}
+                    workOrders={appState.workOrders}
+                    users={appState.users}
+                    onCreate={() => handlers.openModal('create_work_order', null)}
+                    onAssign={(wo) => handlers.openModal('assign_technician', wo)}
+                    onClaim={handlers.handleClaimWorkOrder}
+                    onAddPart={(wo) => handlers.openModal('add_part_to_wo', wo)}
+                    onAddCost={(wo) => handlers.openModal('add_cost_to_wo', wo)}
+                    onComplete={handlers.handleCompleteWorkOrder}
+                    onRequestReimbursement={(wo) => handlers.openModal('request_reimbursement', wo)}
+                    t={t}
+                />
+            } />
+            <Route path="/work-orders/:id" element={
+                <WorkOrderDetailPage
+                    workOrders={appState.workOrders}
+                    users={appState.users}
+                    spareParts={appState.spareParts}
+                    onAddPart={(wo) => handlers.openModal('add_part_to_wo', wo)}
+                    onAddCost={(wo) => handlers.openModal('add_cost_to_wo', wo)}
+                    onComplete={handlers.handleCompleteWorkOrder}
+                    onPrint={handlers.handlePrintWorkOrder}
+                    onUploadProof={handlers.handleUploadProof}
+                    onChat={handlers.handleWhatsAppChat}
+                    onNotify={handlers.handleEmailNotify}
+                    onRequestReimbursement={(wo) => handlers.openModal('request_reimbursement', wo)}
+                    t={t}
+                />
+            } />
+            {isTech && <Route path="/my-reimbursements" element={
+                <MyReimbursementsPage
+                    transactions={appState.transactions}
+                    currentUser={currentUser}
+                    onViewAttachment={(att) => handlers.openModal('view_attachment', att)}
+                    t={t}
+                />
+            } />}
+            {isAdmin && <Route path="/reimbursements" element={
+                <ReimbursementPage
+                    transactions={appState.transactions}
+                    users={appState.users}
+                    onApprove={handlers.handleApproveReimbursement}
+                    onViewAttachment={(att) => handlers.openModal('view_attachment', att)}
+                    t={t}
+                />
+            } />}
+            {isAdmin && <Route path="/spare-parts" element={
+                <SpareParts
+                    spareParts={appState.spareParts}
+                    suppliers={appState.suppliers}
+                    onAddPart={() => handlers.openModal('add_spare_part', null)}
+                    onEditPart={(sp) => handlers.openModal('edit_spare_part', sp)}
+                    onDelete={handlers.handleDeleteSparePart}
+                    onBulkDelete={handlers.handleBulkDeleteSpareParts}
+                    onAddSupplier={() => handlers.openModal('add_supplier', null)}
+                    onEditSupplier={(s) => handlers.openModal('edit_supplier', s)}
+                    onImport={handlers.handleImportSpareParts}
+                    t={t}
+                />
+            } />}
+            {isAdmin && <Route path="/finance" element={
+                <FinancePage
+                    transactions={appState.transactions}
+                    spareParts={appState.spareParts}
+                    onAddTransaction={() => handlers.openModal('add_transaction', null)}
+                    onGenerateReport={handlers.handleGenerateFinancialReport}
+                    t={t}
+                />
+            } />}
+            {isAdmin && <Route path="/finance/client-report" element={
+                <ClientFinancePage 
+                    clients={appState.clients} 
+                    customers={appState.customers} 
+                    workOrders={appState.workOrders} 
+                    transactions={appState.transactions} 
+                    t={t}
+                />
+            } />}
+            {isAdmin && <Route path="/employees" element={
+                <EmployeesPage
+                    users={appState.users}
+                    workOrders={appState.workOrders}
+                    attendance={appState.attendance}
+                    onAddEmployee={() => handlers.openModal('add_employee', null)}
+                    t={t}
+                />
+            } />}
+            {isAdmin && <Route path="/employees/:employeeId" element={
+                <TechnicianProfilePage
+                    users={appState.users}
+                    workOrders={appState.workOrders}
+                    onEdit={(u) => handlers.openModal('edit_employee', u)}
+                    t={t}
+                />
+            } />}
+            <Route path="/settings" element={
+                <SettingsPage
+                    customers={appState.customers}
+                    workOrders={appState.workOrders}
+                    users={appState.users}
+                    spareParts={appState.spareParts}
+                    suppliers={appState.suppliers}
+                    clients={appState.clients}
+                    invoices={appState.invoices}
+                    transactions={appState.transactions}
+                    contracts={appState.contracts}
+                    profile={appState.companyProfile}
+                    onProfileSave={handlers.setCompanyProfile}
+                    language={appState.language}
+                    setLanguage={handlers.setLanguage}
+                    theme={appState.theme}
+                    setTheme={handlers.setTheme}
+                    t={t}
+                />
+            } />
+            <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+    );
+};
+
+// --- Root Modal Component ---
+const RootModal: React.FC<{
+    modalState: { type: string | null; data: any };
+    closeModal: () => void;
+    handlers: any;
+    appState: any;
+    t: TFunction;
+}> = ({ modalState, closeModal, handlers, appState, t }) => {
+    if (!modalState.type) return null;
+
+    switch (modalState.type) {
+        case 'request_reimbursement':
+            return <ReimbursementModal isOpen={true} onClose={closeModal} onConfirm={handlers.handleRequestReimbursement} t={t} />;
+        
+        case 'view_attachment':
+            return <AttachmentViewerModal isOpen={true} onClose={closeModal} attachment={modalState.data} t={t} />;
+
+        case 'add_employee':
+        case 'edit_employee':
+            return <AddEditEmployeeModal isOpen={true} onClose={closeModal} onSave={handlers.handleSaveEmployee} user={modalState.data} t={t} />;
+        
+        case 'add_transaction':
+        case 'edit_transaction':
+            return <AddEditTransactionModal isOpen={true} onClose={closeModal} onSave={handlers.handleSaveTransaction} transaction={modalState.data} clients={appState.clients} t={t} />;
+
+        case 'add_customer':
+        case 'edit_customer':
+            return <AddEditCustomerModal isOpen={true} onClose={closeModal} onSave={handlers.handleCustomerSubmit} customer={modalState.data} clients={appState.clients} currentUser={appState.currentUser} t={t} />;
+
+        case 'add_client':
+        case 'edit_client':
+            return <AddEditClientModal isOpen={true} onClose={closeModal} onSave={handlers.handleSaveClient} client={modalState.data} t={t} />;
+
+        case 'add_supplier':
+        case 'edit_supplier':
+            return <AddEditSupplierModal isOpen={true} onClose={closeModal} onSave={handlers.handleSaveSupplier} supplier={modalState.data} t={t} />;
+
+        case 'create_work_order':
+            return <CreateWorkOrderModal isOpen={true} onClose={closeModal} onSave={handlers.handleCreateWorkOrder} customers={appState.customers} t={t} />;
+        
+        case 'assign_technician':
+            const availableTechnicians = appState.users.filter((u: User) => u.role === UserRole.TECHNICIAN);
+            return <AssignTechnicianModal isOpen={true} onClose={closeModal} onSave={handlers.handleAssignTechnician} technicians={availableTechnicians} t={t} />;
+
+        case 'add_part_to_wo':
+            return <AddPartToWorkOrderModal isOpen={true} onClose={closeModal} onSave={handlers.handleUpdateWorkOrderParts} availableParts={appState.spareParts} t={t} />;
+
+        case 'add_cost_to_wo':
+            return <AddAdditionalCostModal isOpen={true} onClose={closeModal} onSave={handlers.handleSaveAdditionalCost} t={t} />;
+
+        case 'add_spare_part':
+        case 'edit_spare_part':
+            return <AddEditSparePartModal 
+                        isOpen={true} 
+                        onClose={closeModal} 
+                        onSave={handlers.handleSaveSparePart}
+                        onDelete={handlers.handleDeleteSparePart}
+                        part={modalState.data}
+                        suppliers={appState.suppliers}
+                        allSpareParts={appState.spareParts}
+                        t={t} 
+                    />;
+        default:
+            return null;
+    }
+};
+
+const SidebarLink: React.FC<{ 
+    item: { key: string; path: string; icon: React.FC<any>; roles: UserRole[] }; 
+    isSidebarCollapsed: boolean; 
+    t: TFunction 
+}> = ({ item, isSidebarCollapsed, t }) => {
+    const location = useLocation();
+    const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+    
+    return (
+        <Link 
+            to={item.path} 
+            title={isSidebarCollapsed ? t(item.key) : ''} 
+            className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${isActive ? 'bg-primary-100 dark:bg-gray-700 text-primary-700 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
+        >
+            <item.icon className={isSidebarCollapsed ? 'h-8 w-8' : 'h-6 w-6'} />
+            {!isSidebarCollapsed && <span className="font-medium">{t(item.key)}</span>}
+        </Link>
+    );
+};
+
+// --- MAIN APP COMPONENT (Simplified for brevity, assuming handlers are defined) ---
 const App: React.FC = () => {
-  const [language, setLanguage] = useState<'en' | 'id'>((localStorage.getItem('appLanguage') as 'en' | 'id') || 'en');
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('appTheme') as 'light' | 'dark') || 'light');
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authScreen, setAuthScreen] = useState<'login' | 'signup'>('login');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  
-  useEffect(() => { localStorage.setItem('appLanguage', language); }, [language]);
+    // All state variables and handlers are assumed to be defined here...
+    const [language, setLanguage] = useState<'en' | 'id'>((localStorage.getItem('appLanguage') as 'en' | 'id') || 'en');
+    const [theme, setTheme] = useState<'light' | 'dark'>(() => (localStorage.getItem('appTheme') as 'light' | 'dark') || 'light');
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [authScreen, setAuthScreen] = useState<'login' | 'signup'>('login');
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  useEffect(() => {
-      if (theme === 'dark') document.documentElement.classList.add('dark');
-      else document.documentElement.classList.remove('dark');
-      localStorage.setItem('appTheme', theme);
-  }, [theme]);
+    useEffect(() => { localStorage.setItem('appLanguage', language); }, [language]);
 
-  const { t } = useMemo(() => {
-    const translate = (key: string, replacements?: Record<string, string | number>): string => {
-      const keys = key.split('.');
-      let text: any = translations[language] || translations.en;
-      for (const k of keys) { text = text?.[k]; if (text === undefined) return key; }
-      let result = String(text);
-      if (replacements) { Object.keys(replacements).forEach(rKey => { result = result.replace(`{${rKey}}`, String(replacements[rKey])); }); }
-      return result;
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        localStorage.setItem('appTheme', theme);
+    }, [theme]);
+
+    const t: TFunction = useMemo(() => {
+        return (key: string, replacements?: Record<string, string | number>): string => {
+            const keys = key.split('.');
+            let text: any = translations[language] || translations.en;
+            for (const k of keys) {
+                text = text?.[k];
+                if (text === undefined) return key;
+            }
+            let result = String(text);
+            if (replacements) {
+                Object.keys(replacements).forEach(rKey => {
+                    result = result.replace(`{${rKey}}`, String(replacements[rKey]));
+                });
+            }
+            return result;
+        };
+    }, [language]);
+
+    // App-wide state
+    const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+    const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+    const [customerEditRequests, setCustomerEditRequests] = useState<CustomerEditRequest[]>(INITIAL_CUSTOMER_REQUESTS);
+    const [workOrders, setWorkOrders] = useState<WorkOrder[]>(INITIAL_WORK_ORDERS);
+    const [spareParts, setSpareParts] = useState<SparePart[]>(INITIAL_SPARE_PARTS);
+    const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
+    const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
+    const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
+    const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+    const [contracts, setContracts] = useState<ServiceContract[]>(INITIAL_CONTRACTS);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [attendance, setAttendance] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
+        name: 'ServisPro Inc.',
+        address: '123 Service St, Jakarta, Indonesia',
+        email: 'contact@servispro.com',
+        phone: '0812-3456-7890',
+        logo: ''
+    });
+    const [modalState, setModalState] = useState<{ type: string | null; data: any }>({ type: null, data: null });
+
+    // Notification and Proactive AI Logic...
+    const addNotification = (message: string, link: string, workOrderId?: string, partId?: string) => {
+        const newNotif: Notification = {
+            id: `notif-${Date.now()}`,
+            message,
+            timestamp: new Date().toISOString(),
+            read: false,
+            link,
+            workOrderId,
+            partId
+        };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
     };
-    return { t: translate };
-  }, [language]);
 
-  // App-wide state
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
-  const [customerEditRequests, setCustomerEditRequests] = useState<CustomerEditRequest[]>(INITIAL_CUSTOMER_REQUESTS);
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(INITIAL_WORK_ORDERS);
-  const [spareParts, setSpareParts] = useState<SparePart[]>(INITIAL_SPARE_PARTS);
-  const [suppliers, setSuppliers] = useState<Supplier[]>(INITIAL_SUPPLIERS);
-  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
-  const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
-  const [contracts, setContracts] = useState<ServiceContract[]>(INITIAL_CONTRACTS);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({ name: 'ServisPro Inc.', address: '123 Service St', email: 'contact@servispro.com', phone: '0812-3456-7890', logo: '' });
-  const [modalState, setModalState] = useState<{ type: string | null; data: any }>({ type: null, data: null });
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            const now = new Date();
+            const oneHourAgo = now.getTime() - 3600 * 1000;
 
-  const addNotification = (message: string, link: string, workOrderId?: string, partId?: string) => {
-      const newNotif: Notification = {
-          id: `notif-${Date.now()}`,
-          message,
-          timestamp: new Date().toISOString(),
-          read: false,
-          link,
-          workOrderId,
-          partId
-      };
-      setNotifications(prev => [newNotif, ...prev].slice(0, 50)); // Keep last 50
-  };
-
-  useEffect(() => {
-    const checkSystemStatus = () => {
-        const now = new Date();
-        const oneHourAgo = now.getTime() - 3600 * 1000;
-
-        // Check for unclaimed work orders older than 1 hour
-        workOrders.forEach(wo => {
-            if (wo.status === WorkOrderStatus.PENDING && !wo.technicianId) {
-                const createdAt = new Date(wo.createdAt).getTime();
-                if (createdAt < oneHourAgo) {
-                    const hasNotif = notifications.some(n => n.workOrderId === wo.id && n.message.includes('pending for over 1 hour'));
-                    if (!hasNotif) {
-                        addNotification(`WO #${wo.id} has been pending for over 1 hour.`, `/work-orders/${wo.id}`, wo.id);
+            workOrders.forEach(wo => {
+                if (wo.status === WorkOrderStatus.PENDING && !wo.technicianId) {
+                    const createdAt = new Date(wo.createdAt).getTime();
+                    if (createdAt < oneHourAgo) {
+                        const hasNotif = notifications.some(n => n.workOrderId === wo.id && n.message.includes('pending for over 1 hour'));
+                        if (!hasNotif) {
+                            addNotification(`WO #${wo.id} has been pending for over 1 hour.`, `/work-orders/${wo.id}`, wo.id);
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        // Check for low stock parts
-        spareParts.forEach(part => {
-            if (part.stock <= 5) {
-                const hasNotif = notifications.some(n => n.partId === part.id);
-                if (!hasNotif) {
-                    addNotification(`Stock for ${part.name} is low (${part.stock} left).`, '/spare-parts', undefined, part.id);
+            spareParts.forEach(part => {
+                if (part.stock <= 5) {
+                    const hasNotif = notifications.some(n => n.partId === part.id);
+                    if (!hasNotif) {
+                        addNotification(`Stock for ${part.name} is low (${part.stock} left).`, '/spare-parts', undefined, part.id);
+                    }
                 }
+            });
+        }, 60000);
+        return () => clearInterval(intervalId);
+    }, [workOrders, spareParts, notifications]);
+
+    const proactiveChatbotMessage = useMemo(() => {
+        const oneHourAgo = new Date().getTime() - 3600 * 1000;
+        const pendingWOs = workOrders.filter(wo =>
+            wo.status === WorkOrderStatus.PENDING &&
+            !wo.technicianId &&
+            new Date(wo.createdAt).getTime() < oneHourAgo
+        );
+        const lowStockParts = spareParts.filter(p => p.stock <= 5);
+
+        const alerts: string[] = [];
+        if (pendingWOs.length > 0) {
+            alerts.push(...pendingWOs.map(wo => `- WO #${wo.id} has been pending for over an hour.`));
+        }
+        if (lowStockParts.length > 0) {
+            alerts.push(...lowStockParts.map(p => `- Stock for '${p.name}' is low (${p.stock} left).`));
+        }
+
+        if (alerts.length > 0) {
+            return `Hello! I am ServisAI. I have some important updates for you:\n${alerts.join('\n')}`;
+        }
+        
+        return 'Hello! I am ServisAI. How can I assist you with your business data today?';
+    }, [workOrders, spareParts]);
+
+    // All handlers...
+    const handleLogin = (user: User) => setCurrentUser(user);
+    const handleLogout = () => setCurrentUser(null);
+    const handleSignUp = (newUser: User) => { setUsers(prev => [...prev, newUser]); setAuthScreen('login'); };
+
+    const handleCustomerSubmit = (customerData: Customer) => {
+        if (!currentUser) return;
+        if (currentUser.role === UserRole.ADMINISTRATOR || currentUser.role === UserRole.ADMIN) {
+            setCustomers(prev => {
+                const exists = prev.some(c => c.id === customerData.id);
+                if (exists) { return prev.map(c => c.id === customerData.id ? customerData : c); }
+                return [...prev, customerData];
+            });
+        } else if (currentUser.role === UserRole.TECHNICIAN && customerData.id) {
+            const newRequest: CustomerEditRequest = {
+                id: `cer-${Date.now()}`,
+                customerId: customerData.id,
+                requestedByUserId: currentUser.id,
+                requestedData: customerData,
+                status: 'pending',
+                timestamp: new Date().toISOString()
+            };
+            setCustomerEditRequests(prev => [newRequest, ...prev]);
+            addNotification(`${currentUser.name} requested changes for ${customerData.name}.`, '/customer-edit-requests');
+        }
+        setModalState({ type: null, data: null });
+    };
+
+    const handleApproveCustomerRequest = (requestId: string) => {
+        const request = customerEditRequests.find(r => r.id === requestId);
+        if (!request) return;
+        setCustomers(prev => prev.map(c => c.id === request.customerId ? { ...c, ...request.requestedData, id: c.id } : c));
+        setCustomerEditRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'approved' } : r));
+        addNotification(`Your change request for ${request.requestedData.name} was approved.`, '/customers');
+    };
+
+    const handleRejectCustomerRequest = (requestId: string) => {
+        const request = customerEditRequests.find(r => r.id === requestId);
+        if (!request) return;
+        setCustomerEditRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r));
+        addNotification(`Your change request for ${request.requestedData.name} was rejected.`, '/customers');
+    };
+
+    const handleSaveClient = (client: Client) => {
+        const exists = clients.some(c => c.id === client.id);
+        if (exists) { setClients(prev => prev.map(c => c.id === client.id ? client : c)); }
+        else { setClients(prev => [client, ...prev]); }
+        setModalState({ type: null, data: null });
+    };
+
+    const handleSaveEmployee = (user: User) => {
+        const exists = users.some(u => u.id === user.id);
+        if (exists) { setUsers(prev => prev.map(u => u.id === user.id ? user : u)); }
+        else { setUsers(prev => [...prev, user]); }
+        setModalState({ type: null, data: null });
+    };
+    
+    const handleCreateWorkOrder = (data: Partial<WorkOrder>) => {
+        const serviceFee = data.initialServiceFee || 0;
+        const newOrder: WorkOrder = {
+            id: `WO-${Date.now()}`,
+            customer: data.customer!,
+            description: data.description!,
+            status: WorkOrderStatus.PENDING,
+            technicianId: null,
+            createdAt: new Date().toISOString(),
+            usedParts: [],
+            initialServiceFee: serviceFee,
+            additionalCosts: [],
+            totalCost: serviceFee,
+        };
+        setWorkOrders(prev => [newOrder, ...prev]);
+        addNotification(`New Work Order Created: ${newOrder.id}`, '/work-orders', newOrder.id);
+        setModalState({ type: null, data: null });
+    };
+
+    const handleAssignTechnician = (techId: string) => {
+        if (!modalState.data) return;
+        setWorkOrders(prev => prev.map(wo => wo.id === modalState.data.id ? { ...wo, technicianId: techId, status: WorkOrderStatus.IN_PROGRESS } : wo));
+        const tech = users.find(u => u.id === techId);
+        addNotification(`Work Order ${modalState.data.id} assigned to ${tech?.name}`, `/work-orders/${modalState.data.id}`, modalState.data.id);
+        setModalState({ type: null, data: null });
+    };
+
+    const handleClaimWorkOrder = (wo: WorkOrder) => {
+        if (!currentUser || currentUser.role !== UserRole.TECHNICIAN) return;
+        setWorkOrders(prev =>
+            prev.map(order =>
+                order.id === wo.id
+                    ? { ...order, technicianId: currentUser.id, status: WorkOrderStatus.IN_PROGRESS }
+                    : order
+            )
+        );
+        setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, status: TechnicianStatus.ON_JOB } : u));
+        addNotification(`${currentUser.name} has claimed Work Order ${wo.id}`, `/work-orders/${wo.id}`, wo.id);
+    };
+
+    const handleCompleteWorkOrder = (wo: WorkOrder) => {
+        const updatedWO = { ...wo, status: WorkOrderStatus.COMPLETED, completedAt: new Date().toISOString() };
+        setWorkOrders(prev => prev.map(w => w.id === wo.id ? updatedWO : w));
+        
+        const customer = customers.find(c => c.id === wo.customer.id);
+
+        if (updatedWO.totalCost > 0) {
+            const newTransaction: Transaction = {
+                id: `trn-wo-${wo.id}`,
+                date: new Date().toISOString().split('T')[0],
+                description: `Service Income from WO #${wo.id} for ${customer?.name}`,
+                type: 'income',
+                amount: updatedWO.totalCost,
+                category: TransactionCategory.SERVICE_INCOME,
+                paymentMethod: PaymentMethod.BANK_TRANSFER,
+                workOrderId: wo.id,
+                clientId: customer?.clientId,
+                approved: true,
+            };
+            setTransactions(prev => [newTransaction, ...prev]);
+        }
+        if (wo.technicianId) {
+            setUsers(prev => prev.map(u => u.id === wo.technicianId ? { ...u, status: TechnicianStatus.AVAILABLE } : u));
+        }
+        addNotification(`Work Order ${wo.id} marked as Completed`, `/work-orders/${wo.id}`, wo.id);
+    };
+    
+    const handleUpdateWorkOrderParts = (parts: { partId: string; quantity: number }[]) => {
+        const workOrder = modalState.data as WorkOrder;
+        if (!workOrder) return;
+
+        let costOfNewParts = 0;
+        const newUsedParts = [...workOrder.usedParts];
+        const updatedSpareParts = [...spareParts];
+
+        let allPartsValid = true;
+        parts.forEach(({ partId, quantity }) => {
+            const partInfo = updatedSpareParts.find(p => p.id === partId);
+            if (!partInfo || partInfo.stock < quantity) {
+                alert(`Not enough stock for ${partInfo?.name}. Available: ${partInfo?.stock}`);
+                allPartsValid = false;
+                return;
+            }
+
+            costOfNewParts += partInfo.sellingPrice * quantity;
+            
+            const partIndex = updatedSpareParts.findIndex(p => p.id === partId);
+            updatedSpareParts[partIndex] = { ...updatedSpareParts[partIndex], stock: updatedSpareParts[partIndex].stock - quantity };
+
+            const existingPartIndex = newUsedParts.findIndex(p => p.partId === partId);
+            if (existingPartIndex > -1) {
+                newUsedParts[existingPartIndex].quantity += quantity;
+            } else {
+                newUsedParts.push({ partId, quantity, sellingPrice: partInfo.sellingPrice });
             }
         });
-    };
-
-    const intervalId = setInterval(checkSystemStatus, 60000); // Check every minute
-    return () => clearInterval(intervalId);
-  }, [workOrders, spareParts, notifications]);
-
-  const proactiveChatbotMessage = useMemo(() => {
-    const oneHourAgo = new Date().getTime() - 3600 * 1000;
-    const pendingWOs = workOrders.filter(wo => 
-        wo.status === WorkOrderStatus.PENDING && 
-        !wo.technicianId && 
-        new Date(wo.createdAt).getTime() < oneHourAgo
-    );
-    const lowStockParts = spareParts.filter(p => p.stock <= 5);
-
-    const alerts: string[] = [];
-    if (pendingWOs.length > 0) {
-        alerts.push(...pendingWOs.map(wo => `- WO #${wo.id} has been pending for over an hour.`));
-    }
-    if (lowStockParts.length > 0) {
-        alerts.push(...lowStockParts.map(p => `- Stock for '${p.name}' is low (${p.stock} left).`));
-    }
-
-    if (alerts.length > 0) {
-        return `Hello! I am ServisAI. I have some important updates for you:\n${alerts.join('\n')}`;
-    }
-    
-    return 'Hello! I am ServisAI. How can I assist you with your business data today?';
-  }, [workOrders, spareParts]);
-
-  const handleLogin = (user: User) => { setCurrentUser(user); setAuthScreen('login'); };
-  const handleLogout = () => { setCurrentUser(null); };
-  const handleSignUp = (newUser: User) => { setUsers(prev => [...prev, newUser]); setAuthScreen('login'); };
-  
-  const handleCustomerSubmit = (customerData: Customer) => {
-    if (!currentUser) return;
-
-    if (currentUser.role === UserRole.ADMINISTRATOR || currentUser.role === UserRole.ADMIN) {
-        setCustomers(prev => {
-            const exists = prev.some(c => c.id === customerData.id);
-            if (exists) { return prev.map(c => c.id === customerData.id ? customerData : c); }
-            return [...prev, customerData];
-        });
-    } else if (currentUser.role === UserRole.TECHNICIAN && customerData.id) {
-        const newRequest: CustomerEditRequest = {
-            id: `cer-${Date.now()}`,
-            customerId: customerData.id,
-            requestedByUserId: currentUser.id,
-            requestedData: customerData,
-            status: 'pending',
-            timestamp: new Date().toISOString()
-        };
-        setCustomerEditRequests(prev => [newRequest, ...prev]);
-        addNotification(`${currentUser.name} requested changes for ${customerData.name}.`, '/customer-edit-requests');
-    }
-    setModalState({ type: null, data: null });
-  };
-  
-  const handleApproveCustomerRequest = (requestId: string) => {
-    const request = customerEditRequests.find(r => r.id === requestId);
-    if (!request) return;
-
-    setCustomers(prev => prev.map(c => c.id === request.customerId ? { ...c, ...request.requestedData, id: c.id } : c));
-    setCustomerEditRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'approved' } : r));
-    addNotification(`Your change request for ${request.requestedData.name} was approved.`, '/customers');
-  };
-
-  const handleRejectCustomerRequest = (requestId: string) => {
-     const request = customerEditRequests.find(r => r.id === requestId);
-     if (!request) return;
-    setCustomerEditRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r));
-    addNotification(`Your change request for ${request.requestedData.name} was rejected.`, '/customers');
-  };
-
-  const handleSaveClient = (c: Client) => { setClients(prev => { const ex = prev.find(x => x.id === c.id); return ex ? prev.map(x => x.id === c.id ? c : x) : [c, ...prev]; }); setModalState({type:null, data:null}); };
-  
-  const handleSaveEmployee = (user: User) => {
-    const exists = users.some(u => u.id === user.id);
-    if (exists) {
-        setUsers(prev => prev.map(u => u.id === user.id ? user : u));
-    } else {
-        setUsers(prev => [...prev, user]);
-    }
-    setModalState({type: null, data: null});
-  };
-
-  const handleGenerateFinancialReport = () => {
-    const doc = new jsPDF();
-    generatePdfHeader(doc, companyProfile);
-
-    const approvedTransactions = transactions.filter(t => t.approved !== false);
-    const totalIncome = approvedTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpense = approvedTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const profitLoss = totalIncome - totalExpense;
-    const inventoryValue = spareParts.reduce((sum, part) => sum + (part.stock * (part.purchasePrice || 0)), 0);
-    const totalAssets = profitLoss + inventoryValue;
-
-    doc.setFontSize(16);
-    doc.text('Laporan Keuangan', 14, 60);
-
-    autoTable(doc, {
-        startY: 65,
-        head: [['Laporan Laba Rugi', '']],
-        body: [
-            ['Total Pendapatan', formatIDR(totalIncome)],
-            ['Total Pengeluaran', formatIDR(totalExpense)],
-            [{ content: 'Laba Bersih', styles: { fontStyle: 'bold' } }, { content: formatIDR(profitLoss), styles: { fontStyle: 'bold' } }],
-        ],
-        theme: 'striped',
-        columnStyles: { 1: { halign: 'right' } }
-    });
-
-    autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 10,
-        head: [['Neraca', '']],
-        body: [
-            [{ content: 'ASET', styles: { fontStyle: 'bold', fillColor: '#f3f4f6' } }, ''],
-            ['Kas (dari Laba Ditahan)', formatIDR(profitLoss)],
-            ['Nilai Persediaan', formatIDR(inventoryValue)],
-            [{ content: 'Total Aset', styles: { fontStyle: 'bold' } }, { content: formatIDR(totalAssets), styles: { fontStyle: 'bold' } }],
-            ['', ''],
-            [{ content: 'LIABILITAS & EKUITAS', styles: { fontStyle: 'bold', fillColor: '#f3f4f6' } }, ''],
-            ['Ekuitas (Laba Ditahan)', formatIDR(profitLoss)],
-            [{ content: 'Total Liabilitas & Ekuitas', styles: { fontStyle: 'bold' } }, { content: formatIDR(profitLoss), styles: { fontStyle: 'bold' } }],
-        ],
-        theme: 'striped',
-        columnStyles: { 1: { halign: 'right' } }
-    });
-    
-    doc.save(`Laporan_Keuangan_${new Date().toISOString().split('T')[0]}.pdf`);
-  };
-
-  // Work Order Handlers
-  const handleCreateWorkOrder = (data: Partial<WorkOrder>) => {
-      const serviceFee = data.initialServiceFee || 0;
-      const newOrder: WorkOrder = {
-          id: `WO-${Date.now()}`,
-          customer: data.customer!,
-          description: data.description!,
-          status: WorkOrderStatus.PENDING,
-          technicianId: null,
-          createdAt: new Date().toISOString(),
-          usedParts: [],
-          initialServiceFee: serviceFee,
-          additionalCosts: [],
-          totalCost: serviceFee,
-      };
-      setWorkOrders(prev => [newOrder, ...prev]);
-      addNotification(`New Work Order Created: ${newOrder.id}`, '/work-orders', newOrder.id);
-      setModalState({ type: null, data: null });
-  };
-
-  const handleAssignTechnician = (techId: string) => {
-      if (modalState.data) {
-          setWorkOrders(prev => prev.map(wo => wo.id === modalState.data.id ? { ...wo, technicianId: techId, status: WorkOrderStatus.IN_PROGRESS } : wo));
-          const tech = users.find(u => u.id === techId);
-          addNotification(`Work Order ${modalState.data.id} assigned to ${tech?.name}`, `/work-orders/${modalState.data.id}`, modalState.data.id);
-      }
-      setModalState({ type: null, data: null });
-  };
-  
-  const handleClaimWorkOrder = (wo: WorkOrder) => {
-      if (!currentUser || currentUser.role !== UserRole.TECHNICIAN) return;
-      setWorkOrders(prev => 
-          prev.map(order => 
-              order.id === wo.id 
-                  ? { ...order, technicianId: currentUser.id, status: WorkOrderStatus.IN_PROGRESS } 
-                  : order
-          )
-      );
-      setUsers(prev => prev.map(u => u.id === currentUser.id ? {...u, status: TechnicianStatus.ON_JOB} : u));
-      addNotification(`${currentUser.name} has claimed Work Order ${wo.id}`, `/work-orders/${wo.id}`, wo.id);
-  };
-
-  const handleCompleteWorkOrder = (wo: WorkOrder) => {
-      const updatedWO = { ...wo, status: WorkOrderStatus.COMPLETED, completedAt: new Date().toISOString() };
-      setWorkOrders(prev => prev.map(w => w.id === wo.id ? updatedWO : w));
-      
-      const customer = customers.find(c => c.id === wo.customer.id);
-
-      if (updatedWO.totalCost > 0) {
-        const newTransaction: Transaction = {
-            id: `trn-wo-${wo.id}`,
-            date: new Date().toISOString().split('T')[0],
-            description: `Service Income from WO #${wo.id}`,
-            type: 'income',
-            amount: updatedWO.totalCost,
-            category: TransactionCategory.SERVICE_INCOME,
-            paymentMethod: PaymentMethod.BANK_TRANSFER,
-            workOrderId: wo.id,
-            clientId: customer?.clientId,
-            approved: true, // Auto-approved
-        };
-        setTransactions(prev => [newTransaction, ...prev]);
-      }
-      if(wo.technicianId) {
-          setUsers(prev => prev.map(u => u.id === wo.technicianId ? {...u, status: TechnicianStatus.AVAILABLE} : u));
-      }
-      addNotification(`Work Order ${wo.id} marked as Completed`, `/work-orders/${wo.id}`, wo.id);
-  };
-  
-  const handleUpdateWorkOrderParts = (parts: { partId: string; quantity: number }[]) => {
-    const workOrder = modalState.data as WorkOrder;
-    if (!workOrder) return;
-
-    let costOfNewParts = 0;
-    const newUsedParts = [...workOrder.usedParts];
-    const updatedSpareParts = [...spareParts];
-
-    let allPartsValid = true;
-    parts.forEach(({ partId, quantity }) => {
-        const partInfo = updatedSpareParts.find(p => p.id === partId);
-        if (!partInfo || partInfo.stock < quantity) {
-            alert(`Not enough stock for ${partInfo?.name}. Available: ${partInfo?.stock}`);
-            allPartsValid = false;
-            return;
-        }
-
-        costOfNewParts += partInfo.sellingPrice * quantity;
         
-        const partIndex = updatedSpareParts.findIndex(p => p.id === partId);
-        updatedSpareParts[partIndex] = { ...updatedSpareParts[partIndex], stock: updatedSpareParts[partIndex].stock - quantity };
-
-        const existingPartIndex = newUsedParts.findIndex(p => p.partId === partId);
-        if (existingPartIndex > -1) {
-            newUsedParts[existingPartIndex].quantity += quantity;
-        } else {
-            newUsedParts.push({ partId, quantity, sellingPrice: partInfo.sellingPrice });
-        }
-    });
-    
-    if (allPartsValid) {
-      setSpareParts(updatedSpareParts);
-      setWorkOrders(prev => prev.map(wo => wo.id === workOrder.id ? {
-          ...wo,
-          usedParts: newUsedParts,
-          totalCost: wo.totalCost + costOfNewParts
-      } : wo));
-      setModalState({ type: null, data: null });
-    }
-  };
-
-  const handleSaveAdditionalCost = (cost: { description: string; amount: number }) => {
-    const workOrder = modalState.data as WorkOrder;
-    if (!workOrder) return;
-
-    setWorkOrders(prev => prev.map(wo => {
-        if (wo.id === workOrder.id) {
-            const newAdditionalCosts = [...wo.additionalCosts, cost];
-            const newTotalCost = wo.totalCost + cost.amount;
-            return {
-                ...wo,
-                additionalCosts: newAdditionalCosts,
-                totalCost: newTotalCost,
-            };
-        }
-        return wo;
-    }));
-    setModalState({ type: null, data: null });
-  };
-
-  const handleUploadProof = (workOrderId: string, proofType: 'work' | 'payment') => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = e => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = readerEvent => {
-                const url = readerEvent.target?.result as string;
-                setWorkOrders(prev => prev.map(wo => wo.id === workOrderId ? {
-                    ...wo,
-                    [proofType === 'work' ? 'workProofUrl' : 'paymentProofUrl']: url
-                } : wo));
-                alert(`${proofType.charAt(0).toUpperCase() + proofType.slice(1)} proof uploaded.`);
-            };
-            reader.readAsDataURL(file);
+        if (allPartsValid) {
+          setSpareParts(updatedSpareParts);
+          setWorkOrders(prev => prev.map(wo => wo.id === workOrder.id ? {
+              ...wo,
+              usedParts: newUsedParts,
+              totalCost: wo.totalCost + costOfNewParts
+          } : wo));
+          setModalState({ type: null, data: null });
         }
     };
-    input.click();
-  };
-  
-  const handlePrintWorkOrder = (workOrder: WorkOrder, action: 'print' | 'download' = 'download') => {
-    const doc = new jsPDF();
-    generatePdfHeader(doc, companyProfile);
+    
+    const handleSaveAdditionalCost = (cost: { description: string; amount: number }) => {
+        const workOrder = modalState.data as WorkOrder;
+        if (!workOrder) return;
 
-    doc.setFontSize(16);
-    doc.text(`Work Order: #${workOrder.id}`, 14, 60);
-    
-    autoTable(doc, {
-        startY: 65,
-        head: [['Customer Details', 'Job Information']],
-        body: [[
-            `Name: ${workOrder.customer.name}\nPhone: ${workOrder.customer.phone}\nAddress: ${workOrder.customer.address}`,
-            `Created: ${new Date(workOrder.createdAt).toLocaleDateString()}\nCompleted: ${workOrder.completedAt ? new Date(workOrder.completedAt).toLocaleDateString() : 'N/A'}\nStatus: ${workOrder.status}`
-        ]],
-        theme: 'striped',
-    });
-    
-    autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 10,
-        head: [['Deskripsi Pekerjaan']],
-        body: [[workOrder.description]],
-    });
-    
-    const costBody: (string | number)[][] = [];
-    costBody.push(['Biaya Jasa Awal', formatIDR(workOrder.initialServiceFee)]);
+        setWorkOrders(prev => prev.map(wo => {
+            if (wo.id === workOrder.id) {
+                const newAdditionalCosts = [...wo.additionalCosts, cost];
+                const newTotalCost = wo.totalCost + cost.amount;
+                return {
+                    ...wo,
+                    additionalCosts: newAdditionalCosts,
+                    totalCost: newTotalCost,
+                };
+            }
+            return wo;
+        }));
+        setModalState({ type: null, data: null });
+    };
 
-    if (workOrder.additionalCosts.length > 0) {
-        costBody.push(['Biaya Tambahan:', '']);
-        workOrder.additionalCosts.forEach(cost => {
-            costBody.push([`  - ${cost.description}`, formatIDR(cost.amount)]);
+    const handleUploadProof = (workOrderId: string, proofType: 'work' | 'payment') => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = readerEvent => {
+                    const url = readerEvent.target?.result as string;
+                    setWorkOrders(prev => prev.map(wo => wo.id === workOrderId ? {
+                        ...wo,
+                        [proofType === 'work' ? 'workProofUrl' : 'paymentProofUrl']: url
+                    } : wo));
+                    alert(`${proofType.charAt(0).toUpperCase() + proofType.slice(1)} proof uploaded.`);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        input.click();
+    };
+
+    const handlePrintWorkOrder = (workOrder: WorkOrder, action: 'print' | 'download' = 'download') => {
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        generatePdfHeader(doc, companyProfile);
+    
+        doc.setFontSize(14);
+        doc.text(`Work Order: #${workOrder.id}`, 20, 60);
+        
+        autoTable(doc, {
+            startY: 65,
+            head: [['Customer Details', 'Job Information']],
+            body: [[
+                `Name: ${workOrder.customer.name}\nPhone: ${workOrder.customer.phone}\nAddress: ${workOrder.customer.address}`,
+                `Created: ${new Date(workOrder.createdAt).toLocaleDateString()}\nCompleted: ${workOrder.completedAt ? new Date(workOrder.completedAt).toLocaleDateString() : 'N/A'}\nStatus: ${workOrder.status}`
+            ]],
+            theme: 'striped',
+            styles: { fontSize: 9 },
+            headStyles: { fontSize: 10, fontStyle: 'bold' },
+            margin: { left: 20, right: 20 }
         });
-    }
-
-    if (workOrder.usedParts.length > 0) {
-        costBody.push(['Suku Cadang:', '']);
-        workOrder.usedParts.forEach(item => {
-            const part = spareParts.find(p => p.id === item.partId);
-            costBody.push([`  - ${part?.name || 'Unknown'} (x${item.quantity})`, formatIDR(item.quantity * item.sellingPrice)]);
+        
+        autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 10,
+            head: [['Deskripsi Pekerjaan']],
+            body: [[workOrder.description]],
+            styles: { fontSize: 9 },
+            headStyles: { fontSize: 10, fontStyle: 'bold' },
+            margin: { left: 20, right: 20 }
         });
-    }
-
-    autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 10,
-        head: [['Rincian Biaya', 'Jumlah']],
-        body: costBody,
-        theme: 'grid',
-        columnStyles: { 1: { halign: 'right' } },
-    });
-
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Total Tagihan:', 14, (doc as any).lastAutoTable.finalY + 15);
-    doc.text(formatIDR(workOrder.totalCost), 200, (doc as any).lastAutoTable.finalY + 15, { align: 'right' });
+        
+        const costBody: any[][] = [];
+        costBody.push(['Biaya Jasa Awal', formatIDR(workOrder.initialServiceFee)]);
     
-    if (action === 'print') {
-        doc.autoPrint();
-        window.open(doc.output('bloburl'), '_blank');
-    } else {
-        doc.save(`WO-${workOrder.id}.pdf`);
-    }
-  };
-
-  const handleSaveTransaction = (transaction: Transaction) => {
+        if (workOrder.additionalCosts.length > 0) {
+            costBody.push([{ content: 'Biaya Tambahan:', styles: { fontStyle: 'bold' } }, '']);
+            workOrder.additionalCosts.forEach(cost => {
+                costBody.push([`  - ${cost.description}`, formatIDR(cost.amount)]);
+            });
+        }
+    
+        if (workOrder.usedParts.length > 0) {
+            costBody.push([{ content: 'Suku Cadang:', styles: { fontStyle: 'bold' } }, '']);
+            workOrder.usedParts.forEach(item => {
+                const part = spareParts.find(p => p.id === item.partId);
+                costBody.push([`  - ${part?.name || 'Unknown'} (x${item.quantity})`, formatIDR(item.quantity * item.sellingPrice)]);
+            });
+        }
+    
+        autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 10,
+            head: [['Rincian Biaya', 'Jumlah']],
+            body: costBody,
+            theme: 'grid',
+            columnStyles: { 1: { halign: 'right' } },
+            bodyStyles: { fontSize: 9 },
+            headStyles: { fontSize: 9, fontStyle: 'bold' },
+            margin: { left: 20, right: 20 }
+        });
+    
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Total Tagihan:', 20, (doc as any).lastAutoTable.finalY + 15);
+        doc.text(formatIDR(workOrder.totalCost), 190, (doc as any).lastAutoTable.finalY + 15, { align: 'right' });
+        
+        if (action === 'print') {
+            doc.autoPrint();
+            window.open(doc.output('bloburl'), '_blank');
+        } else {
+            doc.save(`WO-${workOrder.id}.pdf`);
+        }
+    };
+    
+    const handleSaveTransaction = (transaction: Transaction) => {
       const exists = transactions.some(t => t.id === transaction.id);
       if (exists) {
           setTransactions(prev => prev.map(t => t.id === transaction.id ? transaction : t));
@@ -2669,239 +2855,245 @@ const App: React.FC = () => {
           setTransactions(prev => [transaction, ...prev]);
       }
       setModalState({ type: null, data: null });
-  };
-
-  const handleRequestReimbursement = (description: string, amount: number, attachment: any) => {
-    if (!currentUser || !modalState.data) return;
-    const workOrder = modalState.data as WorkOrder;
-    const newTransaction: Transaction = {
-        id: `trn-reim-${Date.now()}`,
-        date: new Date().toISOString().split('T')[0],
-        description: description,
-        type: 'expense',
-        amount: amount,
-        category: TransactionCategory.REIMBURSEMENT,
-        paymentMethod: PaymentMethod.CASH, 
-        attachment: attachment,
-        workOrderId: workOrder.id,
-        requestedByUserId: currentUser.id,
-        approved: false, // This is key
     };
-    setTransactions(prev => [newTransaction, ...prev]);
-    addNotification(`${currentUser.name} requested a reimbursement of ${formatIDR(amount)}`, '/reimbursements');
-    setModalState({ type: null, data: null });
-  };
-  
-  const handleApproveReimbursement = (transactionId: string) => {
-      setTransactions(prev => prev.map(tr => {
-          if (tr.id === transactionId) {
-              addNotification(`Reimbursement request for ${formatIDR(tr.amount)} has been approved.`, '/my-reimbursements');
-              return { ...tr, approved: true };
-          }
-          return tr;
-      }));
-  };
 
-  const handleImportSpareParts = (parsedParts: any[]) => {
-       const newParts: SparePart[] = [];
-       alert(`Import logic would run here for ${parsedParts.length} items.`);
-       setModalState({type:null, data:null});
-  };
-  const handleDeleteSparePart = (id: string) => { setSpareParts(prev => prev.filter(p => p.id !== id)); setModalState({ type: null, data: null }); };
-  const handleBulkDeleteSpareParts = (ids: string[]) => { setSpareParts(prev => prev.filter(p => !ids.includes(p.id))); };
-  const handleSaveSparePart = (part: SparePart) => {
-      const exists = spareParts.some(p => p.id === part.id);
-      if (exists) { setSpareParts(prev => prev.map(p => p.id === part.id ? part : p)); } 
-      else { setSpareParts(prev => [part, ...prev]); }
-      setModalState({ type: null, data: null });
-  };
-  const handleSaveSupplier = (s: Supplier) => { setSuppliers(prev => { const ex = prev.find(x => x.id === s.id); return ex ? prev.map(x => x.id === s.id ? s : x) : [s, ...prev]; }); setModalState({type:null, data:null}); };
-
-  const handleClockIn = () => {
-    if (!currentUser) return;
-    const today = new Date().toISOString().split('T')[0];
-    const existingRecord = attendance.find(a => a.userId === currentUser.id && a.date === today && !a.clockOutTime);
-    if (existingRecord) return;
-
-    const newRecord: AttendanceRecord = {
-      id: `att-${Date.now()}`,
-      userId: currentUser.id,
-      date: today,
-      clockInTime: new Date().toISOString(),
+    const handleRequestReimbursement = (description: string, amount: number, attachment: any) => {
+        if (!currentUser || !modalState.data) return;
+        const workOrder = modalState.data as WorkOrder;
+        const newTransaction: Transaction = {
+            id: `trn-reim-${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            description: description,
+            type: 'expense',
+            amount: amount,
+            category: TransactionCategory.REIMBURSEMENT,
+            paymentMethod: PaymentMethod.CASH, 
+            attachment: attachment,
+            workOrderId: workOrder.id,
+            requestedByUserId: currentUser.id,
+            approved: false, // This is key
+        };
+        setTransactions(prev => [newTransaction, ...prev]);
+        addNotification(`${currentUser.name} requested a reimbursement of ${formatIDR(amount)}`, '/reimbursements');
+        setModalState({ type: null, data: null });
     };
-    setAttendance(prev => [...prev, newRecord]);
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, status: TechnicianStatus.AVAILABLE } : u));
-    addNotification('You have successfully clocked in.', '/');
-  };
+    
+    const handleApproveReimbursement = (transactionId: string) => {
+        setTransactions(prev => prev.map(tr => {
+            if (tr.id === transactionId) {
+                addNotification(`Reimbursement request for ${formatIDR(tr.amount)} has been approved.`, '/my-reimbursements');
+                return { ...tr, approved: true };
+            }
+            return tr;
+        }));
+    };
 
-  const handleClockOut = () => {
-    if (!currentUser) return;
-    const today = new Date().toISOString().split('T')[0];
-    const record = attendance.find(a => a.userId === currentUser.id && a.date === today && !a.clockOutTime);
-    if (!record) return;
+    const handleImportSpareParts = (parsedParts: any[]) => {
+        const newParts: SparePart[] = [];
+        alert(`Import logic would run here for ${parsedParts.length} items.`);
+        setModalState({type:null, data:null});
+    };
+    const handleDeleteSparePart = (id: string) => { setSpareParts(prev => prev.filter(p => p.id !== id)); setModalState({ type: null, data: null }); };
+    const handleBulkDeleteSpareParts = (ids: string[]) => { setSpareParts(prev => prev.filter(p => !ids.includes(p.id))); };
+    const handleSaveSparePart = (part: SparePart) => {
+        const exists = spareParts.some(p => p.id === part.id);
+        if (exists) { setSpareParts(prev => prev.map(p => p.id === part.id ? part : p)); } 
+        else { setSpareParts(prev => [part, ...prev]); }
+        setModalState({ type: null, data: null });
+    };
+    const handleSaveSupplier = (s: Supplier) => { setSuppliers(prev => { const ex = prev.find(x => x.id === s.id); return ex ? prev.map(x => x.id === s.id ? s : x) : [s, ...prev]; }); setModalState({type:null, data:null}); };
 
-    setAttendance(prev => prev.map(a => a.id === record.id ? { ...a, clockOutTime: new Date().toISOString() } : a));
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, status: TechnicianStatus.OFFLINE } : u));
-    addNotification('You have successfully clocked out.', '/');
-  };
+    const handleClockIn = () => {
+        if (!currentUser) return;
+        const today = new Date().toISOString().split('T')[0];
+        const existingRecord = attendance.find(a => a.userId === currentUser.id && a.date === today && !a.clockOutTime);
+        if (existingRecord) return;
 
-  const handleWhatsAppChat = (workOrder: WorkOrder) => {
-    if (!workOrder.customer.phone) {
-        alert('Customer phone number is not available.');
-        return;
+        const newRecord: AttendanceRecord = {
+          id: `att-${Date.now()}`,
+          userId: currentUser.id,
+          date: today,
+          clockInTime: new Date().toISOString(),
+        };
+        setAttendance(prev => [...prev, newRecord]);
+        setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, status: TechnicianStatus.AVAILABLE } : u));
+        addNotification('You have successfully clocked in.', '/');
+    };
+
+    const handleClockOut = () => {
+        if (!currentUser) return;
+        const today = new Date().toISOString().split('T')[0];
+        const record = attendance.find(a => a.userId === currentUser.id && a.date === today && !a.clockOutTime);
+        if (!record) return;
+
+        setAttendance(prev => prev.map(a => a.id === record.id ? { ...a, clockOutTime: new Date().toISOString() } : a));
+        setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, status: TechnicianStatus.OFFLINE } : u));
+        addNotification('You have successfully clocked out.', '/');
+    };
+
+    const handleWhatsAppChat = (workOrder: WorkOrder) => {
+        if (!workOrder.customer.phone) {
+            alert('Customer phone number is not available.');
+            return;
+        }
+        let phoneNumber = workOrder.customer.phone.replace(/[^0-9]/g, '');
+        if (phoneNumber.startsWith('0')) {
+            phoneNumber = '62' + phoneNumber.substring(1);
+        }
+        const message = encodeURIComponent(`Hello, regarding Work Order #${workOrder.id}, `);
+        window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
+    };
+
+    const handleEmailNotify = (workOrder: WorkOrder) => {
+        if (!workOrder.customer.email) {
+            alert('Customer email is not available.');
+            return;
+        }
+        const subject = encodeURIComponent(`Regarding Work Order #${workOrder.id}`);
+        window.open(`mailto:${workOrder.customer.email}?subject=${subject}`, '_blank');
+    };
+
+    const handleGenerateFinancialReport = () => {
+        alert('Generating financial report...');
+    };
+
+    if (!currentUser) {
+        if (authScreen === 'signup') {
+            return <SignUpScreen onSignUp={handleSignUp} onSwitchToLogin={() => setAuthScreen('login')} t={t} />;
+        }
+        return <LoginScreen onLogin={handleLogin} onSwitchToSignUp={() => setAuthScreen('signup')} users={users} t={t} />;
     }
-    let phoneNumber = workOrder.customer.phone.replace(/[^0-9]/g, '');
-    if (phoneNumber.startsWith('0')) {
-        phoneNumber = '62' + phoneNumber.substring(1);
-    }
-    const message = encodeURIComponent(`Hello, regarding Work Order #${workOrder.id}, `);
-    window.open(`https://wa.me/${phoneNumber}?text=${message}`, '_blank');
-  };
+    
+    const hasClockedInToday = attendance.some(a => a.userId === currentUser?.id && a.date === new Date().toISOString().split('T')[0] && !a.clockOutTime);
 
-  const handleEmailNotify = (workOrder: WorkOrder) => {
-      if (!workOrder.customer.email) {
-          alert('Customer email is not available.');
-          return;
-      }
-      const subject = encodeURIComponent(`Regarding Work Order #${workOrder.id}`);
-      window.open(`mailto:${workOrder.customer.email}?subject=${subject}`, '_blank');
-  };
-
-  if (!currentUser) {
-    if (authScreen === 'signup') return <SignUpScreen onSignUp={handleSignUp} onSwitchToLogin={() => setAuthScreen('login')} t={t} />;
-    return <LoginScreen onLogin={handleLogin} onSwitchToSignUp={() => setAuthScreen('signup')} users={users} t={t} />;
-  }
-
-  const Sidebar: React.FC = () => {
-    const location = useLocation();
     const navItems = [
-        { path: '/', labelKey: 'sidebar.dashboard', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-blue-500' },
-        { path: '/customers', labelKey: 'sidebar.customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-green-500' },
-        { path: '/work-orders', labelKey: 'sidebar.workOrders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN], color: 'text-orange-500' },
-        { path: '/my-reimbursements', labelKey: 'sidebar.myReimbursements', icon: ReceiptIcon, roles: [UserRole.TECHNICIAN], color: 'text-cyan-500' },
-        { path: '/reimbursements', labelKey: 'sidebar.reimbursement', icon: ReceiptIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-cyan-500' },
-        { path: '/spare-parts', labelKey: 'sidebar.spareParts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-indigo-500' },
-        { path: '/finance', labelKey: 'sidebar.finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-purple-500' },
-        { path: '/employees', labelKey: 'sidebar.employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN], color: 'text-teal-500' },
-        { path: '/settings', labelKey: 'sidebar.settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR], color: 'text-gray-500' },
+      { key: 'sidebar.dashboard', path: '/', icon: DashboardIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN] },
+      { key: 'sidebar.customers', path: '/customers', icon: CustomerIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN] },
+      { key: 'sidebar.workOrders', path: '/work-orders', icon: WorkOrderIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN] },
+      { key: 'sidebar.myReimbursements', path: '/my-reimbursements', icon: ReceiptIcon, roles: [UserRole.TECHNICIAN] },
+      { key: 'sidebar.reimbursement', path: '/reimbursements', icon: ReceiptIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN] },
+      { key: 'sidebar.spareParts', path: '/spare-parts', icon: SparePartIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN] },
+      { key: 'sidebar.finance', path: '/finance', icon: FinanceIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN] },
+      { key: 'sidebar.employees', path: '/employees', icon: UsersIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN] },
+      { key: 'sidebar.settings', path: '/settings', icon: SettingsIcon, roles: [UserRole.ADMINISTRATOR, UserRole.ADMIN, UserRole.TECHNICIAN] },
     ];
+
     const accessibleNavItems = navItems.filter(item => item.roles.includes(currentUser.role));
 
     return (
-        <div className={`flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
-            <div className={`h-16 flex items-center border-b border-gray-200 dark:border-gray-700 ${isSidebarCollapsed ? 'justify-center' : 'justify-center'}`}>
-                {isSidebarCollapsed ? <DashboardIcon className="h-10 w-10 text-primary-600" /> : <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-400 bg-clip-text text-transparent">ServisPro</h1>}
-            </div>
-            <nav className="flex-1 p-4 space-y-2">
-                {accessibleNavItems.map(item => (
-                     <Link key={item.path} to={item.path} title={isSidebarCollapsed ? t(item.labelKey) : ''} className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${(location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path) ? 'bg-primary-100 dark:bg-gray-700 text-primary-700 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'} ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-                        <item.icon className={`${isSidebarCollapsed ? `h-8 w-8 ${item.color}` : `h-5 w-5 ${item.color}`}`} />
-                        {!isSidebarCollapsed && <span className="font-medium">{t(item.labelKey)}</span>}
-                    </Link>
-                ))}
-            </nav>
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                 <button onClick={handleLogout} className={`flex items-center w-full space-x-3 px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? t('sidebar.logout') : ''}>
-                    <LogoutIcon className="h-5 w-5" />
-                    {!isSidebarCollapsed && <span className="font-medium">{t('sidebar.logout')}</span>}
-                </button>
-                 <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className={`flex items-center w-full space-x-3 px-4 py-2 mt-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? t('sidebar.expandMenu') : t('sidebar.collapseMenu')}>
-                    {isSidebarCollapsed ? <ChevronsRightIcon className="h-5 w-5" /> : <ChevronsLeftIcon className="h-5 w-5" />}
-                    {!isSidebarCollapsed && <span className="font-medium">{t('sidebar.collapseMenu')}</span>}
-                </button>
-            </div>
-        </div>
-    );
-  }
-  
-  const hasClockedInToday = attendance.some(a => a.userId === currentUser?.id && a.date === new Date().toISOString().split('T')[0] && !a.clockOutTime);
-
-  return (
-    <HashRouter>
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-            <Sidebar />
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 z-10 border-b dark:border-gray-700">
-                    <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                        <span>{new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                        {currentUser.role === UserRole.TECHNICIAN && (
-                            !hasClockedInToday ? (
-                                <button onClick={handleClockIn} className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700">{t('pages.employees.clockIn')}</button>
-                            ) : (
-                                <button onClick={handleClockOut} className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">{t('pages.employees.clockOut')}</button>
-                            )
+        <HashRouter>
+            <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+                <aside className={`flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? 'w-24' : 'w-64'}`}>
+                    <div className={`h-16 flex items-center border-b border-gray-200 dark:border-gray-700 ${isSidebarCollapsed ? 'justify-center' : 'px-6'}`}>
+                        {isSidebarCollapsed ? (
+                            <DashboardIcon className="h-8 w-8 text-primary-600" />
+                        ) : (
+                            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-600">ServisPro</h1>
                         )}
-                        <div className="relative">
-                            <button onClick={() => setIsNotificationsOpen(prev => !prev)} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white">
-                                <BellIcon className="h-6 w-6" />
-                                {notifications.some(n => !n.read) && <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-red-500 rounded-full"></span>}
-                            </button>
-                            {isNotificationsOpen && (
-                                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700 z-20">
-                                    <div className="p-3 font-semibold text-sm border-b dark:border-gray-700">{t('pages.notifications.title')}</div>
-                                    <div className="max-h-80 overflow-y-auto">
-                                        {notifications.length > 0 ? notifications.map(notif => (
-                                            <Link to={notif.link} key={notif.id} onClick={() => setIsNotificationsOpen(false)} className={`block p-3 hover:bg-gray-50 dark:hover:bg-gray-700 ${!notif.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
-                                                <p className="text-sm">{notif.message}</p>
-                                                <p className="text-xs text-gray-500 mt-1">{timeAgo(notif.timestamp)}</p>
-                                            </Link>
-                                        )) : <p className="p-4 text-sm text-gray-500">{t('pages.notifications.empty')}</p>}
-                                    </div>
+                    </div>
+                    <nav className="flex-1 p-4 space-y-2">
+                        {accessibleNavItems.map(item => (
+                            <SidebarLink key={item.path} item={item} isSidebarCollapsed={isSidebarCollapsed} t={t} />
+                        ))}
+                    </nav>
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                        <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} className={`flex items-center w-full space-x-3 px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? t('sidebar.expandMenu') : t('sidebar.collapseMenu')}>
+                            {isSidebarCollapsed ? <ChevronsRightIcon className="h-6 w-6" /> : <ChevronsLeftIcon className="h-6 w-6" />}
+                            {!isSidebarCollapsed && <span className="font-medium">{t('sidebar.collapseMenu')}</span>}
+                        </button>
+                        <button onClick={handleLogout} className={`flex items-center w-full space-x-3 px-4 py-2 mt-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 ${isSidebarCollapsed ? 'justify-center' : ''}`} title={isSidebarCollapsed ? t('sidebar.logout') : ''}>
+                            <LogoutIcon className="h-6 w-6" />
+                            {!isSidebarCollapsed && <span className="font-medium">{t('sidebar.logout')}</span>}
+                        </button>
+                    </div>
+                </aside>
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 z-10 border-b dark:border-gray-700">
+                        <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
+                            {currentUser.role === UserRole.TECHNICIAN && (
+                                <div className="mr-4">
+                                {!hasClockedInToday ? (
+                                    <button onClick={handleClockIn} className="px-3 py-1.5 text-sm rounded-md bg-green-500 text-white hover:bg-green-600">{t('pages.employees.clockIn')}</button>
+                                ) : (
+                                    <button onClick={handleClockOut} className="px-3 py-1.5 text-sm rounded-md bg-red-500 text-white hover:bg-red-600">{t('pages.employees.clockOut')}</button>
+                                )}
                                 </div>
                             )}
+                            <span>{new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
                         </div>
-                        <span className="font-medium text-gray-700 dark:text-white">{formatUserName(currentUser.name)}</span>
-                        <div className="h-8 w-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-200 font-bold">
-                            {currentUser.name.charAt(0)}
+                        <div className="flex items-center space-x-4">
+                            <div className="relative">
+                                <button onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <BellIcon className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                                    {notifications.filter(n=>!n.read).length > 0 && <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>}
+                                </button>
+                                {isNotificationsOpen && (
+                                    <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700 z-20">
+                                      <div className="p-3 border-b dark:border-gray-700">
+                                        <h3 className="font-semibold text-gray-800 dark:text-white">{t('pages.notifications.title')}</h3>
+                                      </div>
+                                      <div className="max-h-80 overflow-y-auto">
+                                        {notifications.length > 0 ? (
+                                          notifications.map(n => (
+                                            <Link to={n.link} key={n.id} onClick={() => setIsNotificationsOpen(false)} className={`block p-3 border-b dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 ${!n.read ? 'font-semibold' : ''}`}>
+                                              <p className="text-sm">{n.message}</p>
+                                              <p className="text-xs text-gray-500 mt-1">{timeAgo(n.timestamp)}</p>
+                                            </Link>
+                                          ))
+                                        ) : (
+                                          <p className="p-4 text-sm text-gray-500">{t('pages.notifications.empty')}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                )}
+                            </div>
+                            <span className="font-medium text-gray-700 dark:text-white">{formatUserName(currentUser.name)}</span>
+                            <div className="h-8 w-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-700 dark:text-primary-200 font-bold">
+                                {currentUser.name.charAt(0)}
+                            </div>
                         </div>
-                    </div>
-                </header>
-                <main className="flex-1 overflow-y-auto p-6">
-                    <Routes>
-                        <Route path="/" element={<Dashboard workOrders={workOrders} customers={customers} users={users} currentUser={currentUser} transactions={transactions} t={t} />} />
-                        <Route path="/work-orders" element={<WorkOrders user={currentUser} workOrders={workOrders} users={users} onCreate={() => setModalState({ type: 'create_wo', data: null })} onAssign={(wo) => setModalState({ type: 'assign_tech', data: wo })} onClaim={handleClaimWorkOrder} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} t={t} />} />
-                        <Route path="/work-orders/:id" element={<WorkOrderDetailPage workOrders={workOrders} users={users} spareParts={spareParts} onAddPart={(wo) => setModalState({ type: 'add_part_wo', data: wo })} onAddCost={(wo) => setModalState({ type: 'add_additional_cost', data: wo })} onComplete={handleCompleteWorkOrder} t={t} onPrint={handlePrintWorkOrder} onUploadProof={handleUploadProof} onChat={handleWhatsAppChat} onNotify={handleEmailNotify} onRequestReimbursement={(wo) => setModalState({ type: 'request_reimbursement', data: wo })} />} />
-                        <Route path="/customers" element={<CustomersAndClientsPage customers={customers} clients={clients} onAddCustomer={() => setModalState({ type: 'add_customer', data: null })} onEditCustomer={(c) => setModalState({ type: 'edit_customer', data: c })} onAddClient={() => setModalState({ type: 'add_client', data: null })} onEditClient={(c) => setModalState({ type: 'edit_client', data: c })} currentUser={currentUser} t={t} />} />
-                        <Route path="/customer-edit-requests" element={<CustomerEditRequestPage requests={customerEditRequests} customers={customers} users={users} onApprove={handleApproveCustomerRequest} onReject={handleRejectCustomerRequest} t={t} />} />
-                        <Route path="/employees" element={<EmployeesPage users={users} workOrders={workOrders} attendance={attendance} onAddEmployee={() => setModalState({ type: 'add_employee', data: null })} t={t} />} />
-                        <Route path="/employees/:employeeId" element={<TechnicianProfilePage users={users} workOrders={workOrders} onEdit={(user) => setModalState({ type: 'edit_employee', data: user })} t={t} />} />
-                        <Route path="/finance" element={<FinancePage transactions={transactions} spareParts={spareParts} onAddTransaction={() => setModalState({ type: 'add_transaction', data: null })} onGenerateReport={handleGenerateFinancialReport} t={t} />} />
-                        <Route path="/finance/client-report" element={<ClientFinancePage clients={clients} customers={customers} workOrders={workOrders} transactions={transactions} t={t} />} />
-                        <Route path="/reimbursements" element={<ReimbursementPage transactions={transactions} users={users} onApprove={handleApproveReimbursement} onViewAttachment={(att) => setModalState({type: 'view_attachment', data: att})} t={t} />} />
-                        <Route path="/my-reimbursements" element={<MyReimbursementsPage transactions={transactions} currentUser={currentUser} onViewAttachment={(att) => setModalState({type: 'view_attachment', data: att})} t={t} />} />
-                        <Route path="/settings" element={<SettingsPage customers={customers} workOrders={workOrders} users={users} profile={companyProfile} onProfileSave={setCompanyProfile} t={t} language={language} setLanguage={setLanguage} theme={theme} setTheme={setTheme} spareParts={spareParts} suppliers={suppliers} clients={clients} invoices={invoices} transactions={transactions} contracts={contracts} />} />
-                        <Route path="/spare-parts" element={<SpareParts spareParts={spareParts} suppliers={suppliers} onAddPart={() => setModalState({ type: 'add_spare_part', data: null })} onEditPart={(sp) => setModalState({ type: 'edit_spare_part', data: sp })} onAddSupplier={() => setModalState({ type: 'add_supplier', data: null })} onEditSupplier={(s) => setModalState({ type: 'edit_supplier', data: s })} onImport={handleImportSpareParts} onDelete={handleDeleteSparePart} onBulkDelete={handleBulkDeleteSpareParts} t={t} />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
-                </main>
+                    </header>
+                    <main className="flex-1 overflow-y-auto p-6">
+                        <AppRoutes 
+                            currentUser={currentUser}
+                            appState={{
+                                workOrders, customers, users, transactions, spareParts, 
+                                suppliers, clients, invoices, contracts, attendance, 
+                                customerEditRequests, companyProfile, language, theme
+                            }}
+                            handlers={{
+                                handleCreateWorkOrder, handleAssignTechnician, handleClaimWorkOrder, handleCompleteWorkOrder,
+                                handleUpdateWorkOrderParts, handleSaveAdditionalCost, handlePrintWorkOrder, handleUploadProof,
+                                handleWhatsAppChat, handleEmailNotify, handleRequestReimbursement, handleApproveReimbursement,
+                                handleCustomerSubmit, handleApproveCustomerRequest, handleRejectCustomerRequest,
+                                handleSaveClient, handleSaveEmployee, handleSaveTransaction, handleGenerateFinancialReport,
+                                handleSaveSparePart, handleDeleteSparePart, handleBulkDeleteSpareParts, handleImportSpareParts,
+                                handleSaveSupplier, setCompanyProfile, setLanguage, setTheme,
+                                openModal: (type: string, data: any) => setModalState({ type, data }),
+                            }}
+                            t={t}
+                        />
+                    </main>
+                </div>
+                
+                <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users, transactions }} initialMessage={proactiveChatbotMessage} />
+                
+                <RootModal 
+                    modalState={modalState}
+                    closeModal={() => setModalState({ type: null, data: null })}
+                    handlers={{
+                        handleRequestReimbursement, handleSaveEmployee, handleSaveTransaction, handleCustomerSubmit,
+                        handleSaveClient, handleSaveSupplier, handleCreateWorkOrder, handleAssignTechnician,
+                        handleUpdateWorkOrderParts, handleSaveAdditionalCost, handleSaveSparePart, handleDeleteSparePart
+                    }}
+                    appState={{
+                        clients, users, spareParts, suppliers, customers, currentUser
+                    }}
+                    t={t}
+                />
             </div>
-            
-            <Chatbot currentUser={currentUser} appData={{ customers, workOrders, spareParts, invoices, users, transactions }} initialMessage={proactiveChatbotMessage} />
-            
-            {/* All Modals */}
-            <ReimbursementModal isOpen={modalState.type === 'request_reimbursement'} onClose={() => setModalState({type: null, data: null})} onConfirm={handleRequestReimbursement} t={t} />
-            <AttachmentViewerModal isOpen={modalState.type === 'view_attachment'} onClose={() => setModalState({type: null, data: null})} attachment={modalState.data} t={t} />
-
-            {modalState.type === 'create_wo' && <CreateWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCreateWorkOrder} customers={customers} t={t} />}
-            {modalState.type === 'assign_tech' && <AssignTechnicianModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleAssignTechnician} technicians={users.filter(u => u.role === UserRole.TECHNICIAN)} t={t} />}
-            {modalState.type === 'add_part_wo' && <AddPartToWorkOrderModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleUpdateWorkOrderParts} availableParts={spareParts} t={t} />}
-            {modalState.type === 'add_additional_cost' && <AddAdditionalCostModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveAdditionalCost} t={t} />}
-            {modalState.type === 'add_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} part={null} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
-            {modalState.type === 'edit_spare_part' && <AddEditSparePartModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSparePart} onDelete={handleDeleteSparePart} part={modalState.data} suppliers={suppliers} allSpareParts={spareParts} t={t} />}
-            {modalState.type === 'add_transaction' && <AddEditTransactionModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveTransaction} transaction={null} clients={clients} t={t} />}
-            {modalState.type === 'add_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={null} t={t} />}
-            {modalState.type === 'edit_employee' && <AddEditEmployeeModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveEmployee} user={modalState.data} t={t} />}
-            {modalState.type === 'add_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCustomerSubmit} customer={null} clients={clients} currentUser={currentUser} t={t} />}
-            {modalState.type === 'edit_customer' && <AddEditCustomerModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleCustomerSubmit} customer={modalState.data} clients={clients} currentUser={currentUser} t={t} />}
-            {modalState.type === 'add_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={null} t={t} />}
-            {modalState.type === 'edit_client' && <AddEditClientModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveClient} client={modalState.data} t={t} />}
-            {modalState.type === 'add_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={null} t={t} />}
-            {modalState.type === 'edit_supplier' && <AddEditSupplierModal isOpen={true} onClose={() => setModalState({ type: null, data: null })} onSave={handleSaveSupplier} supplier={modalState.data} t={t} />}
-        </div>
-    </HashRouter>
-  );
+        </HashRouter>
+    );
 };
 
 export default App;
