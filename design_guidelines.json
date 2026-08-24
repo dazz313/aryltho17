@@ -1,0 +1,124 @@
+{
+  "theme": "light_default_with_dark_toggle",
+  "typography": {
+    "headings": {
+      "font_family": "Cabinet Grotesk, sans-serif",
+      "weights": ["400", "700", "800"],
+      "usage": "Dashboard titles, metric numbers, and major section headers.",
+      "tracking": "tracking-tight"
+    },
+    "body": {
+      "font_family": "IBM Plex Sans, sans-serif",
+      "weights": ["400", "500", "600"],
+      "usage": "General text, table data, forms, AI explanations, and tooltips."
+    },
+    "scale": {
+      "h1": "text-3xl sm:text-4xl font-bold tracking-tight",
+      "h2": "text-2xl sm:text-3xl font-semibold tracking-tight",
+      "h3": "text-xl font-medium",
+      "h4": "text-lg font-medium",
+      "body": "text-sm md:text-base text-slate-700 dark:text-slate-300",
+      "small": "text-xs text-slate-500",
+      "metric_value": "text-4xl md:text-5xl font-extrabold tracking-tighter"
+    }
+  },
+  "colors": {
+    "archetype": "Organic & Earthy meets Swiss High-Contrast (Clean Business)",
+    "light_mode": {
+      "background": "#F8FAF9",
+      "surface": "#FFFFFF",
+      "primary": "#2E7D32", 
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#5C8EAD",
+      "secondary_foreground": "#FFFFFF",
+      "text_main": "#1A1D1A",
+      "text_muted": "#64748B",
+      "border": "#E2E8F0"
+    },
+    "dark_mode": {
+      "background": "#0F172A",
+      "surface": "#1E293B",
+      "primary": "#4ADE80",
+      "primary_foreground": "#064E3B",
+      "secondary": "#7DD3FC",
+      "secondary_foreground": "#0C4A6E",
+      "text_main": "#F8FAF9",
+      "text_muted": "#94A3B8",
+      "border": "#334155"
+    },
+    "status": {
+      "success": "#10B981", 
+      "warning": "#F59E0B",
+      "critical": "#EF4444"
+    },
+    "rules": [
+      "Avoid excessive colors. Use brand green/blue sparingly to highlight key actions or positive metrics.",
+      "Tinted Grey Rule: All greys (slate/zinc) must have a subtle blue/green undertone, never pure #808080.",
+      "NEVER use pure transparent backgrounds for overlapping content (e.g., dropdowns, sticky headers). Always use solid backgrounds or backdrop blurs."
+    ]
+  },
+  "visual_enhancers": {
+    "surfaces": "Solid Minimalist. Flat solid backgrounds for data clarity with subtle 1px border. NO Glassmorphism on data-heavy widgets.",
+    "shadows": "Ambient diffuse shadows. hover:shadow-lg hover:-translate-y-1 transition-transform duration-200 for interactive cards.",
+    "borders": "1px solid border-slate-200 (light) or border-slate-700 (dark). Use border-radius: rounded-xl for main cards, rounded-md for inner elements."
+  },
+  "layouts": {
+    "app_shell": "Sidebar navigation (collapsible on mobile) + Top header + Main content area.",
+    "dashboard_grid": "MODE B (High Density Grid): grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6. Use col-span-2 or col-span-3 for large charts (P&L, Cash Flow), and col-span-1 for summary KPIs.",
+    "spacing": "Generous internal padding for cards: p-6 or p-8.",
+    "alignment": "Left-align text and numbers for better readability. Center-align only empty states or specific AI conversation bubbles."
+  },
+  "components": {
+    "kpi_cards": "Flat rectangular cards. Metric value in Cabinet Grotesk. Status indicator (Green/Yellow/Red) with a small trend arrow. Must include an 'Info' icon (Phosphor) that triggers a tooltip explaining 'What is this?'.",
+    "charts": "Recharts wrapped in Shadcn. Line charts for Cash Flow, Bar charts for P&L. Use the designated Soft Green and Soft Blue.",
+    "ai_chat": "Floating panel or distinct right-sidebar. AI bubbles should have a soft secondary background (e.g., bg-blue-50 dark:bg-blue-900/20). Must support structured markdown responses.",
+    "tables": "Dense, exact alignments (right-align currency). Sticky headers. Hover states on rows.",
+    "buttons": "Pill-shaped or rounded-md with crisp hover state (slightly darker background, not transparent).",
+    "forms": "Shadcn form inputs (.js/.jsx format). Clear labels, inline validation.",
+    "gauges": "Custom SVG or Recharts radial bar for 'Financial Health Score' and 'Data Quality Score'."
+  },
+  "motion": {
+    "transitions": "Specific property transitions (e.g., transition-transform, transition-colors duration-200). DO NOT use transition-all.",
+    "entrance": "Staggered fade-up for dashboard widgets (Framer Motion).",
+    "interactions": "Hover scaling on buttons. Tooltips fade in quickly. Accordions for AI explanations."
+  },
+  "media": {
+    "icons": "@phosphor-icons/react (Duotone or Regular weight). Best for dense dashboards. Fallback to lucide-react if needed.",
+    "image_urls": [
+      {
+        "url": "https://images.pexels.com/photos/6471913/pexels-photo-6471913.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "onboarding_or_empty_state",
+        "description": "Professional AC technician working. Use in the onboarding wizard or as a hero image for the initial company setup screen."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGJ1c2luZXNzJTIwZmluYW5jZXxlbnwwfHx8fDE3ODc1MzM3MDR8MA&ixlib=rb-4.1.0&q=85",
+        "category": "auth_background",
+        "description": "Abstract business finance charts. Use as a subtle, low-opacity background for the Login/Register screens."
+      }
+    ]
+  },
+  "accessibility": {
+    "contrast": "Ensure minimum 4.5:1 for normal text. Use dark charcoal (#1A1D1A) on white backgrounds.",
+    "testing": "All interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='upload-csv-button').",
+    "language": "UI text in Indonesian mixed with English accounting terms (e.g., 'Laba Bersih (Net Profit)'). AI explanations in plain, non-jargon Indonesian."
+  },
+  "instructions_to_main_agent": [
+    "Install required dependencies: yarn add @phosphor-icons/react recharts framer-motion lucide-react clsx tailwind-merge",
+    "Configure Tailwind with the specified colors and Cabinet Grotesk / IBM Plex Sans font families.",
+    "Build the dashboard using a CSS Grid layout (gap-6). Do not rely on flex wrap for the main widget grid.",
+    "Implement a 'What is this?' tooltip/popover for all advanced financial metrics (Net Margin, Receivables, etc.) using Shadcn HoverCard or Tooltip components.",
+    "For the Ask Finance AI interface, ensure it handles structured responses (summary, metrics, findings, risks, recommendations, confidence, sources) beautifully using cards and lists.",
+    "Do not use the standard `App.css` center alignment. Text should naturally flow left.",
+    "Ensure the Excel/CSV file upload uses a wizard UI (Shadcn Stepper or similar) for column mapping.",
+    "All React code should be in .js or .jsx format, NOT .tsx.",
+    "DO NOT use complete transparent background in header, overlays, any surface that has content under it. Example: Dropdown with transparent background."
+  ],
+  "universal_guidelines": [
+    "You MUST NOT apply universal transitions like `transition: all`. Target specific properties.",
+    "You MUST NOT center align the app container.",
+    "Create depth through layered design elements with z-index hierarchy, but avoid Glassmorphism on data tables to maintain legibility.",
+    "Always use modern button styles (rounded-md or pill-shaped) with interaction animations.",
+    "NEVER use AI assistant emoji characters (🤖🧠💭💡) for icons. Use actual SVG Icons instead.",
+    "Provide clear, conversational Indonesian text for the AI analysis components."
+  ]
+}

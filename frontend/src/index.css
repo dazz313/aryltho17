@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --era-bg: #F8FAF9;
+  --era-surface: #FFFFFF;
+  --era-primary: #2E7D32;
+  --era-secondary: #5C8EAD;
+  --era-text: #1A1D1A;
+  --era-muted: #64748B;
+  --era-border: #E2E8F0;
+  --era-success: #10B981;
+  --era-warning: #F59E0B;
+  --era-critical: #EF4444;
+}
+
+body {
+  margin: 0;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--era-bg);
+  color: var(--era-text);
+}
+
+.font-display {
+  font-family: 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+@layer base {
+  :root {
+    --background: 150 20% 98%;
+    --foreground: 120 6% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 120 6% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 120 6% 11%;
+    --primary: 122 46% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 202 32% 52%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 150 16% 95%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 150 16% 93%;
+    --accent-foreground: 120 6% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 122 46% 34%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+}
+
+/* number tabular alignment for currency */
+.tabular { font-variant-numeric: tabular-nums; }
+
+::selection { background: rgba(46,125,50,0.15); }
+
+.era-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.era-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }

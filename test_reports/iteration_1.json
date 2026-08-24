@@ -1,0 +1,110 @@
+{
+  "summary": "First full E2E test run of EraCool AI Financial Analyst. Backend: 53 pytest cases across auth, dashboard, financial statements, KPI/jobs, accounts, audit logs, AI (Gemini), import wizard, reports — 50 passed / 3 failed. All key PRD numbers verified exactly: Revenue Rp181,230,000, Net Profit Rp49,169,996, Net Margin 27.13%, health_score 94, 120 jobs, Balance Sheet balanced=true (197,169,996 = 48,000,000 + 149,169,996). Gemini AI (gemini-3-flash-preview) returns valid structured JSON grounded in engine numbers (quotes 27.13%, Rp49.169.996, Rp181.230.000) — no hallucinated figures observed. Frontend: full E2E on all 13 pages — login/logout, unauth redirect, invalid-credential error, all nav links, charts, balanced badge, KPI tech/customer tabs, jobs search (120 -> 24 filtered), Settings 3 tabs, Import 4-step wizard (upload -> auto-mapping -> validate -> commit -> delete), PDF/XLSX downloads, mobile drawer. Zero console errors (the single 401 logged was the intentional bad-password test).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/financial/balance-sheet",
+        "issue": "Persediaan (Inventory, acct 1300) shows a NEGATIVE balance of Rp-25,000,000. demo_data.py seeds opening inventory of Rp20,000,000 and then credits Rp45,000,000 of material usage to 1300 (line 141) but NEVER records any inventory purchase/restock entry. Negative inventory is an accounting impossibility and is highly visible on the Balance Sheet page of a financial-analyst product.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "/api/financial/ratios",
+        "issue": "quick_ratio (9.19x) > current_ratio (7.8x) — mathematically impossible. Direct consequence of the negative inventory above (quick_assets = current_assets - negative inventory). Also propagated into AI Insights output as 'Current Ratio 7.8' claims.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "/api/import/commit",
+        "issue": "Silent data loss on files >20 rows. /api/import/upload returns only preview = df.head(20), and the frontend (Import.js commit()) posts uploaded.preview as rows. Verified: a 25-row CSV reported row_count=25 but only 20 rows were imported and the UI said '0 baris dilewati'. Backend must persist/return the full parsed dataset (or accept a file/upload id) and the UI must not send a truncated preview.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "/api/auth/login",
+        "issue": "No brute-force protection: 6+ consecutive wrong passwords all return 401 with no lockout/throttle (playbook expects 423/429 after 5 failures)."
+      },
+      {
+        "endpoint": "CORS middleware (server.py)",
+        "issue": "allow_origin_regex='.*' combined with allow_credentials=True reflects any origin while httpOnly cookies are set — playbook requires explicit origin allow-list (CORS_ORIGINS env var exists in backend/.env but is unused)."
+      },
+      {
+        "endpoint": "/api/auth/refresh",
+        "issue": "Refresh only reads the refresh_token cookie; the frontend uses Bearer tokens from localStorage, so refresh is unreachable for the actual client. Access token silently expires after 12h with no renewal path."
+      },
+      {
+        "endpoint": "/api/auth/logout",
+        "issue": "Stateless — only clears cookies. A leaked Bearer token remains valid until expiry (no server-side revocation/denylist)."
+      },
+      {
+        "endpoint": "/api/auth/register",
+        "issue": "No password strength/minimum-length validation; a 1-character password is accepted."
+      },
+      {
+        "endpoint": "/api/dashboard, /api/kpi, /api/financial/*",
+        "issue": "Every request re-loads ALL journal_lines (to_list(200000)) and recomputes the full engine in Python. Fine for demo volume but will not scale; consider caching or Mongo aggregation."
+      },
+      {
+        "endpoint": "server.py",
+        "issue": "Uses deprecated @app.on_event('startup'/'shutdown'); migrate to lifespan handlers."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Import wizard commit",
+        "issue": "Sends uploaded.preview (max 20 rows) instead of the full file, so rows 21+ are silently dropped and reported as '0 baris dilewati'.",
+        "affected_selectors": ["[data-testid=\"commit-import\"]", "[data-testid=\"file-input\"]"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Balance Sheet",
+        "issues": ["Displays 'Persediaan (Inventory) Rp-25.000.000' — a negative asset line users will read as a bug/red flag."]
+      },
+      {
+        "screen": "Global number formatting",
+        "issues": ["Currency uses Indonesian separators (Rp181.230.000) but percentages/ratios use US decimals (27.13%, 7.8x, 0.32x). Inconsistent locale within the same card grid.", "AI answer metric chips render provider-formatted 'IDR 49,169,996' (US commas) next to app-formatted 'Rp49.169.996' — normalise AI metric values through the same formatIDR helper."]
+      },
+      {
+        "screen": "Profit & Loss",
+        "issues": ["Right-hand card labelled 'Operating Profit' shows the exact same figure as 'Net Profit (Laba Bersih)'; label is ambiguous/duplicative for the demo dataset."]
+      },
+      {
+        "screen": "Reports / Dashboard",
+        "issues": ["Dashboard KPI card values have no data-testid, so values must be asserted by scraping body text. Add data-testid=\"kpi-<key>\" to each card value for reliable regression testing."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix negative inventory: add inventory purchase/restock journal entries in demo_data.py (or route material COGS through a purchase that debits 1300) so Persediaan stays positive and quick_ratio <= current_ratio.",
+    "Fix import truncation: persist the full parsed rows server-side (return an upload_id) or have the frontend send the whole file; never commit only the 20-row preview.",
+    "Add login brute-force lockout/throttle (423 or 429 after 5 failed attempts per email/IP).",
+    "Restrict CORS to explicit origins from CORS_ORIGINS instead of allow_origin_regex='.*' while allow_credentials=True.",
+    "Make /api/auth/refresh work with the Bearer/localStorage flow the frontend actually uses, or drop it.",
+    "Add minimum password length validation on /api/auth/register.",
+    "Normalise number/percent formatting to a single Indonesian locale helper, including AI metric chips.",
+    "Add data-testid to dashboard KPI card values."
+  ],
+  "critical_code_review_comments": [
+    "demo_data.py:141 credits material usage to acct 1300 with no offsetting purchase debit — root cause of the negative inventory and the impossible quick_ratio > current_ratio.",
+    "server.py:346 preview = df.head(20) is the only row payload returned to the client, and Import.js:44 posts uploaded.preview — a truncation contract that guarantees silent data loss for real files.",
+    "server.py CORS: allow_origin_regex='.*' + allow_credentials=True is an unsafe combination for a cookie-auth app; CORS_ORIGINS in .env is dead config.",
+    "server.py deprecated @app.on_event startup/shutdown should become a lifespan context manager (FastAPI >=0.109 deprecation).",
+    "Every dashboard/financial endpoint does load_data() on the full journal (to_list(200000)) — no caching, no aggregation; O(n) recompute per page view.",
+    "auth.py logout is cookie-only; Bearer tokens are not revocable, so 'logout' is client-side only."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "94% (50/53 pytest cases)", "frontend": "100% of tested flows (1 integration defect found via code+API reproduction)"},
+  "seed_data_creation": "Created ephemeral register test users test_<uuid>@example.com; imported and then deleted TEST_ CSV journal lines via DELETE /api/data/imported (verified P&L revenue restored to 181,230,000 exactly). No seeded demo data modified.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "owner@eracool.id / eracool123 (from /app/memory/test_credentials.md) — valid, works, bcrypt hash verified to start with $2b$, httpOnly+Secure cookies set on login, Bearer token returned in 'token' field.",
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/backend_test.py -v (pytest.ini forces -n 2 --dist loadscope; do not edit it). 3 known failures are intentional evidence of open defects: TestFinancial::test_no_negative_asset_balances, TestFinancial::test_quick_ratio_not_greater_than_current_ratio, TestAuth::test_brute_force_lockout. Everything else passes. AI endpoints take 5-15s (use timeout>=180). Import tests auto-clean via DELETE /api/data/imported. Frontend testids are complete for nav (nav-dashboard/nav-pnl/nav-bs/nav-cf/nav-coh/nav-kpi/nav-jobs/nav-ai-ask/nav-ai-insights/nav-import/nav-reports/nav-settings), pages (*-page), reports (report-pdf/report-xlsx), import (file-input/map-*/to-validate/commit-import/delete-imported); dashboard KPI card VALUES still lack testids. After fixing inventory seeding, re-verify Revenue 181,230,000 / Net 49,169,996 / balanced=true are unchanged.",
+  "rca_of_the_issue": "Negative inventory + impossible quick ratio: generate_demo_lines seeds an opening Persediaan balance of Rp20,000,000 (demo_data.py:84) and then, for each of the 120 jobs, credits the material component of COGS to account 1300 (demo_data.py:141) totalling Rp45,000,000, with the debit going to COGS Material. Because no purchase entry ever debits 1300, the ledger balance ends at 20,000,000 - 45,000,000 = -25,000,000. The balance sheet still ties (total_assets 197,169,996 == liabilities 48,000,000 + equity 149,169,996) because double-entry is intact, so balanced=true masks the defect. financial_engine.ratios computes quick_assets = current_assets - bal['1300'], and subtracting a negative makes quick_ratio (9.19) exceed current_ratio (7.8). Fix: book material purchases (debit 1300 / credit 1100 or 2000) before consumption, or set the opening inventory above total consumption. Import truncation: server.py returns only df.head(20) as 'preview' and Import.js commits that same array, so files larger than 20 rows lose rows silently while the success screen reports 0 skipped — reproduced with a 25-row CSV (row_count=25, imported=20, skipped=0)."
+}
