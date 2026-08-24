@@ -14,6 +14,11 @@ import KPI from "./pages/KPI";
 import Jobs from "./pages/Jobs";
 import AskAI from "./pages/AskAI";
 import Insights from "./pages/Insights";
+import Reconciliation from "./pages/Reconciliation";
+import Anomalies from "./pages/Anomalies";
+import TaxCenter from "./pages/TaxCenter";
+import FinancialStatements from "./pages/FinancialStatements";
+import Documents from "./pages/Documents";
 import Import from "./pages/Import";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -48,10 +53,15 @@ function AppRoutes() {
       <Route path="/financial/balance-sheet" element={page(<BalanceSheet />)} />
       <Route path="/financial/cash-flow" element={page(<CashFlow />)} />
       <Route path="/financial/cash-on-hand" element={page(<CashOnHand />)} />
+      <Route path="/financial/statements" element={page(<FinancialStatements />)} />
+      <Route path="/tax" element={page(<TaxCenter />)} />
       <Route path="/kpi" element={page(<KPI />)} />
       <Route path="/business/jobs" element={page(<Jobs />)} />
       <Route path="/ai/ask" element={page(<AskAI />)} />
       <Route path="/ai/insights" element={page(<Insights />)} />
+      <Route path="/reconciliation" element={page(<Reconciliation />)} />
+      <Route path="/anomalies" element={page(<Anomalies />)} />
+      <Route path="/documents" element={page(<Documents />)} />
       <Route path="/import" element={page(<Import />)} />
       <Route path="/reports" element={page(<Reports />)} />
       <Route path="/settings" element={page(<Settings />)} />

@@ -5,11 +5,12 @@ load_dotenv(ROOT_DIR / '.env')
 
 import os
 import io
+import uuid
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, APIRouter, Request, Response, HTTPException, Depends, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -19,6 +20,10 @@ import auth as A
 from models import RegisterRequest, LoginRequest, CompanySetup, MappingConfirm, AskAIRequest
 from demo_data import CHART_OF_ACCOUNTS, generate_demo_lines, ACCT
 import financial_engine as fe
+import analytics as an
+import tax_center as tax
+import statements as stmt
+import storage as store
 import ai_gateway as ai
 
 mongo_url = os.environ['MONGO_URL']
@@ -85,6 +90,10 @@ async def seed_company_data(company_id, fiscal_year=2025):
     # chart of accounts
     await db.accounts.delete_many({"company_id": company_id})
     await db.accounts.insert_many([{**a, "company_id": company_id} for a in CHART_OF_ACCOUNTS])
+    # prior-year comparison series for YoY
+    prior_year = an.build_prior_year(lines)
+    await db.companies.update_one({"_id": _oid(company_id)},
+                                  {"$set": {"prior_year": prior_year}})
 
 
 # ---------------- auth ----------------
@@ -247,6 +256,132 @@ async def api_pnl(months: Optional[str] = None, user=Depends(current_user)):
     ml = _parse_months(months)
     prev = None
     return fe.profit_and_loss(lines, months=ml, prev_months=prev)
+
+
+@api.get("/financial/pnl-compare")
+async def api_pnl_compare(period: str = "FY", user=Depends(current_user)):
+    company = await get_company(user)
+    lines, _ = await load_data(company["id"])
+    prior = company.get("prior_year")
+    if not prior:
+        prior = an.build_prior_year(lines)
+        await db.companies.update_one({"_id": _oid(company["id"])}, {"$set": {"prior_year": prior}})
+    return an.period_pnl(lines, prior, period)
+
+
+# ---------------- anomaly detection ----------------
+@api.get("/anomalies")
+async def api_anomalies(user=Depends(current_user)):
+    company = await get_company(user)
+    lines, jobs = await load_data(company["id"])
+    return an.detect_anomalies(lines, jobs)
+
+
+@api.get("/ai/anomaly-insights")
+async def api_anomaly_insights(user=Depends(current_user)):
+    company = await get_company(user)
+    lines, jobs = await load_data(company["id"])
+    result = an.detect_anomalies(lines, jobs)
+    ai_expl = await ai.explain_anomalies(result, session_id=f"anomaly-{company['id']}")
+    await audit(company["id"], user, "ai_anomaly")
+    return {"detection": result, "ai": ai_expl}
+
+
+# ---------------- bank reconciliation ----------------
+@api.get("/reconciliation/demo")
+async def api_recon_demo(month: int = 6, user=Depends(current_user)):
+    company = await get_company(user)
+    lines, _ = await load_data(company["id"])
+    book = an.bank_movements(lines, month=month)
+    statement, dropped = an.demo_statement(book)
+    result = an.reconcile(book, statement)
+    return {"month": month, "statement": statement, "result": result,
+            "note": "Data rekening koran demo dibuat dari catatan buku dengan selisih realistis (biaya admin, bunga, transaksi timing)."}
+
+
+@api.post("/reconciliation/upload")
+async def api_recon_upload(file: UploadFile = File(...), user=Depends(current_user)):
+    company = await get_company(user)
+    lines, _ = await load_data(company["id"])
+    content = await file.read()
+    name = (file.filename or "").lower()
+    try:
+        if name.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(content))
+        elif name.endswith((".xlsx", ".xls")):
+            df = pd.read_excel(io.BytesIO(content))
+        else:
+            raise HTTPException(status_code=400, detail="Format tidak didukung. Gunakan XLSX atau CSV.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Gagal membaca file: {e}")
+    df = df.fillna("")
+    cols = {str(c).lower(): str(c) for c in df.columns}
+    dcol = next((cols[c] for c in cols if any(k in c for k in ("date", "tanggal", "tgl"))), None)
+    acol = next((cols[c] for c in cols if any(k in c for k in ("amount", "nominal", "jumlah", "nilai", "mutasi"))), None)
+    ncol = next((cols[c] for c in cols if any(k in c for k in ("desc", "keterangan", "uraian"))), None)
+    if not dcol or not acol:
+        raise HTTPException(status_code=400, detail="File harus punya kolom Tanggal dan Nominal/Mutasi.")
+    statement = []
+    for _, row in df.iterrows():
+        raw_d = str(row[dcol])[:10]
+        date = None
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+            try:
+                from datetime import datetime as _dt
+                date = _dt.strptime(raw_d, fmt).strftime("%Y-%m-%d")
+                break
+            except Exception:
+                continue
+        if not date:
+            continue
+        try:
+            amt = float(str(row[acol]).replace("Rp", "").replace(".", "").replace(",", "").replace(" ", ""))
+        except Exception:
+            continue
+        statement.append({"date": date, "description": str(row[ncol]) if ncol else "Mutasi", "amount": round(amt, 2)})
+    book = an.bank_movements(lines)
+    result = an.reconcile(book, statement)
+    await audit(company["id"], user, "reconciliation_upload", {"filename": file.filename, "difference": result["difference"]})
+    return {"statement": statement[:200], "result": result}
+
+
+@api.post("/ai/reconciliation-explain")
+async def api_recon_explain(body: dict, user=Depends(current_user)):
+    company = await get_company(user)
+    result = body.get("result") or {}
+    ai_expl = await ai.explain_reconciliation(an.compact_recon(result), session_id=f"recon-{company['id']}")
+    return ai_expl
+
+
+# ---------------- tax center ----------------
+@api.get("/tax/summary")
+async def api_tax_summary(pkp: bool = False, user=Depends(current_user)):
+    company = await get_company(user)
+    lines, _ = await load_data(company["id"])
+    return tax.compute(lines, pkp=pkp)
+
+
+@api.get("/ai/tax-advice")
+async def api_tax_advice(pkp: bool = False, user=Depends(current_user)):
+    company = await get_company(user)
+    lines, _ = await load_data(company["id"])
+    summary = tax.compute(lines, pkp=pkp)
+    task = ("Jelaskan situasi pajak bisnis ini dengan bahasa sederhana. Bandingkan PPh Final UMKM 0,5% vs PPh Badan Tarif Umum, "
+            "rekomendasikan yang paling hemat beserta alasannya, dan sebutkan kewajiban bulanan yang harus dibayar. "
+            "Gunakan HANYA angka dari data konteks. Ingatkan bahwa ini estimasi, bukan perhitungan pajak final.")
+    ai_expl = await ai.explain_tax(summary, task, session_id=f"tax-{company['id']}")
+    await audit(company["id"], user, "ai_tax")
+    return {"summary": summary, "ai": ai_expl}
+
+
+# ---------------- complete statements (SAK EMKM) ----------------
+@api.get("/statements/complete")
+async def api_statements_complete(user=Depends(current_user)):
+    company = await get_company(user)
+    lines, _ = await load_data(company["id"])
+    return stmt.complete(lines, company)
 
 
 @api.get("/financial/balance-sheet")
@@ -529,6 +664,118 @@ async def report_pdf(user=Depends(current_user)):
                              headers={"Content-Disposition": "attachment; filename=laporan_keuangan.pdf"})
 
 
+# ---------------- file & media storage ----------------
+ALLOWED_EXT = {"jpg", "jpeg", "png", "webp", "gif", "pdf", "csv", "xlsx", "xls"}
+MIME_TYPES = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif",
+              "webp": "image/webp", "pdf": "application/pdf", "csv": "text/csv",
+              "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              "xls": "application/vnd.ms-excel"}
+MAX_FILE_SIZE = 10 * 1024 * 1024
+
+
+def _file_public(doc):
+    return {k: doc[k] for k in ("id", "category", "attached_to", "attached_type", "original_filename",
+                                "content_type", "size", "created_at", "uploaded_by") if k in doc}
+
+
+@api.post("/files/upload")
+async def upload_file(file: UploadFile = File(...), category: str = Form("document"),
+                      attached_to: Optional[str] = Form(None), attached_type: Optional[str] = Form(None),
+                      user=Depends(current_user)):
+    company = await get_company(user)
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
+    if ext not in ALLOWED_EXT:
+        raise HTTPException(status_code=400, detail=f"Tipe file tidak didukung. Diperbolehkan: {', '.join(sorted(ALLOWED_EXT))}")
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Ukuran file melebihi 10MB.")
+    fid = str(uuid.uuid4())
+    path = f"{store.APP_NAME}/{company['id']}/{category}/{fid}.{ext}"
+    content_type = file.content_type or MIME_TYPES.get(ext, "application/octet-stream")
+    try:
+        result = store.put_object(path, data, content_type)
+    except Exception as e:
+        logger.error(f"Upload failed: {e}")
+        raise HTTPException(status_code=502, detail="Gagal mengunggah file ke storage.")
+    doc = {
+        "id": fid, "company_id": company["id"], "storage_path": result["path"],
+        "category": category, "attached_to": attached_to, "attached_type": attached_type,
+        "original_filename": file.filename, "content_type": content_type,
+        "size": result.get("size", len(data)), "is_deleted": False,
+        "uploaded_by": user.get("name") or user.get("email"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.files.insert_one(doc)
+    await audit(company["id"], user, "file_upload", {"filename": file.filename, "category": category})
+    return _file_public(doc)
+
+
+@api.get("/files")
+async def list_files(category: Optional[str] = None, attached_to: Optional[str] = None, user=Depends(current_user)):
+    company = await get_company(user)
+    q = {"company_id": company["id"], "is_deleted": False}
+    if category:
+        q["category"] = category
+    if attached_to:
+        q["attached_to"] = attached_to
+    docs = await db.files.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return {"files": [_file_public(d) for d in docs]}
+
+
+@api.get("/files/{file_id}/download")
+async def download_file(file_id: str, user=Depends(current_user)):
+    company = await get_company(user)
+    rec = await db.files.find_one({"id": file_id, "company_id": company["id"], "is_deleted": False})
+    if not rec:
+        raise HTTPException(status_code=404, detail="File tidak ditemukan")
+    try:
+        data, ct = store.get_object(rec["storage_path"])
+    except Exception as e:
+        logger.error(f"Download failed: {e}")
+        raise HTTPException(status_code=502, detail="Gagal mengambil file dari storage.")
+    return Response(content=data, media_type=rec.get("content_type", ct),
+                    headers={"Content-Disposition": f'inline; filename="{rec.get("original_filename","file")}"'})
+
+
+@api.delete("/files/{file_id}")
+async def delete_file(file_id: str, user=Depends(current_user)):
+    company = await get_company(user)
+    res = await db.files.update_one({"id": file_id, "company_id": company["id"]},
+                                    {"$set": {"is_deleted": True}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="File tidak ditemukan")
+    await audit(company["id"], user, "file_delete", {"file_id": file_id})
+    return {"deleted": True}
+
+
+@api.post("/company/logo")
+async def upload_logo(file: UploadFile = File(...), user=Depends(current_user)):
+    company = await get_company(user)
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
+    if ext not in {"jpg", "jpeg", "png", "webp"}:
+        raise HTTPException(status_code=400, detail="Logo harus berupa gambar (PNG/JPG/WEBP).")
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Ukuran logo maksimal 5MB.")
+    fid = str(uuid.uuid4())
+    path = f"{store.APP_NAME}/{company['id']}/logo/{fid}.{ext}"
+    content_type = file.content_type or MIME_TYPES.get(ext, "image/png")
+    try:
+        result = store.put_object(path, data, content_type)
+    except Exception as e:
+        logger.error(f"Logo upload failed: {e}")
+        raise HTTPException(status_code=502, detail="Gagal mengunggah logo.")
+    doc = {"id": fid, "company_id": company["id"], "storage_path": result["path"], "category": "logo",
+           "attached_to": None, "attached_type": None, "original_filename": file.filename,
+           "content_type": content_type, "size": result.get("size", len(data)), "is_deleted": False,
+           "uploaded_by": user.get("name") or user.get("email"),
+           "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.files.insert_one(doc)
+    await db.companies.update_one({"_id": _oid(company["id"])}, {"$set": {"logo_file_id": fid}})
+    await audit(company["id"], user, "logo_upload")
+    return {"logo_file_id": fid}
+
+
 @api.get("/audit-logs")
 async def audit_logs(user=Depends(current_user)):
     company = await get_company(user)
@@ -557,6 +804,12 @@ async def startup():
     await db.users.create_index("email", unique=True)
     await db.journal_lines.create_index("company_id")
     await db.service_jobs.create_index("company_id")
+    await db.files.create_index("company_id")
+    try:
+        store.init_storage()
+        logger.info("Object storage initialized")
+    except Exception as e:
+        logger.error(f"Storage init failed: {e}")
     await A.seed_admin(db)
     # ensure demo owner has a seeded company
     owner = await db.users.find_one({"email": os.environ.get("ADMIN_EMAIL", "owner@eracool.id")})

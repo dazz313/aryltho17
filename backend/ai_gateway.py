@@ -107,3 +107,48 @@ async def generate_insights(lines, jobs, session_id="ai-insights"):
         "Berikan analisis kesehatan bisnis secara menyeluruh: temuan utama, risiko, dan rekomendasi prioritas untuk bulan depan.",
         lines, jobs, session_id=session_id,
     )
+
+
+def _normalize(parsed):
+    parsed.setdefault("summary", "")
+    for key in ("metrics", "findings", "risks", "recommendations", "sources"):
+        if not isinstance(parsed.get(key), list):
+            parsed[key] = []
+    parsed.setdefault("confidence", "medium")
+    return parsed
+
+
+async def _ask_with_context(context_label, context, task, session_id):
+    api_key = os.environ["EMERGENT_LLM_KEY"]
+    chat = LlmChat(api_key=api_key, session_id=session_id, system_message=SYSTEM_MESSAGE).with_model(AI_PROVIDER, AI_MODEL)
+    prompt = f"""DATA KONTEKS ({context_label}) — angka otoritatif dari Financial Engine (IDR):
+{json.dumps(context, ensure_ascii=False)}
+
+TUGAS:
+{task}
+
+Jawab dalam format JSON sesuai instruksi sistem. Gunakan HANYA angka dari data konteks di atas."""
+    resp = await chat.send_message(UserMessage(text=prompt))
+    text = resp if isinstance(resp, str) else str(resp)
+    return _normalize(_extract_json(text) or _fallback(text))
+
+
+async def explain_reconciliation(recon, session_id="ai-recon"):
+    task = ("Jelaskan penyebab selisih antara catatan buku (book) dan rekening koran bank (statement). "
+            "Untuk setiap item yang tidak cocok, sebutkan BUKTINYA (tanggal, nominal, deskripsi). "
+            "JANGAN menuduh kecurangan/uang hilang tanpa bukti rekonsiliasi — sebutkan kemungkinan sebab wajar "
+            "(perbedaan waktu/timing, biaya administrasi bank, bunga, transaksi belum tercatat di buku). "
+            "Masukkan setiap item tidak cocok beserta nominalnya ke dalam 'findings'. Beri langkah tindakan di 'recommendations'.")
+    return await _ask_with_context("Rekonsiliasi Bank", recon, task, session_id)
+
+
+async def explain_anomalies(anom, session_id="ai-anomaly"):
+    task = ("Jelaskan anomali yang telah terdeteksi oleh engine. Urutkan berdasarkan dampak finansial, "
+            "sertakan bukti angka untuk setiap anomali di 'findings', dan beri rekomendasi tindakan konkret di 'recommendations'. "
+            "JANGAN menambah anomali yang tidak ada pada data. Jika tidak ada anomali, katakan bisnis stabil.")
+    return await _ask_with_context("Deteksi Anomali", anom, task, session_id)
+
+
+async def explain_tax(summary, task, session_id="ai-tax"):
+    return await _ask_with_context("Ringkasan Pajak", summary, task, session_id)
+

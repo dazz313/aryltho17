@@ -51,3 +51,8 @@ export function formatValue(value, fmt) {
 }
 
 export const MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+export async function fetchFileBlobUrl(fileId) {
+  const res = await api.get(`/files/${fileId}/download`, { responseType: "blob" });
+  return URL.createObjectURL(res.data);
+}

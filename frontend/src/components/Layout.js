@@ -1,10 +1,12 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { api } from "../lib/api";
+import { LogoImg } from "./FilePreview";
 import { cn } from "../lib/utils";
 import {
   ChartLineUp, Wallet, Receipt, Bank, Users, Brain, FileText,
-  Gear, SignOut, List, X, Gauge, Sparkle, ArrowsClockwise, UploadSimple,
+  Gear, SignOut, List, X, Gauge, Sparkle, ArrowsClockwise, UploadSimple, Scales, Warning, Percent, FolderOpen,
 } from "@phosphor-icons/react";
 
 const NAV = [
@@ -15,22 +17,27 @@ const NAV = [
       { label: "Balance Sheet", to: "/financial/balance-sheet", icon: Wallet, testId: "nav-bs" },
       { label: "Cash Flow", to: "/financial/cash-flow", icon: ArrowsClockwise, testId: "nav-cf" },
       { label: "Cash on Hand", to: "/financial/cash-on-hand", icon: Bank, testId: "nav-coh" },
+      { label: "Laporan Lengkap", to: "/financial/statements", icon: FileText, testId: "nav-statements" },
+      { label: "Tax Center", to: "/tax", icon: Percent, testId: "nav-tax" },
     ],
   },
   {
     group: "Analysis", items: [
       { label: "KPI & Kesehatan", to: "/kpi", icon: Receipt, testId: "nav-kpi" },
       { label: "Service Jobs", to: "/business/jobs", icon: Users, testId: "nav-jobs" },
+      { label: "Rekonsiliasi Bank", to: "/reconciliation", icon: Scales, testId: "nav-reconciliation" },
     ],
   },
   {
     group: "AI Analyst", items: [
       { label: "Ask Finance AI", to: "/ai/ask", icon: Brain, testId: "nav-ai-ask" },
       { label: "AI Insights", to: "/ai/insights", icon: Sparkle, testId: "nav-ai-insights" },
+      { label: "Deteksi Anomali", to: "/anomalies", icon: Warning, testId: "nav-anomalies" },
     ],
   },
   {
     group: "Data & Report", items: [
+      { label: "Dokumen & Media", to: "/documents", icon: FolderOpen, testId: "nav-documents" },
       { label: "Import Data", to: "/import", icon: UploadSimple, testId: "nav-import" },
       { label: "Reports", to: "/reports", icon: FileText, testId: "nav-reports" },
       { label: "Settings", to: "/settings", icon: Gear, testId: "nav-settings" },
@@ -56,14 +63,19 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [logoId, setLogoId] = useState(null);
+
+  useEffect(() => {
+    api.get("/company").then(({ data }) => setLogoId(data.company?.logo_file_id || null)).catch(() => {});
+  }, []);
 
   const doLogout = async () => { await logout(); navigate("/login"); };
 
   const SidebarContent = (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-era-border">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-era-primary text-white">
-          <ChartLineUp size={20} weight="fill" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-era-primary text-white overflow-hidden">
+          <LogoImg fileId={logoId} fallback={<ChartLineUp size={20} weight="fill" />} className="h-9 w-9 object-contain" />
         </div>
         <div className="leading-tight">
           <p className="font-display font-bold text-[15px] text-era-text">EraCool</p>
