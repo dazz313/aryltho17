@@ -184,9 +184,8 @@ async def company_setup(body: CompanySetup, user=Depends(current_user)):
     res = await db.companies.insert_one(doc)
     cid = str(res.inserted_id)
     await db.users.update_one({"email": user["email"]}, {"$set": {"company_id": cid}})
-    await seed_company_data(cid, body.fiscal_year)
     await audit(cid, user, "company_setup", {"name": body.name})
-    return {"company_id": cid, "seeded": True}
+    return {"company_id": cid, "seeded": False}
 
 
 # ---------------- financial engine ----------------
@@ -811,7 +810,7 @@ async def startup():
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
     await A.seed_admin(db)
-    # ensure demo owner has a seeded company
+    # ensure owner has a company (empty — no demo data)
     owner = await db.users.find_one({"email": os.environ.get("ADMIN_EMAIL", "owner@eracool.id")})
     if owner and not owner.get("company_id"):
         res = await db.companies.insert_one({
@@ -821,8 +820,7 @@ async def startup():
         })
         cid = str(res.inserted_id)
         await db.users.update_one({"_id": owner["_id"]}, {"$set": {"company_id": cid}})
-        await seed_company_data(cid, 2025)
-        logger.info("Seeded demo company for owner")
+        logger.info("Created empty company for owner")
 
 
 @app.on_event("shutdown")

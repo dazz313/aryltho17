@@ -26,7 +26,7 @@ export default function CompanySetup() {
     try {
       const { data } = await api.post("/company/setup", { ...form, fiscal_year: Number(form.fiscal_year) });
       setCompanyId(data.company_id);
-      toast.success("Perusahaan berhasil dibuat & data demo dimuat");
+      toast.success("Perusahaan berhasil dibuat");
       navigate("/dashboard");
     } catch (err) {
       setError(formatApiErrorDetail(err.response?.data?.detail) || err.message);
@@ -42,7 +42,7 @@ export default function CompanySetup() {
           <div className="relative p-8 text-white h-full flex flex-col justify-end">
             <Buildings size={40} weight="fill" className="mb-3" />
             <h2 className="font-display text-2xl font-bold mb-2">Company Setup</h2>
-            <p className="text-white/80 text-sm">Buat profil perusahaan Anda. Kami akan menyiapkan Chart of Accounts dan data contoh untuk memulai.</p>
+            <p className="text-white/80 text-sm">Buat profil perusahaan Anda. Mulai dari kosong, lalu import data keuangan asli Anda.</p>
           </div>
         </div>
         <form onSubmit={submit} className="p-8 space-y-4" data-testid="setup-form">
